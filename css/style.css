@@ -599,6 +599,177 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }
 
+/* ── Calendar View ─────────────────────────────────────── */
+.cal-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 20px 16px;
+}
+
+.cal-month-label {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.btn-cal-nav {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+.btn-cal-nav:active { background: var(--surface3); }
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  padding: 0 16px;
+}
+
+.cal-header-cell {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 0 10px;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s;
+  gap: 2px;
+}
+.cal-day:active { opacity: 0.7; }
+.cal-empty { cursor: default; }
+
+.cal-day-num {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.cal-day.today {
+  background: var(--accent);
+}
+.cal-day.today .cal-day-num {
+  font-weight: 800;
+  color: #fff;
+}
+
+.cal-day.selected:not(.today) {
+  background: var(--surface2);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.cal-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  height: 6px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-workout { background: var(--green); }
+.dot-plan    { background: var(--accent2); border: 1px solid var(--accent2); }
+
+/* Adjust dot color when inside today cell */
+.cal-day.today .dot-workout { background: rgba(255,255,255,0.9); }
+.cal-day.today .dot-plan    { background: rgba(255,255,255,0.6); }
+
+/* ── Day Detail Panel ──────────────────────────────────── */
+.day-detail {
+  padding: 20px 20px 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+}
+
+.day-detail-date {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 14px;
+}
+
+.day-plan-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent2);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.day-plan-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.day-plan-name {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.day-plan-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.plan-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.day-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 16px 0 8px;
+}
+
 /* ── Safe area for iOS ─────────────────────────────────── */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .bottom-nav {

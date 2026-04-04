@@ -1,4 +1,4 @@
-import { loadWorkouts, addWorkout, deleteWorkout } from './storage.js';
+import { loadWorkouts, addWorkout, deleteWorkout, loadPlans, savePlan, deletePlan } from './storage.js';
 
 // ── State ─────────────────────────────────────────────────
 const state = {
@@ -6,6 +6,11 @@ const state = {
   activeWorkout: null,
   editingExIndex: null,
   formSets: [],
+  calendar: {
+    year:  new Date().getFullYear(),
+    month: new Date().getMonth(),
+    selectedDay: new Date().toISOString().slice(0, 10),
+  },
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -49,6 +54,7 @@ function navigate(view) {
   if (view === 'home')     renderHome();
   if (view === 'workout')  renderWorkout();
   if (view === 'history')  renderHistory();
+  if (view === 'calendar') renderCalendar();
   if (view === 'exercise') renderExerciseForm();
 
   window.scrollTo(0, 0);
@@ -131,8 +137,13 @@ window.toggleCard = function(el) {
 };
 
 // ── Active Workout ────────────────────────────────────────
-function startWorkout() {
-  state.activeWorkout = { id: uid(), name: '', date: todayISO(), exercises: [] };
+function startWorkout(prefillName = '', prefillDate = '') {
+  state.activeWorkout = {
+    id: uid(),
+    name: prefillName,
+    date: prefillDate || todayISO(),
+    exercises: [],
+  };
   navigate('workout');
 }
 
@@ -380,6 +391,146 @@ window.confirmDelete = function(id, event) {
   }
 };
 
+// ── Calendar ──────────────────────────────────────────────
+function renderCalendar() {
+  const { year, month, selectedDay } = state.calendar;
+  const today    = todayISO();
+  const workouts = loadWorkouts();
+  const plans    = loadPlans();
+
+  // Month/year label
+  document.getElementById('cal-month-label').textContent =
+    new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Build set of dates that have logged workouts
+  const workoutDates = new Set(workouts.map(w => w.date));
+
+  const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const firstDow    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let html = DOW.map(d => `<div class="cal-header-cell">${d}</div>`).join('');
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDow; i++) html += `<div class="cal-day cal-empty"></div>`;
+
+  // Day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const cls = [
+      'cal-day',
+      iso === today        ? 'today'    : '',
+      iso === selectedDay  ? 'selected' : '',
+    ].filter(Boolean).join(' ');
+
+    const dots = [
+      workoutDates.has(iso) ? `<span class="dot dot-workout"></span>` : '',
+      plans[iso]            ? `<span class="dot dot-plan"></span>`    : '',
+    ].join('');
+
+    html += `
+      <div class="${cls}" onclick="selectDay('${iso}')">
+        <span class="cal-day-num">${d}</span>
+        ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
+      </div>`;
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+  renderDayDetail();
+}
+
+function renderDayDetail() {
+  const { selectedDay } = state.calendar;
+  const container = document.getElementById('day-detail');
+  if (!selectedDay) { container.innerHTML = ''; return; }
+
+  const today    = todayISO();
+  const plans    = loadPlans();
+  const plan     = plans[selectedDay];
+  const logged   = loadWorkouts().filter(w => w.date === selectedDay);
+  const isPast   = selectedDay <= today;
+
+  const [y, m, d] = selectedDay.split('-');
+  const dateLabel = new Date(+y, +m - 1, +d).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  });
+
+  let html = `<div class="day-detail-date">${dateLabel}</div>`;
+
+  // ── Plan section ──
+  if (plan) {
+    html += `
+      <div class="day-plan-card">
+        <div class="day-plan-tag">Planned</div>
+        <div class="day-plan-name">${escHtml(plan)}</div>
+        <div class="day-plan-actions">
+          ${isPast ? `<button class="btn btn-primary btn-sm" onclick="startFromPlan()">Start Workout</button>` : ''}
+          <button class="btn btn-danger" onclick="removePlanForDay('${selectedDay}')">Remove</button>
+        </div>
+      </div>`;
+  } else {
+    html += `
+      <button class="btn btn-secondary btn-sm" onclick="showPlanForm()">+ Plan this day</button>
+      <div class="plan-form" id="plan-form" style="display:none">
+        <div class="field-label">Workout Name</div>
+        <input type="text" id="plan-name-input" placeholder="e.g. Push Day, Cardio..." autocomplete="off" />
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="savePlanForDay('${selectedDay}')">Save Plan</button>
+          <button class="btn btn-secondary btn-sm" onclick="hidePlanForm()">Cancel</button>
+        </div>
+      </div>`;
+  }
+
+  // ── Logged workouts ──
+  if (logged.length > 0) {
+    html += `<div class="day-section-label">Logged</div>`;
+    html += logged.map(w => workoutCardHTML(w)).join('');
+  }
+
+  // ── Quick-start for today / past days with no log ──
+  if (isPast && logged.length === 0 && !plan) {
+    html += `
+      <button class="btn btn-primary btn-full mt-12"
+        onclick="startWorkout('', '${selectedDay}')">
+        ${selectedDay === today ? "Start Today's Workout" : "Log Workout for This Day"}
+      </button>`;
+  }
+
+  container.innerHTML = html;
+}
+
+window.selectDay = function(iso) {
+  state.calendar.selectedDay = iso;
+  renderCalendar();
+};
+
+window.showPlanForm = function() {
+  document.getElementById('plan-form').style.display = 'flex';
+  document.getElementById('plan-name-input').focus();
+};
+
+window.hidePlanForm = function() {
+  document.getElementById('plan-form').style.display = 'none';
+};
+
+window.savePlanForDay = function(date) {
+  const name = document.getElementById('plan-name-input').value.trim();
+  if (!name) { document.getElementById('plan-name-input').focus(); return; }
+  savePlan(date, name);
+  renderCalendar();
+};
+
+window.removePlanForDay = function(date) {
+  deletePlan(date);
+  renderCalendar();
+};
+
+window.startFromPlan = function() {
+  const { selectedDay } = state.calendar;
+  const plan = loadPlans()[selectedDay];
+  startWorkout(plan || '', selectedDay);
+};
+
 // ── Service Worker ────────────────────────────────────────
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
@@ -414,6 +565,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-add-set').addEventListener('click', addFormSet);
   document.getElementById('btn-save-exercise').addEventListener('click', saveExercise);
+
+  // Calendar month navigation
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    const c = state.calendar;
+    if (c.month === 0) { c.year--; c.month = 11; }
+    else               { c.month--; }
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    const c = state.calendar;
+    if (c.month === 11) { c.year++; c.month = 0; }
+    else                { c.month++; }
+    renderCalendar();
+  });
 
   navigate('home');
 });
