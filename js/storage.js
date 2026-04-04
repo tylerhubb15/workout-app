@@ -1,7 +1,5 @@
 const STORAGE_KEY = 'wt_workouts';
-const PLANS_KEY   = 'wt_plans';
 
-// ── Workouts ──────────────────────────────────────────────
 export function loadWorkouts() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -29,25 +27,4 @@ export function updateWorkout(workout) {
 
 export function deleteWorkout(id) {
   saveWorkouts(loadWorkouts().filter(w => w.id !== id));
-}
-
-// ── Plans (keyed by ISO date string "YYYY-MM-DD") ─────────
-export function loadPlans() {
-  try {
-    return JSON.parse(localStorage.getItem(PLANS_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-export function savePlan(date, name) {
-  const plans = loadPlans();
-  plans[date] = name;
-  localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
-}
-
-export function deletePlan(date) {
-  const plans = loadPlans();
-  delete plans[date];
-  localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
 }

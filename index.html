@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d0d0f" />
+  <meta name="theme-color" content="#070709" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="WorkoutLog" />
@@ -23,14 +23,14 @@
       <button class="btn btn-primary btn-full home-start-btn" id="btn-start-workout">
         + Start Workout
       </button>
-      <div class="stats-strip" id="home-stats">
+      <div class="stats-strip">
         <div class="stat-chip">
           <div class="stat-chip-value" id="stat-total">0</div>
           <div class="stat-chip-label">Sessions</div>
         </div>
         <div class="stat-chip">
           <div class="stat-chip-value" id="stat-exercises">0</div>
-          <div class="stat-chip-label">Exercises logged</div>
+          <div class="stat-chip-label">Exercises</div>
         </div>
         <div class="stat-chip">
           <div class="stat-chip-value" id="stat-sets">0</div>
@@ -38,22 +38,16 @@
         </div>
       </div>
     </div>
-
     <div class="section-title">Recent Workouts</div>
-    <div class="workout-list" id="home-workout-list">
-      <!-- populated by app.js -->
-    </div>
+    <div class="workout-list" id="home-workout-list"></div>
   </section>
 
   <!-- ── Active Workout View ───────────────────────── -->
   <section class="view" id="view-workout">
     <div class="page-header">
-      <button class="btn-back" id="btn-workout-back" title="Back">‹</button>
-      <div>
-        <h1>Workout</h1>
-      </div>
+      <button class="btn-back" id="btn-workout-back">‹</button>
+      <h1>Workout</h1>
     </div>
-
     <div class="workout-meta">
       <div>
         <div class="field-label">Workout Name</div>
@@ -64,62 +58,56 @@
         <input type="date" id="workout-date" />
       </div>
     </div>
-
     <div class="section-title">Exercises</div>
-    <div class="exercises-section" id="active-exercises">
-      <!-- populated by app.js -->
-    </div>
-
+    <div class="exercises-section" id="active-exercises"></div>
     <div class="workout-actions">
       <button class="btn btn-secondary btn-full" id="btn-add-exercise">+ Add Exercise</button>
       <button class="btn btn-success btn-full" id="btn-finish-workout">Finish Workout</button>
     </div>
   </section>
 
+  <!-- ── Day View (calendar drill-down) ────────────── -->
+  <section class="view" id="view-day">
+    <div class="page-header">
+      <button class="btn-back" id="btn-day-back">‹</button>
+      <div>
+        <h1 id="day-view-title"></h1>
+        <div class="page-subtitle" id="day-view-subtitle"></div>
+      </div>
+    </div>
+    <div class="exercises-section" id="day-exercises"></div>
+    <div class="workout-actions">
+      <button class="btn btn-secondary btn-full" id="btn-day-add-exercise">+ Add Exercise</button>
+    </div>
+  </section>
+
   <!-- ── Exercise Form View ────────────────────────── -->
   <section class="view" id="view-exercise">
     <div class="page-header">
-      <button class="btn-back" id="btn-exercise-back" title="Back">‹</button>
-      <div>
-        <h1 id="exercise-view-title">Add Exercise</h1>
-      </div>
+      <button class="btn-back" id="btn-exercise-back">‹</button>
+      <h1 id="exercise-view-title">Add Exercise</h1>
     </div>
-
     <div class="exercise-form">
       <div>
         <div class="field-label">Exercise Name</div>
         <input type="text" id="exercise-name" placeholder="e.g. Bench Press" autocomplete="off" />
       </div>
-
       <div class="sets-form-section">
         <div class="field-label">Sets</div>
         <table class="sets-form-table">
           <thead>
             <tr>
-              <th style="width:36px">Set</th>
+              <th style="width:32px">Set</th>
               <th>Reps</th>
               <th>Weight (lbs)</th>
-              <th style="width:36px"></th>
+              <th style="width:32px"></th>
             </tr>
           </thead>
-          <tbody id="sets-form-body">
-            <!-- rows added by app.js -->
-          </tbody>
+          <tbody id="sets-form-body"></tbody>
         </table>
         <button class="btn btn-secondary btn-sm" id="btn-add-set">+ Add Set</button>
       </div>
-
       <button class="btn btn-primary btn-full" id="btn-save-exercise">Save Exercise</button>
-    </div>
-  </section>
-
-  <!-- ── History View ──────────────────────────────── -->
-  <section class="view" id="view-history">
-    <div class="page-header">
-      <h1>History</h1>
-    </div>
-    <div class="history-list" id="history-list">
-      <!-- populated by app.js -->
     </div>
   </section>
 
@@ -128,20 +116,23 @@
     <div class="page-header">
       <h1>Calendar</h1>
     </div>
-
     <div class="cal-month-nav">
       <button class="btn-cal-nav" id="cal-prev">‹</button>
       <div class="cal-month-label" id="cal-month-label"></div>
       <button class="btn-cal-nav" id="cal-next">›</button>
     </div>
-
-    <div class="calendar-grid" id="cal-grid">
-      <!-- populated by app.js -->
+    <div class="calendar-grid" id="cal-grid"></div>
+    <div class="cal-legend">
+      <span class="legend-item"><span class="dot dot-workout"></span> Logged</span>
     </div>
+  </section>
 
-    <div class="day-detail" id="day-detail">
-      <!-- populated by app.js -->
+  <!-- ── History View ──────────────────────────────── -->
+  <section class="view" id="view-history">
+    <div class="page-header">
+      <h1>History</h1>
     </div>
+    <div class="history-list" id="history-list"></div>
   </section>
 
   <!-- ── Bottom Navigation ─────────────────────────── -->

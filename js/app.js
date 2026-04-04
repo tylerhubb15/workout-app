@@ -1,15 +1,16 @@
-import { loadWorkouts, addWorkout, deleteWorkout, loadPlans, savePlan, deletePlan } from './storage.js';
+import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout } from './storage.js';
 
 // ── State ─────────────────────────────────────────────────
 const state = {
   view: 'home',
-  activeWorkout: null,
+  activeWorkout: null,       // workout in progress (Start Workout flow)
+  dayWorkout: null,          // workout being edited from the calendar day view
   editingExIndex: null,
   formSets: [],
+  exerciseContext: 'workout', // 'workout' | 'day' — which view the exercise form serves
   calendar: {
     year:  new Date().getFullYear(),
     month: new Date().getMonth(),
-    selectedDay: new Date().toISOString().slice(0, 10),
   },
 };
 
@@ -22,7 +23,14 @@ function formatDate(iso) {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return new Date(+y, +m - 1, +d).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric'
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
+function formatDateLong(iso) {
+  const [y, m, d] = iso.split('-');
+  return new Date(+y, +m - 1, +d).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
   });
 }
 
@@ -44,8 +52,9 @@ function navigate(view) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
 
-  const nav = document.getElementById('bottom-nav');
-  nav.style.display = (view === 'exercise') ? 'none' : '';
+  // Hide bottom nav on sub-views
+  const hideNav = view === 'exercise' || view === 'workout' || view === 'day';
+  document.getElementById('bottom-nav').style.display = hideNav ? 'none' : '';
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
@@ -53,8 +62,9 @@ function navigate(view) {
 
   if (view === 'home')     renderHome();
   if (view === 'workout')  renderWorkout();
-  if (view === 'history')  renderHistory();
+  if (view === 'day')      renderDay();
   if (view === 'calendar') renderCalendar();
+  if (view === 'history')  renderHistory();
   if (view === 'exercise') renderExerciseForm();
 
   window.scrollTo(0, 0);
@@ -63,9 +73,8 @@ function navigate(view) {
 // ── Home ──────────────────────────────────────────────────
 function renderHome() {
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric'
+    weekday: 'long', month: 'long', day: 'numeric',
   });
-
   renderStats();
 
   const container = document.getElementById('home-workout-list');
@@ -79,7 +88,6 @@ function renderHome() {
       </div>`;
     return;
   }
-
   container.innerHTML = workouts.map(w => workoutCardHTML(w)).join('');
 }
 
@@ -88,7 +96,6 @@ function renderStats() {
   const totalEx  = workouts.reduce((n, w) => n + w.exercises.length, 0);
   const totalSets = workouts.reduce((n, w) =>
     n + w.exercises.reduce((m, ex) => m + ex.sets.length, 0), 0);
-
   document.getElementById('stat-total').textContent     = workouts.length;
   document.getElementById('stat-exercises').textContent = totalEx;
   document.getElementById('stat-sets').textContent      = totalSets;
@@ -132,99 +139,28 @@ function workoutCardHTML(w) {
     </div>`;
 }
 
-window.toggleCard = function(el) {
-  el.classList.toggle('expanded');
-};
+window.toggleCard = function(el) { el.classList.toggle('expanded'); };
 
-// ── Active Workout ────────────────────────────────────────
-function startWorkout(prefillName = '', prefillDate = '') {
-  state.activeWorkout = {
-    id: uid(),
-    name: prefillName,
-    date: prefillDate || todayISO(),
-    exercises: [],
-  };
+// ── Active Workout (Start Workout flow) ───────────────────
+function startWorkout() {
+  state.activeWorkout = { id: uid(), name: '', date: todayISO(), exercises: [] };
+  state.exerciseContext = 'workout';
   navigate('workout');
 }
 
 function renderWorkout() {
   const w = state.activeWorkout;
   if (!w) return;
-
   document.getElementById('workout-name').value = w.name;
   document.getElementById('workout-date').value = w.date;
 
   const container = document.getElementById('active-exercises');
-
   if (w.exercises.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state" style="padding:24px 0">
-        <div class="empty-icon" style="font-size:32px">➕</div>
-        <p>Tap <strong>Add Exercise</strong> below.</p>
-      </div>`;
+    container.innerHTML = emptyExerciseState();
     return;
   }
-
-  container.innerHTML = w.exercises.map((ex, ei) => activeExerciseCardHTML(ex, ei)).join('');
+  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'workout')).join('');
 }
-
-function activeExerciseCardHTML(ex, ei) {
-  const setRows = ex.sets.map((s, si) => `
-    <tr>
-      <td class="set-num-cell">${si + 1}</td>
-      <td><input class="set-input" type="number" min="0" inputmode="numeric"
-           value="${s.reps || ''}" placeholder="0"
-           onchange="updateSet(${ei},${si},'reps',this.value)" /></td>
-      <td><input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
-           value="${s.weight || ''}" placeholder="0"
-           onchange="updateSet(${ei},${si},'weight',this.value)" /></td>
-      <td><button class="btn-remove-set" onclick="removeSet(${ei},${si})">×</button></td>
-    </tr>`).join('');
-
-  return `
-    <div class="active-exercise-card">
-      <div class="active-exercise-header">
-        <div class="active-exercise-name">${escHtml(ex.name)}</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary btn-sm" onclick="editExercise(${ei})">Edit</button>
-          <button class="btn btn-icon btn-secondary" onclick="removeExercise(${ei})" title="Delete">🗑</button>
-        </div>
-      </div>
-      <table class="sets-editor">
-        <thead><tr><th>Set</th><th>Reps</th><th>Weight (lbs)</th><th></th></tr></thead>
-        <tbody>${setRows}</tbody>
-      </table>
-      <button class="btn btn-ghost btn-sm mt-8" onclick="addSetInline(${ei})">+ Add Set</button>
-    </div>`;
-}
-
-window.updateSet = function(ei, si, field, val) {
-  state.activeWorkout.exercises[ei].sets[si][field] = parseFloat(val) || 0;
-};
-
-window.removeSet = function(ei, si) {
-  state.activeWorkout.exercises[ei].sets.splice(si, 1);
-  renderWorkout();
-};
-
-window.addSetInline = function(ei) {
-  const last = state.activeWorkout.exercises[ei].sets.slice(-1)[0];
-  state.activeWorkout.exercises[ei].sets.push({
-    reps: last ? last.reps : 0,
-    weight: last ? last.weight : 0,
-  });
-  renderWorkout();
-};
-
-window.editExercise = function(ei) {
-  state.editingExIndex = ei;
-  navigate('exercise');
-};
-
-window.removeExercise = function(ei) {
-  state.activeWorkout.exercises.splice(ei, 1);
-  renderWorkout();
-};
 
 function syncWorkoutFields() {
   const w = state.activeWorkout;
@@ -246,25 +182,144 @@ function finishWorkout() {
   navigate('home');
 }
 
-// ── Exercise Form ─────────────────────────────────────────
-function openExerciseForm() {
-  state.editingExIndex = null;
-  navigate('exercise');
+// ── Day View (calendar drill-down) ────────────────────────
+window.selectDay = function(iso) {
+  const workouts = loadWorkouts();
+  const existing = workouts.find(w => w.date === iso);
+  // Deep copy so edits don't mutate the stored version until explicitly saved
+  state.dayWorkout = existing
+    ? JSON.parse(JSON.stringify(existing))
+    : { id: uid(), date: iso, name: '', exercises: [] };
+  state.exerciseContext = 'day';
+  navigate('day');
+};
+
+function renderDay() {
+  const w = state.dayWorkout;
+  if (!w) return;
+
+  document.getElementById('day-view-title').textContent = formatDateLong(w.date);
+  document.getElementById('day-view-subtitle').textContent =
+    w.exercises.length > 0
+      ? `${w.exercises.length} exercise${w.exercises.length !== 1 ? 's' : ''}`
+      : 'No exercises yet';
+
+  const container = document.getElementById('day-exercises');
+  if (w.exercises.length === 0) {
+    container.innerHTML = emptyExerciseState();
+    return;
+  }
+  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'day')).join('');
 }
 
+// Save or update the day's workout in localStorage
+function persistDay() {
+  const w = state.dayWorkout;
+  if (!w) return;
+
+  const workouts = loadWorkouts();
+  const exists   = workouts.some(x => x.id === w.id);
+
+  if (w.exercises.length === 0) {
+    if (exists) deleteWorkout(w.id);
+    return;
+  }
+
+  if (!w.name) w.name = formatDate(w.date) + ' Workout';
+  if (exists) updateWorkout(w);
+  else        addWorkout(w);
+}
+
+// ── Shared Exercise Card ──────────────────────────────────
+// Used by both the active workout view and the day view
+function exerciseCardHTML(ex, ei, ctx) {
+  const setRows = ex.sets.map((s, si) => `
+    <tr>
+      <td class="set-num-cell">${si + 1}</td>
+      <td><input class="set-input" type="number" min="0" inputmode="numeric"
+           value="${s.reps || ''}" placeholder="0"
+           onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" /></td>
+      <td><input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
+           value="${s.weight || ''}" placeholder="0"
+           onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" /></td>
+      <td><button class="btn-remove-set" onclick="handleRemoveSet('${ctx}',${ei},${si})">×</button></td>
+    </tr>`).join('');
+
+  return `
+    <div class="active-exercise-card">
+      <div class="active-exercise-header">
+        <div class="active-exercise-name">${escHtml(ex.name)}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>
+          <button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})">🗑</button>
+        </div>
+      </div>
+      <table class="sets-editor">
+        <thead><tr><th>Set</th><th>Reps</th><th>Weight (lbs)</th><th></th></tr></thead>
+        <tbody>${setRows}</tbody>
+      </table>
+      <button class="btn btn-ghost btn-sm mt-8" onclick="handleAddSet('${ctx}',${ei})">+ Add Set</button>
+    </div>`;
+}
+
+function workoutFor(ctx) {
+  return ctx === 'day' ? state.dayWorkout : state.activeWorkout;
+}
+
+function rerenderFor(ctx) {
+  if (ctx === 'day') { persistDay(); renderDay(); }
+  else               { renderWorkout(); }
+}
+
+window.handleSetChange = function(ctx, ei, si, field, val) {
+  workoutFor(ctx).exercises[ei].sets[si][field] = parseFloat(val) || 0;
+  if (ctx === 'day') persistDay();
+};
+
+window.handleRemoveSet = function(ctx, ei, si) {
+  workoutFor(ctx).exercises[ei].sets.splice(si, 1);
+  rerenderFor(ctx);
+};
+
+window.handleAddSet = function(ctx, ei) {
+  const sets = workoutFor(ctx).exercises[ei].sets;
+  const last = sets.slice(-1)[0];
+  sets.push({ reps: last ? last.reps : 0, weight: last ? last.weight : 0 });
+  rerenderFor(ctx);
+};
+
+window.handleEditExercise = function(ctx, ei) {
+  state.exerciseContext  = ctx;
+  state.editingExIndex   = ei;
+  navigate('exercise');
+};
+
+window.handleRemoveExercise = function(ctx, ei) {
+  workoutFor(ctx).exercises.splice(ei, 1);
+  rerenderFor(ctx);
+};
+
+function emptyExerciseState() {
+  return `
+    <div class="empty-state" style="padding:24px 0">
+      <div class="empty-icon" style="font-size:32px">➕</div>
+      <p>Tap <strong>Add Exercise</strong> below.</p>
+    </div>`;
+}
+
+// ── Exercise Form ─────────────────────────────────────────
 function renderExerciseForm() {
   const editing = state.editingExIndex !== null;
   document.getElementById('exercise-view-title').textContent = editing ? 'Edit Exercise' : 'Add Exercise';
 
   if (editing) {
-    const ex = state.activeWorkout.exercises[state.editingExIndex];
+    const ex = workoutFor(state.exerciseContext).exercises[state.editingExIndex];
     document.getElementById('exercise-name').value = ex.name;
     state.formSets = ex.sets.map(s => ({ ...s }));
   } else {
     document.getElementById('exercise-name').value = '';
     state.formSets = [{ reps: 0, weight: 0 }];
   }
-
   renderSetRows();
 }
 
@@ -313,14 +368,48 @@ function saveExercise() {
   const exercise = { name, sets: state.formSets.filter(s => s.reps > 0 || s.weight > 0) };
   if (exercise.sets.length === 0) exercise.sets = [{ reps: 0, weight: 0 }];
 
-  if (state.editingExIndex !== null) {
-    state.activeWorkout.exercises[state.editingExIndex] = exercise;
-  } else {
-    state.activeWorkout.exercises.push(exercise);
-  }
+  const target = workoutFor(state.exerciseContext);
+  if (state.editingExIndex !== null) target.exercises[state.editingExIndex] = exercise;
+  else                               target.exercises.push(exercise);
+
+  if (state.exerciseContext === 'day') persistDay();
 
   state.editingExIndex = null;
-  navigate('workout');
+  navigate(state.exerciseContext);
+}
+
+// ── Calendar ──────────────────────────────────────────────
+function renderCalendar() {
+  const { year, month } = state.calendar;
+  const today    = todayISO();
+  const workoutDates = new Set(loadWorkouts().map(w => w.date));
+
+  document.getElementById('cal-month-label').textContent =
+    new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const DOW         = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const firstDow    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let html = DOW.map(d => `<div class="cal-header-cell">${d}</div>`).join('');
+  for (let i = 0; i < firstDow; i++) html += `<div class="cal-day cal-empty"></div>`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isToday   = iso === today;
+    const hasLog    = workoutDates.has(iso);
+
+    const cls = ['cal-day', isToday ? 'today' : ''].filter(Boolean).join(' ');
+    const dot = hasLog ? `<span class="dot dot-workout"></span>` : '';
+
+    html += `
+      <div class="${cls}" onclick="selectDay('${iso}')">
+        <span class="cal-day-num">${d}</span>
+        ${dot}
+      </div>`;
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
 }
 
 // ── History ───────────────────────────────────────────────
@@ -336,7 +425,6 @@ function renderHistory() {
       </div>`;
     return;
   }
-
   container.innerHTML = workouts.map(w => historyCardHTML(w)).join('');
 }
 
@@ -391,146 +479,6 @@ window.confirmDelete = function(id, event) {
   }
 };
 
-// ── Calendar ──────────────────────────────────────────────
-function renderCalendar() {
-  const { year, month, selectedDay } = state.calendar;
-  const today    = todayISO();
-  const workouts = loadWorkouts();
-  const plans    = loadPlans();
-
-  // Month/year label
-  document.getElementById('cal-month-label').textContent =
-    new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  // Build set of dates that have logged workouts
-  const workoutDates = new Set(workouts.map(w => w.date));
-
-  const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-  const firstDow    = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  let html = DOW.map(d => `<div class="cal-header-cell">${d}</div>`).join('');
-
-  // Empty cells before first day
-  for (let i = 0; i < firstDow; i++) html += `<div class="cal-day cal-empty"></div>`;
-
-  // Day cells
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const cls = [
-      'cal-day',
-      iso === today        ? 'today'    : '',
-      iso === selectedDay  ? 'selected' : '',
-    ].filter(Boolean).join(' ');
-
-    const dots = [
-      workoutDates.has(iso) ? `<span class="dot dot-workout"></span>` : '',
-      plans[iso]            ? `<span class="dot dot-plan"></span>`    : '',
-    ].join('');
-
-    html += `
-      <div class="${cls}" onclick="selectDay('${iso}')">
-        <span class="cal-day-num">${d}</span>
-        ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
-      </div>`;
-  }
-
-  document.getElementById('cal-grid').innerHTML = html;
-  renderDayDetail();
-}
-
-function renderDayDetail() {
-  const { selectedDay } = state.calendar;
-  const container = document.getElementById('day-detail');
-  if (!selectedDay) { container.innerHTML = ''; return; }
-
-  const today    = todayISO();
-  const plans    = loadPlans();
-  const plan     = plans[selectedDay];
-  const logged   = loadWorkouts().filter(w => w.date === selectedDay);
-  const isPast   = selectedDay <= today;
-
-  const [y, m, d] = selectedDay.split('-');
-  const dateLabel = new Date(+y, +m - 1, +d).toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  });
-
-  let html = `<div class="day-detail-date">${dateLabel}</div>`;
-
-  // ── Plan section ──
-  if (plan) {
-    html += `
-      <div class="day-plan-card">
-        <div class="day-plan-tag">Planned</div>
-        <div class="day-plan-name">${escHtml(plan)}</div>
-        <div class="day-plan-actions">
-          ${isPast ? `<button class="btn btn-primary btn-sm" onclick="startFromPlan()">Start Workout</button>` : ''}
-          <button class="btn btn-danger" onclick="removePlanForDay('${selectedDay}')">Remove</button>
-        </div>
-      </div>`;
-  } else {
-    html += `
-      <button class="btn btn-secondary btn-sm" onclick="showPlanForm()">+ Plan this day</button>
-      <div class="plan-form" id="plan-form" style="display:none">
-        <div class="field-label">Workout Name</div>
-        <input type="text" id="plan-name-input" placeholder="e.g. Push Day, Cardio..." autocomplete="off" />
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary btn-sm" onclick="savePlanForDay('${selectedDay}')">Save Plan</button>
-          <button class="btn btn-secondary btn-sm" onclick="hidePlanForm()">Cancel</button>
-        </div>
-      </div>`;
-  }
-
-  // ── Logged workouts ──
-  if (logged.length > 0) {
-    html += `<div class="day-section-label">Logged</div>`;
-    html += logged.map(w => workoutCardHTML(w)).join('');
-  }
-
-  // ── Quick-start for today / past days with no log ──
-  if (isPast && logged.length === 0 && !plan) {
-    html += `
-      <button class="btn btn-primary btn-full mt-12"
-        onclick="startWorkout('', '${selectedDay}')">
-        ${selectedDay === today ? "Start Today's Workout" : "Log Workout for This Day"}
-      </button>`;
-  }
-
-  container.innerHTML = html;
-}
-
-window.selectDay = function(iso) {
-  state.calendar.selectedDay = iso;
-  renderCalendar();
-};
-
-window.showPlanForm = function() {
-  document.getElementById('plan-form').style.display = 'flex';
-  document.getElementById('plan-name-input').focus();
-};
-
-window.hidePlanForm = function() {
-  document.getElementById('plan-form').style.display = 'none';
-};
-
-window.savePlanForDay = function(date) {
-  const name = document.getElementById('plan-name-input').value.trim();
-  if (!name) { document.getElementById('plan-name-input').focus(); return; }
-  savePlan(date, name);
-  renderCalendar();
-};
-
-window.removePlanForDay = function(date) {
-  deletePlan(date);
-  renderCalendar();
-};
-
-window.startFromPlan = function() {
-  const { selectedDay } = state.calendar;
-  const plan = loadPlans()[selectedDay];
-  startWorkout(plan || '', selectedDay);
-};
-
 // ── Service Worker ────────────────────────────────────────
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
@@ -542,26 +490,42 @@ function registerServiceWorker() {
 document.addEventListener('DOMContentLoaded', () => {
   registerServiceWorker();
 
+  // Bottom nav
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => navigate(btn.dataset.view));
   });
 
+  // Home
   document.getElementById('btn-start-workout').addEventListener('click', startWorkout);
 
+  // Active workout
   document.getElementById('btn-workout-back').addEventListener('click', () => {
     if (confirm('Discard this workout?')) {
       state.activeWorkout = null;
       navigate('home');
     }
   });
-  document.getElementById('btn-add-exercise').addEventListener('click', openExerciseForm);
+  document.getElementById('btn-add-exercise').addEventListener('click', () => {
+    state.exerciseContext = 'workout';
+    state.editingExIndex  = null;
+    navigate('exercise');
+  });
   document.getElementById('btn-finish-workout').addEventListener('click', finishWorkout);
   document.getElementById('workout-name').addEventListener('input', syncWorkoutFields);
   document.getElementById('workout-date').addEventListener('change', syncWorkoutFields);
 
+  // Day view
+  document.getElementById('btn-day-back').addEventListener('click', () => navigate('calendar'));
+  document.getElementById('btn-day-add-exercise').addEventListener('click', () => {
+    state.exerciseContext = 'day';
+    state.editingExIndex  = null;
+    navigate('exercise');
+  });
+
+  // Exercise form
   document.getElementById('btn-exercise-back').addEventListener('click', () => {
     state.editingExIndex = null;
-    navigate('workout');
+    navigate(state.exerciseContext);
   });
   document.getElementById('btn-add-set').addEventListener('click', addFormSet);
   document.getElementById('btn-save-exercise').addEventListener('click', saveExercise);
