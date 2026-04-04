@@ -1,11 +1,11 @@
-import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout } from './storage.js';
+import { loadWorkouts, addWorkout, deleteWorkout } from './storage.js';
 
 // ── State ─────────────────────────────────────────────────
 const state = {
-  view: 'home',           // 'home' | 'workout' | 'exercise' | 'history'
-  activeWorkout: null,    // workout object being built
-  editingExIndex: null,   // index of exercise being edited (null = new)
-  formSets: [],           // sets in the exercise form
+  view: 'home',
+  activeWorkout: null,
+  editingExIndex: null,
+  formSets: [],
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -25,33 +25,30 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
-function summaryText(workout) {
-  const count = workout.exercises.length;
-  const sets  = workout.exercises.reduce((n, ex) => n + ex.sets.length, 0);
-  return `${count} exercise${count !== 1 ? 's' : ''} · ${sets} set${sets !== 1 ? 's' : ''}`;
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ── Navigation ────────────────────────────────────────────
 function navigate(view) {
   state.view = view;
-
-  // show/hide views
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
 
-  // show/hide bottom nav (hide on exercise form)
   const nav = document.getElementById('bottom-nav');
   nav.style.display = (view === 'exercise') ? 'none' : '';
 
-  // highlight active nav button
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
 
-  // render new view
-  if (view === 'home')    renderHome();
-  if (view === 'workout') renderWorkout();
-  if (view === 'history') renderHistory();
+  if (view === 'home')     renderHome();
+  if (view === 'workout')  renderWorkout();
+  if (view === 'history')  renderHistory();
   if (view === 'exercise') renderExerciseForm();
 
   window.scrollTo(0, 0);
@@ -59,10 +56,11 @@ function navigate(view) {
 
 // ── Home ──────────────────────────────────────────────────
 function renderHome() {
-  // date display
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric'
   });
+
+  renderStats();
 
   const container = document.getElementById('home-workout-list');
   const workouts  = loadWorkouts().slice(0, 5);
@@ -79,15 +77,28 @@ function renderHome() {
   container.innerHTML = workouts.map(w => workoutCardHTML(w)).join('');
 }
 
+function renderStats() {
+  const workouts = loadWorkouts();
+  const totalEx  = workouts.reduce((n, w) => n + w.exercises.length, 0);
+  const totalSets = workouts.reduce((n, w) =>
+    n + w.exercises.reduce((m, ex) => m + ex.sets.length, 0), 0);
+
+  document.getElementById('stat-total').textContent     = workouts.length;
+  document.getElementById('stat-exercises').textContent = totalEx;
+  document.getElementById('stat-sets').textContent      = totalSets;
+}
+
 function workoutCardHTML(w) {
+  const exCount  = w.exercises.length;
+  const setCount = w.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+
   const exerciseRows = w.exercises.map(ex => {
-    const setRows = ex.sets.map((s, i) =>
-      `<tr>
+    const setRows = ex.sets.map((s, i) => `
+      <tr>
         <td class="set-num">${i + 1}</td>
         <td>${s.reps} reps</td>
         <td>${s.weight ? s.weight + ' lbs' : '—'}</td>
-      </tr>`
-    ).join('');
+      </tr>`).join('');
     return `
       <div class="exercise-row">
         <div class="exercise-row-name">${escHtml(ex.name)}</div>
@@ -102,9 +113,15 @@ function workoutCardHTML(w) {
     <div class="workout-card" data-id="${w.id}" onclick="toggleCard(this)">
       <div class="workout-card-header">
         <div class="workout-card-name">${escHtml(w.name)}</div>
-        <div class="workout-card-date">${formatDate(w.date)}</div>
+        <div class="workout-card-right">
+          <div class="workout-card-date">${formatDate(w.date)}</div>
+          <div class="workout-card-chevron">▾</div>
+        </div>
       </div>
-      <div class="workout-card-meta">${summaryText(w)}</div>
+      <div class="workout-card-meta">
+        <span class="meta-pill">${exCount} exercise${exCount !== 1 ? 's' : ''}</span>
+        <span class="meta-pill">${setCount} set${setCount !== 1 ? 's' : ''}</span>
+      </div>
       <div class="workout-card-exercises">${exerciseRows}</div>
     </div>`;
 }
@@ -115,12 +132,7 @@ window.toggleCard = function(el) {
 
 // ── Active Workout ────────────────────────────────────────
 function startWorkout() {
-  state.activeWorkout = {
-    id: uid(),
-    name: '',
-    date: todayISO(),
-    exercises: [],
-  };
+  state.activeWorkout = { id: uid(), name: '', date: todayISO(), exercises: [] };
   navigate('workout');
 }
 
@@ -135,7 +147,7 @@ function renderWorkout() {
 
   if (w.exercises.length === 0) {
     container.innerHTML = `
-      <div class="empty-state" style="padding: 24px 0;">
+      <div class="empty-state" style="padding:24px 0">
         <div class="empty-icon" style="font-size:32px">➕</div>
         <p>Tap <strong>Add Exercise</strong> below.</p>
       </div>`;
@@ -148,14 +160,14 @@ function renderWorkout() {
 function activeExerciseCardHTML(ex, ei) {
   const setRows = ex.sets.map((s, si) => `
     <tr>
-      <td class="set-num">${si + 1}</td>
+      <td class="set-num-cell">${si + 1}</td>
       <td><input class="set-input" type="number" min="0" inputmode="numeric"
-           value="${s.reps}" placeholder="0"
-           onchange="updateSet(${ei}, ${si}, 'reps', this.value)" /></td>
+           value="${s.reps || ''}" placeholder="0"
+           onchange="updateSet(${ei},${si},'reps',this.value)" /></td>
       <td><input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
-           value="${s.weight}" placeholder="0"
-           onchange="updateSet(${ei}, ${si}, 'weight', this.value)" /></td>
-      <td><button class="btn-remove-set" onclick="removeSet(${ei}, ${si})">×</button></td>
+           value="${s.weight || ''}" placeholder="0"
+           onchange="updateSet(${ei},${si},'weight',this.value)" /></td>
+      <td><button class="btn-remove-set" onclick="removeSet(${ei},${si})">×</button></td>
     </tr>`).join('');
 
   return `
@@ -168,9 +180,7 @@ function activeExerciseCardHTML(ex, ei) {
         </div>
       </div>
       <table class="sets-editor">
-        <thead>
-          <tr><th>Set</th><th>Reps</th><th>Weight (lbs)</th><th></th></tr>
-        </thead>
+        <thead><tr><th>Set</th><th>Reps</th><th>Weight (lbs)</th><th></th></tr></thead>
         <tbody>${setRows}</tbody>
       </table>
       <button class="btn btn-ghost btn-sm mt-8" onclick="addSetInline(${ei})">+ Add Set</button>
@@ -187,10 +197,10 @@ window.removeSet = function(ei, si) {
 };
 
 window.addSetInline = function(ei) {
-  const lastSet = state.activeWorkout.exercises[ei].sets.slice(-1)[0];
+  const last = state.activeWorkout.exercises[ei].sets.slice(-1)[0];
   state.activeWorkout.exercises[ei].sets.push({
-    reps: lastSet ? lastSet.reps : 0,
-    weight: lastSet ? lastSet.weight : 0,
+    reps: last ? last.reps : 0,
+    weight: last ? last.weight : 0,
   });
   renderWorkout();
 };
@@ -215,13 +225,11 @@ function syncWorkoutFields() {
 function finishWorkout() {
   syncWorkoutFields();
   const w = state.activeWorkout;
-
   if (!w.name) w.name = 'Workout – ' + formatDate(w.date);
   if (w.exercises.length === 0) {
     alert('Add at least one exercise before finishing.');
     return;
   }
-
   addWorkout(w);
   state.activeWorkout = null;
   navigate('home');
@@ -250,16 +258,15 @@ function renderExerciseForm() {
 }
 
 function renderSetRows() {
-  const tbody = document.getElementById('sets-form-body');
-  tbody.innerHTML = state.formSets.map((s, i) => `
+  document.getElementById('sets-form-body').innerHTML = state.formSets.map((s, i) => `
     <tr>
-      <td class="set-num">${i + 1}</td>
+      <td class="set-num-cell">${i + 1}</td>
       <td><input class="set-input" type="number" min="0" inputmode="numeric"
            value="${s.reps || ''}" placeholder="0"
-           onchange="formSetChange(${i}, 'reps', this.value)" /></td>
+           onchange="formSetChange(${i},'reps',this.value)" /></td>
       <td><input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
            value="${s.weight || ''}" placeholder="0"
-           onchange="formSetChange(${i}, 'weight', this.value)" /></td>
+           onchange="formSetChange(${i},'weight',this.value)" /></td>
       <td><button class="btn-remove-set" onclick="formRemoveSet(${i})">×</button></td>
     </tr>`).join('');
 }
@@ -269,7 +276,7 @@ window.formSetChange = function(i, field, val) {
 };
 
 window.formRemoveSet = function(i) {
-  if (state.formSets.length === 1) return; // keep at least one row
+  if (state.formSets.length === 1) return;
   state.formSets.splice(i, 1);
   renderSetRows();
 };
@@ -282,16 +289,13 @@ function addFormSet() {
 
 function saveExercise() {
   const name = document.getElementById('exercise-name').value.trim();
-  if (!name) {
-    document.getElementById('exercise-name').focus();
-    return;
-  }
+  if (!name) { document.getElementById('exercise-name').focus(); return; }
 
-  // Flush any pending input values (in case onchange hasn't fired)
+  // Flush any uncommitted input values
   document.querySelectorAll('#sets-form-body input').forEach(input => {
     const row   = input.closest('tr');
     const idx   = [...row.parentElement.children].indexOf(row);
-    const field = input.type === 'number' && input.step === '2.5' ? 'weight' : 'reps';
+    const field = input.step === '2.5' ? 'weight' : 'reps';
     state.formSets[idx][field] = parseFloat(input.value) || 0;
   });
 
@@ -326,14 +330,16 @@ function renderHistory() {
 }
 
 function historyCardHTML(w) {
+  const exCount  = w.exercises.length;
+  const setCount = w.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+
   const exerciseRows = w.exercises.map(ex => {
-    const setRows = ex.sets.map((s, i) =>
-      `<tr>
+    const setRows = ex.sets.map((s, i) => `
+      <tr>
         <td class="set-num">${i + 1}</td>
         <td>${s.reps} reps</td>
         <td>${s.weight ? s.weight + ' lbs' : '—'}</td>
-      </tr>`
-    ).join('');
+      </tr>`).join('');
     return `
       <div class="exercise-row">
         <div class="exercise-row-name">${escHtml(ex.name)}</div>
@@ -348,13 +354,19 @@ function historyCardHTML(w) {
     <div class="workout-card" data-id="${w.id}" onclick="toggleCard(this)">
       <div class="workout-card-header">
         <div class="workout-card-name">${escHtml(w.name)}</div>
-        <div class="workout-card-date">${formatDate(w.date)}</div>
+        <div class="workout-card-right">
+          <div class="workout-card-date">${formatDate(w.date)}</div>
+          <div class="workout-card-chevron">▾</div>
+        </div>
       </div>
-      <div class="workout-card-meta">${summaryText(w)}</div>
+      <div class="workout-card-meta">
+        <span class="meta-pill">${exCount} exercise${exCount !== 1 ? 's' : ''}</span>
+        <span class="meta-pill">${setCount} set${setCount !== 1 ? 's' : ''}</span>
+      </div>
       <div class="workout-card-exercises">
         ${exerciseRows}
         <div class="history-card-footer">
-          <button class="btn btn-danger" onclick="confirmDelete('${w.id}', event)">Delete Workout</button>
+          <button class="btn btn-danger" onclick="confirmDelete('${w.id}',event)">Delete Workout</button>
         </div>
       </div>
     </div>`;
@@ -368,15 +380,6 @@ window.confirmDelete = function(id, event) {
   }
 };
 
-// ── Security ──────────────────────────────────────────────
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 // ── Service Worker ────────────────────────────────────────
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
@@ -388,15 +391,12 @@ function registerServiceWorker() {
 document.addEventListener('DOMContentLoaded', () => {
   registerServiceWorker();
 
-  // Nav buttons
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => navigate(btn.dataset.view));
   });
 
-  // Home
   document.getElementById('btn-start-workout').addEventListener('click', startWorkout);
 
-  // Active workout
   document.getElementById('btn-workout-back').addEventListener('click', () => {
     if (confirm('Discard this workout?')) {
       state.activeWorkout = null;
@@ -405,12 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-add-exercise').addEventListener('click', openExerciseForm);
   document.getElementById('btn-finish-workout').addEventListener('click', finishWorkout);
-
-  // Sync name/date fields as user types
   document.getElementById('workout-name').addEventListener('input', syncWorkoutFields);
   document.getElementById('workout-date').addEventListener('change', syncWorkoutFields);
 
-  // Exercise form
   document.getElementById('btn-exercise-back').addEventListener('click', () => {
     state.editingExIndex = null;
     navigate('workout');
@@ -418,6 +415,5 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-add-set').addEventListener('click', addFormSet);
   document.getElementById('btn-save-exercise').addEventListener('click', saveExercise);
 
-  // Initial render
   navigate('home');
 });
