@@ -22,8 +22,14 @@
 /* ── Reset & Base ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body {
+html {
   height: 100%;
+  height: 100dvh; /* dynamic viewport height — fixes iOS address bar issue */
+}
+
+body {
+  height: 100%;
+  min-height: -webkit-fill-available; /* older iOS Safari fallback */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -132,8 +138,10 @@ html, body {
 
 /* ── Bottom Navigation ─────────────────────────────────── */
 .bottom-nav {
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
   height: var(--nav-h);
   background: rgba(14, 14, 18, 0.92);
   backdrop-filter: blur(20px);
