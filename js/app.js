@@ -83,8 +83,8 @@ function renderHome() {
   if (workouts.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">🏋️</div>
-        <p>No workouts yet.<br>Tap <strong>Start Workout</strong> to log your first session.</p>
+        <div class="empty-label">No sessions logged yet.</div>
+        <p>Tap <strong>Start Workout</strong> to begin.</p>
       </div>`;
     return;
   }
@@ -251,7 +251,11 @@ function exerciseCardHTML(ex, ei, ctx) {
         <div class="active-exercise-name">${escHtml(ex.name)}</div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>
-          <button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})">🗑</button>
+          <button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})" title="Remove">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+            </svg>
+          </button>
         </div>
       </div>
       <table class="sets-editor">
@@ -302,7 +306,7 @@ window.handleRemoveExercise = function(ctx, ei) {
 function emptyExerciseState() {
   return `
     <div class="empty-state" style="padding:24px 0">
-      <div class="empty-icon" style="font-size:32px">➕</div>
+      <div class="empty-label">No exercises added.</div>
       <p>Tap <strong>Add Exercise</strong> below.</p>
     </div>`;
 }
@@ -420,8 +424,8 @@ function renderHistory() {
   if (workouts.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">📋</div>
-        <p>Your completed workouts will appear here.</p>
+        <div class="empty-label">No history yet.</div>
+        <p>Completed workouts will appear here.</p>
       </div>`;
     return;
   }
