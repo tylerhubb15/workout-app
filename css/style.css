@@ -6,9 +6,9 @@
   --surface3:  #202025;
   --border:    rgba(255, 255, 255, 0.07);
   --border2:   rgba(255, 255, 255, 0.13);
-  --accent:    #5b5fc7;
-  --accent2:   #7b7fdb;
-  --accent-dim:#3f42a8;
+  --accent:    #1a6edb;
+  --accent2:   #4d97f0;
+  --accent-dim:#1254a8;
   --green:     #2eb87a;
   --red:       #e03e52;
   --text:      #ebebef;
@@ -448,7 +448,7 @@ input[type="number"] {
 }
 input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  box-shadow: 0 0 0 3px rgba(26,110,219,0.2);
 }
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) opacity(0.3);
@@ -701,6 +701,88 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-size: 12px;
   color: var(--text3);
   font-weight: 500;
+}
+
+/* ── Splash / Onboarding Overlay ──────────────────────── */
+#splash {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 28px;
+  gap: 0;
+}
+#splash.hidden { display: none; }
+
+.splash-logo {
+  width: 64px;
+  height: 64px;
+  background: var(--accent);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.splash-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.splash-sub {
+  font-size: 14px;
+  color: var(--text3);
+  margin-bottom: 40px;
+  font-weight: 500;
+}
+
+.splash-steps {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.splash-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.splash-step-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.splash-step-text {
+  padding-top: 2px;
+}
+
+.splash-step-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.splash-step-desc {
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.5;
 }
 
 /* ── Safe area for iOS ─────────────────────────────────── */

@@ -494,6 +494,16 @@ function registerServiceWorker() {
 document.addEventListener('DOMContentLoaded', () => {
   registerServiceWorker();
 
+  // Splash screen — show once, then never again
+  const splash = document.getElementById('splash');
+  if (localStorage.getItem('wt_seen')) {
+    splash.classList.add('hidden');
+  }
+  document.getElementById('btn-splash-dismiss').addEventListener('click', () => {
+    localStorage.setItem('wt_seen', '1');
+    splash.classList.add('hidden');
+  });
+
   // Bottom nav
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => navigate(btn.dataset.view));
