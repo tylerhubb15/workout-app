@@ -988,6 +988,56 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   padding-left: 10px;
 }
 
+/* ── Plan Day Editor ───────────────────────────────────── */
+.plan-day-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.plan-day-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.plan-day-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent2);
+}
+
+.plan-day-card-body {
+  padding: 12px 16px;
+}
+
+.plan-day-ex-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.plan-day-ex-row:last-child { border-bottom: none; }
+
+.plan-day-ex-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.plan-day-ex-meta {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
 /* ── Safe area for iOS ─────────────────────────────────── */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .bottom-nav {

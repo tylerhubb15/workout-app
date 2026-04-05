@@ -40,6 +40,8 @@ const state = {
     month: new Date().getMonth(),
   },
   planDays: new Set(), // DOW indices selected in plan form
+  editingPlan: null,   // plan whose days are being edited
+  editingPlanDow: null,// day-of-week being edited in plan template
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -81,7 +83,7 @@ function navigate(view) {
   document.getElementById(`view-${view}`).classList.add('active');
 
   // Hide bottom nav on sub-views
-  const hideNav = view === 'exercise' || view === 'workout' || view === 'day';
+  const hideNav = view === 'exercise' || view === 'workout' || view === 'day' || view === 'plan-editor';
   document.getElementById('bottom-nav').style.display = hideNav ? 'none' : '';
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -94,7 +96,8 @@ function navigate(view) {
   if (view === 'calendar') renderCalendar();
   if (view === 'history')  renderHistory();
   if (view === 'exercise') renderExerciseForm();
-  if (view === 'plan')     renderPlan();
+  if (view === 'plan')         renderPlan();
+  if (view === 'plan-editor')  renderPlanEditor();
 
   window.scrollTo(0, 0);
 }
@@ -215,10 +218,24 @@ function finishWorkout() {
 window.selectDay = function(iso) {
   const workouts = loadWorkouts();
   const existing = workouts.find(w => w.date === iso);
-  // Deep copy so edits don't mutate the stored version until explicitly saved
   state.dayWorkout = existing
     ? JSON.parse(JSON.stringify(existing))
     : { id: uid(), date: iso, name: '', exercises: [] };
+
+  // If the day has no exercises, check for a plan template and pre-load it
+  if (state.dayWorkout.exercises.length === 0) {
+    const dow = new Date(iso + 'T00:00:00').getDay();
+    for (const plan of loadPlans()) {
+      if (iso >= plan.start && iso <= plan.end &&
+          plan.workoutDays.includes(dow) &&
+          plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0) {
+        state.dayWorkout.exercises = JSON.parse(JSON.stringify(plan.dayTemplates[dow]));
+        if (!state.dayWorkout.name) state.dayWorkout.name = plan.name;
+        break;
+      }
+    }
+  }
+
   state.exerciseContext = 'day';
   navigate('day');
 };
@@ -296,17 +313,26 @@ function exerciseCardHTML(ex, ei, ctx) {
 }
 
 function workoutFor(ctx) {
-  return ctx === 'day' ? state.dayWorkout : state.activeWorkout;
+  if (ctx === 'day') return state.dayWorkout;
+  if (ctx === 'planTemplate') {
+    const dow = state.editingPlanDow;
+    if (!state.editingPlan.dayTemplates[dow]) state.editingPlan.dayTemplates[dow] = [];
+    // Return a proxy-like object whose .exercises points at the template array
+    return { exercises: state.editingPlan.dayTemplates[dow] };
+  }
+  return state.activeWorkout;
 }
 
 function rerenderFor(ctx) {
-  if (ctx === 'day') { persistDay(); renderDay(); }
-  else               { renderWorkout(); }
+  if (ctx === 'day')          { persistDay(); renderDay(); }
+  else if (ctx === 'planTemplate') { upsertPlan(state.editingPlan); renderPlanEditor(); }
+  else                        { renderWorkout(); }
 }
 
 window.handleSetChange = function(ctx, ei, si, field, val) {
   workoutFor(ctx).exercises[ei].sets[si][field] = parseFloat(val) || 0;
   if (ctx === 'day') persistDay();
+  if (ctx === 'planTemplate') upsertPlan(state.editingPlan);
 };
 
 window.handleRemoveSet = function(ctx, ei, si) {
@@ -446,9 +472,11 @@ function saveExercise() {
   else                               target.exercises.push(exercise);
 
   if (state.exerciseContext === 'day') persistDay();
+  if (state.exerciseContext === 'planTemplate') upsertPlan(state.editingPlan);
 
   state.editingExIndex = null;
-  navigate(state.exerciseContext);
+  const dest = state.exerciseContext === 'planTemplate' ? 'plan-editor' : state.exerciseContext;
+  navigate(dest);
 }
 
 // ── Calendar ──────────────────────────────────────────────
@@ -503,6 +531,78 @@ function renderCalendar() {
   document.getElementById('cal-grid').innerHTML = html;
 }
 
+// ── Plan Day Editor ───────────────────────────────────────
+const DOW_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+window.openPlanEditor = function(id) {
+  const plan = loadPlans().find(p => p.id === id);
+  if (!plan) return;
+  if (!plan.dayTemplates) plan.dayTemplates = {};
+  state.editingPlan = JSON.parse(JSON.stringify(plan));
+  navigate('plan-editor');
+};
+
+function renderPlanEditor() {
+  const plan = state.editingPlan;
+  if (!plan) return;
+  document.getElementById('plan-editor-title').textContent = plan.name;
+
+  const body = document.getElementById('plan-editor-body');
+  body.innerHTML = plan.workoutDays.map(dow => {
+    const exercises = (plan.dayTemplates[dow] || []);
+    const exRows = exercises.length === 0
+      ? `<div class="empty-state" style="padding:12px 0 4px"><div class="empty-label">No exercises set.</div></div>`
+      : exercises.map((ex, ei) => {
+          const setMeta = ex.sets.map(s => `${s.weight}lbs×${s.reps}`).join(', ');
+          return `
+            <div class="plan-day-ex-row">
+              <div>
+                <div class="plan-day-ex-name">${escHtml(ex.name)}</div>
+                <div class="plan-day-ex-meta">${setMeta || 'No sets'}</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary btn-sm" onclick="planTemplateEditEx(${dow},${ei})">Edit</button>
+                <button class="btn btn-icon btn-secondary" onclick="planTemplateRemoveEx(${dow},${ei})">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>`;
+        }).join('');
+
+    return `
+      <div class="plan-day-card">
+        <div class="plan-day-card-header">
+          <span class="plan-day-card-title">${DOW_NAMES[dow]}</span>
+          <button class="btn btn-secondary btn-sm" onclick="planTemplateAddEx(${dow})">+ Add Exercise</button>
+        </div>
+        <div class="plan-day-card-body">${exRows}</div>
+      </div>`;
+  }).join('');
+}
+
+window.planTemplateAddEx = function(dow) {
+  state.editingPlan.dayTemplates[dow] = state.editingPlan.dayTemplates[dow] || [];
+  state.editingPlanDow  = dow;
+  state.exerciseContext = 'planTemplate';
+  state.editingExIndex  = null;
+  navigate('exercise');
+};
+
+window.planTemplateEditEx = function(dow, ei) {
+  state.editingPlanDow  = dow;
+  state.exerciseContext = 'planTemplate';
+  state.editingExIndex  = ei;
+  navigate('exercise');
+};
+
+window.planTemplateRemoveEx = function(dow, ei) {
+  state.editingPlan.dayTemplates[dow].splice(ei, 1);
+  upsertPlan(state.editingPlan);
+  renderPlanEditor();
+};
+
 // ── Plan ──────────────────────────────────────────────────
 function renderPlan() {
   // Reset form
@@ -532,6 +632,7 @@ function renderPlan() {
         <div class="plan-card-meta">${formatDate(p.start)} — ${formatDate(p.end)}</div>
         <div class="plan-card-days">${pips}</div>
         <div class="plan-card-actions">
+          <button class="btn btn-primary btn-sm" onclick="openPlanEditor('${p.id}')">Edit Days</button>
           <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit</button>
           <button class="btn btn-danger" onclick="confirmDeletePlan('${p.id}')">Delete</button>
         </div>
@@ -746,7 +847,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Exercise form
   document.getElementById('btn-exercise-back').addEventListener('click', () => {
     state.editingExIndex = null;
-    navigate(state.exerciseContext);
+    const dest = state.exerciseContext === 'planTemplate' ? 'plan-editor' : state.exerciseContext;
+    navigate(dest);
   });
   document.getElementById('btn-add-set').addEventListener('click', addFormSet);
   document.getElementById('btn-save-exercise').addEventListener('click', saveExercise);
@@ -764,6 +866,9 @@ document.addEventListener('DOMContentLoaded', () => {
     else                { c.month++; }
     renderCalendar();
   });
+
+  // Plan editor
+  document.getElementById('btn-plan-editor-back').addEventListener('click', () => navigate('plan'));
 
   // Plan — day toggles + save
   document.querySelectorAll('.day-btn').forEach(btn => {
