@@ -567,6 +567,77 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .sets-form-table td { padding: 5px 8px 5px 0; vertical-align: middle; }
 
+/* ── Exercise Chips ────────────────────────────────────── */
+.ex-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.ex-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.ex-chip:active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── Set Block Layout ──────────────────────────────────── */
+.set-block {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.set-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.set-block-num {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.set-block-inputs {
+  display: flex;
+  gap: 10px;
+}
+
+.set-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.set-field .set-input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.set-field-label {
+  font-size: 12px;
+  color: var(--text3);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* ── History ───────────────────────────────────────────── */
 .history-card-footer {
   display: flex;

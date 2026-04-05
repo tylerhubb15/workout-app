@@ -1,5 +1,21 @@
 import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout } from './storage.js';
 
+// ── Exercise Library ──────────────────────────────────────
+const EXERCISES = [
+  // Chest
+  'Bench Press', 'Incline Bench Press', 'Decline Bench Press', 'Chest Fly', 'Cable Fly', 'Push-Up',
+  // Back
+  'Deadlift', 'Pull-Up', 'Chin-Up', 'Barbell Row', 'Dumbbell Row', 'Lat Pulldown', 'Seated Cable Row', 'T-Bar Row',
+  // Shoulders
+  'Overhead Press', 'Lateral Raise', 'Front Raise', 'Rear Delt Fly', 'Arnold Press',
+  // Arms
+  'Bicep Curl', 'Hammer Curl', 'Preacher Curl', 'Tricep Pushdown', 'Skull Crusher', 'Dips',
+  // Legs
+  'Squat', 'Leg Press', 'Romanian Deadlift', 'Lunges', 'Leg Curl', 'Leg Extension', 'Hip Thrust', 'Calf Raise',
+  // Core
+  'Plank', 'Crunch', 'Russian Twist', 'Leg Raise', 'Cable Crunch',
+];
+
 // ── State ─────────────────────────────────────────────────
 const state = {
   view: 'home',
@@ -324,21 +340,53 @@ function renderExerciseForm() {
     document.getElementById('exercise-name').value = '';
     state.formSets = [{ reps: 0, weight: 0 }];
   }
+
+  // Populate chips and filter
+  const filterInput = document.getElementById('ex-filter');
+  filterInput.value = '';
+  renderExChips('');
+  filterInput.oninput = () => renderExChips(filterInput.value.trim().toLowerCase());
+
   renderSetRows();
 }
 
+function renderExChips(filter) {
+  // Merge built-in list with any custom exercises from history
+  const used = [...new Set(loadWorkouts().flatMap(w => w.exercises.map(e => e.name)))];
+  const all  = [...new Set([...EXERCISES, ...used])].sort();
+  const filtered = filter ? all.filter(n => n.toLowerCase().includes(filter)) : all;
+
+  document.getElementById('ex-chips').innerHTML = filtered.map(name => `
+    <button class="ex-chip" onclick="selectExChip('${escHtml(name)}')">${escHtml(name)}</button>
+  `).join('');
+}
+
+window.selectExChip = function(name) {
+  document.getElementById('exercise-name').value = name;
+};
+
 function renderSetRows() {
   document.getElementById('sets-form-body').innerHTML = state.formSets.map((s, i) => `
-    <tr>
-      <td class="set-num-cell">${i + 1}</td>
-      <td><input class="set-input" type="number" min="0" inputmode="numeric"
-           value="${s.reps || ''}" placeholder="0"
-           onchange="formSetChange(${i},'reps',this.value)" /></td>
-      <td><input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
-           value="${s.weight || ''}" placeholder="0"
-           onchange="formSetChange(${i},'weight',this.value)" /></td>
-      <td><button class="btn-remove-set" onclick="formRemoveSet(${i})">×</button></td>
-    </tr>`).join('');
+    <div class="set-block">
+      <div class="set-block-header">
+        <span class="set-block-num">Set ${i + 1}</span>
+        <button class="btn-remove-set" onclick="formRemoveSet(${i})">×</button>
+      </div>
+      <div class="set-block-inputs">
+        <div class="set-field">
+          <input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
+            value="${s.weight || ''}" placeholder="0"
+            onchange="formSetChange(${i},'weight',this.value)" />
+          <span class="set-field-label">lbs</span>
+        </div>
+        <div class="set-field">
+          <input class="set-input" type="number" min="0" inputmode="numeric"
+            value="${s.reps || ''}" placeholder="0"
+            onchange="formSetChange(${i},'reps',this.value)" />
+          <span class="set-field-label">reps</span>
+        </div>
+      </div>
+    </div>`).join('');
 }
 
 window.formSetChange = function(i, field, val) {
@@ -362,11 +410,10 @@ function saveExercise() {
   if (!name) { document.getElementById('exercise-name').focus(); return; }
 
   // Flush any uncommitted input values
-  document.querySelectorAll('#sets-form-body input').forEach(input => {
-    const row   = input.closest('tr');
-    const idx   = [...row.parentElement.children].indexOf(row);
-    const field = input.step === '2.5' ? 'weight' : 'reps';
-    state.formSets[idx][field] = parseFloat(input.value) || 0;
+  document.querySelectorAll('#sets-form-body .set-block').forEach((block, idx) => {
+    const [weightInput, repsInput] = block.querySelectorAll('input');
+    state.formSets[idx].weight = parseFloat(weightInput.value) || 0;
+    state.formSets[idx].reps   = parseFloat(repsInput.value)   || 0;
   });
 
   const exercise = { name, sets: state.formSets.filter(s => s.reps > 0 || s.weight > 0) };
