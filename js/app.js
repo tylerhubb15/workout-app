@@ -394,16 +394,16 @@ function renderSetRows() {
       </div>
       <div class="set-block-inputs">
         <div class="set-field">
+          <span class="set-field-label">Weight (lbs)</span>
           <input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
             value="${s.weight || ''}" placeholder="0"
             onchange="formSetChange(${i},'weight',this.value)" />
-          <span class="set-field-label">lbs</span>
         </div>
         <div class="set-field">
+          <span class="set-field-label">Reps</span>
           <input class="set-input" type="number" min="0" inputmode="numeric"
             value="${s.reps || ''}" placeholder="0"
             onchange="formSetChange(${i},'reps',this.value)" />
-          <span class="set-field-label">reps</span>
         </div>
       </div>
     </div>`).join('');

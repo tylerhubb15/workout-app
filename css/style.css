@@ -614,8 +614,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 10px 12px 10px 12px;
   margin-bottom: 8px;
+  overflow: hidden;
 }
 
 .set-block-header {
@@ -636,28 +637,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .set-block-inputs {
   display: flex;
   gap: 10px;
-  padding-right: 2px;
 }
 
 .set-field {
   flex: 1;
   display: flex;
-  align-items: center;
-  gap: 7px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .set-field .set-input {
-  flex: 1;
-  min-width: 0;
-  width: 0; /* force flex to control width, not content */
+  width: 100%;
 }
 
 .set-field-label {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text3);
-  font-weight: 600;
-  white-space: nowrap;
-  flex-shrink: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* ── History ───────────────────────────────────────────── */
