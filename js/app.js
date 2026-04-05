@@ -1,20 +1,31 @@
 import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout } from './storage.js';
 
 // ── Exercise Library ──────────────────────────────────────
-const EXERCISES = [
-  // Chest
-  'Bench Press', 'Incline Bench Press', 'Decline Bench Press', 'Chest Fly', 'Cable Fly', 'Push-Up',
-  // Back
-  'Deadlift', 'Pull-Up', 'Chin-Up', 'Barbell Row', 'Dumbbell Row', 'Lat Pulldown', 'Seated Cable Row', 'T-Bar Row',
-  // Shoulders
-  'Overhead Press', 'Lateral Raise', 'Front Raise', 'Rear Delt Fly', 'Arnold Press',
-  // Arms
-  'Bicep Curl', 'Hammer Curl', 'Preacher Curl', 'Tricep Pushdown', 'Skull Crusher', 'Dips',
-  // Legs
-  'Squat', 'Leg Press', 'Romanian Deadlift', 'Lunges', 'Leg Curl', 'Leg Extension', 'Hip Thrust', 'Calf Raise',
-  // Core
-  'Plank', 'Crunch', 'Russian Twist', 'Leg Raise', 'Cable Crunch',
-];
+const EXERCISES = {
+  'Dumbbell': [
+    'Dumbbell Bench Press', 'Dumbbell Incline Press', 'Chest Fly',
+    'Dumbbell Row', 'Dumbbell Shoulder Press', 'Lateral Raise', 'Front Raise', 'Rear Delt Fly',
+    'Bicep Curl', 'Hammer Curl', 'Concentration Curl', 'Tricep Kickback', 'Overhead Tricep Extension',
+    'Romanian Deadlift', 'Goblet Squat', 'Lunges', 'Step-Up', 'Calf Raise',
+  ],
+  'Barbell': [
+    'Bench Press', 'Incline Bench Press', 'Decline Bench Press',
+    'Deadlift', 'Squat', 'Overhead Press', 'Barbell Row', 'Romanian Deadlift',
+    'Hip Thrust', 'Skull Crusher', 'Preacher Curl',
+  ],
+  'Bodyweight': [
+    'Dip', 'Pull-Up', 'Chin-Up', 'Push-Up', 'Pike Push-Up', 'Diamond Push-Up',
+    'Plank', 'Crunch', 'Leg Raise', 'Russian Twist', 'Glute Bridge', 'Burpee',
+  ],
+  'Cable': [
+    'Cable Fly', 'Lat Pulldown', 'Seated Cable Row', 'Tricep Pushdown',
+    'Face Pull', 'Cable Curl', 'Cable Crunch', 'Cable Lateral Raise', 'T-Bar Row',
+  ],
+  'Machine': [
+    'Leg Press', 'Leg Curl', 'Leg Extension', 'Chest Press Machine',
+    'Pec Deck', 'Hack Squat', 'Seated Calf Raise',
+  ],
+};
 
 // ── State ─────────────────────────────────────────────────
 const state = {
@@ -351,14 +362,23 @@ function renderExerciseForm() {
 }
 
 function renderExChips(filter) {
-  // Merge built-in list with any custom exercises from history
+  const builtInAll = Object.values(EXERCISES).flat();
   const used = [...new Set(loadWorkouts().flatMap(w => w.exercises.map(e => e.name)))];
-  const all  = [...new Set([...EXERCISES, ...used])].sort();
-  const filtered = filter ? all.filter(n => n.toLowerCase().includes(filter)) : all;
+  const custom = used.filter(n => !builtInAll.includes(n));
 
-  document.getElementById('ex-chips').innerHTML = filtered.map(name => `
-    <button class="ex-chip" onclick="selectExChip('${escHtml(name)}')">${escHtml(name)}</button>
-  `).join('');
+  const groups = { ...EXERCISES };
+  if (custom.length) groups['Custom'] = custom.sort();
+
+  let html = '';
+  for (const [group, names] of Object.entries(groups)) {
+    const filtered = filter ? names.filter(n => n.toLowerCase().includes(filter)) : names;
+    if (!filtered.length) continue;
+    html += `<div class="ex-group-label">${group}</div><div class="ex-chips-row">`;
+    html += filtered.map(n => `<button class="ex-chip" onclick="selectExChip('${escHtml(n)}')">${escHtml(n)}</button>`).join('');
+    html += `</div>`;
+  }
+
+  document.getElementById('ex-chips').innerHTML = html;
 }
 
 window.selectExChip = function(name) {
@@ -516,7 +536,8 @@ function historyCardHTML(w) {
       <div class="workout-card-exercises">
         ${exerciseRows}
         <div class="history-card-footer">
-          <button class="btn btn-danger" onclick="confirmDelete('${w.id}',event)">Delete Workout</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyWorkoutToDay('${w.id}',event)">Copy to Day</button>
+          <button class="btn btn-danger" onclick="confirmDelete('${w.id}',event)">Delete</button>
         </div>
       </div>
     </div>`;
@@ -528,6 +549,28 @@ window.confirmDelete = function(id, event) {
     deleteWorkout(id);
     renderHistory();
   }
+};
+
+window.copyWorkoutToDay = function(id, event) {
+  event.stopPropagation();
+  const source = loadWorkouts().find(w => w.id === id);
+  if (!source) return;
+  const dateStr = prompt('Copy to date (YYYY-MM-DD):', todayISO());
+  if (!dateStr) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { alert('Use format YYYY-MM-DD (e.g. 2026-04-10)'); return; }
+
+  const workouts = loadWorkouts();
+  const existing = workouts.find(w => w.date === dateStr);
+  const exercises = JSON.parse(JSON.stringify(source.exercises));
+
+  if (existing) {
+    if (!confirm(`A workout exists on ${formatDate(dateStr)}. Replace its exercises?`)) return;
+    updateWorkout({ ...existing, exercises });
+  } else {
+    addWorkout({ id: uid(), date: dateStr, name: source.name, exercises });
+  }
+  // Navigate to that day so user can see/edit the copy
+  selectDay(dateStr);
 };
 
 // ── Service Worker ────────────────────────────────────────
@@ -581,6 +624,23 @@ document.addEventListener('DOMContentLoaded', () => {
     state.exerciseContext = 'day';
     state.editingExIndex  = null;
     navigate('exercise');
+  });
+  document.getElementById('btn-day-start-workout').addEventListener('click', () => {
+    const w = state.dayWorkout;
+    if (!w) return;
+    // Move day's planned exercises into the active workout flow
+    state.activeWorkout = {
+      id: w.id,
+      date: w.date,
+      name: w.name || '',
+      exercises: JSON.parse(JSON.stringify(w.exercises)),
+    };
+    // Remove the draft so finishing the workout doesn't create a duplicate
+    const workouts = loadWorkouts();
+    if (workouts.some(x => x.id === w.id)) deleteWorkout(w.id);
+    state.dayWorkout = null;
+    state.exerciseContext = 'workout';
+    navigate('workout');
   });
 
   // Exercise form

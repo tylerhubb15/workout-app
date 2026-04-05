@@ -570,9 +570,29 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* ── Exercise Chips ────────────────────────────────────── */
 .ex-chips {
   display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  flex-direction: column;
   margin-top: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.ex-chips::-webkit-scrollbar { display: none; }
+
+.ex-group-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  padding: 10px 0 6px;
+}
+.ex-group-label:first-child { padding-top: 0; }
+
+.ex-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 6px;
 }
 
 .ex-chip {
