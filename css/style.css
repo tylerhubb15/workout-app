@@ -497,12 +497,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: 700;
   color: var(--text3);
   text-align: left;
-  padding: 0 8px 8px 0;
+  padding: 0 5px 8px 0;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
-.sets-editor td { padding: 4px 8px 4px 0; vertical-align: middle; }
+.sets-editor td { padding: 4px 5px 4px 0; vertical-align: middle; }
+
+/* Actual reps input gets a subtle accent tint so it stands out */
+.set-input-actual {
+  border-color: rgba(26,110,219,0.35) !important;
+}
+.set-input-actual:focus {
+  border-color: var(--accent) !important;
+}
 
 .set-num-cell {
   color: var(--accent);
@@ -513,9 +521,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .set-input {
-  width: 76px;
-  padding: 9px 11px;
-  font-size: 15px;
+  width: 62px;
+  padding: 9px 6px;
+  font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   border-radius: 8px;

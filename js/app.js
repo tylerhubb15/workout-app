@@ -133,17 +133,24 @@ function renderStats() {
   document.getElementById('stat-sets').textContent      = totalSets;
 }
 
+function setRowHTML(s, i) {
+  const repsDisplay = (s.actualReps != null && s.actualReps > 0)
+    ? `${s.actualReps}<span style="color:var(--text3);font-size:11px"> / ${s.reps}</span>`
+    : `${s.reps}`;
+  return `
+    <tr>
+      <td class="set-num">${i + 1}</td>
+      <td>${repsDisplay} reps</td>
+      <td>${s.weight ? s.weight + ' lbs' : '—'}</td>
+    </tr>`;
+}
+
 function workoutCardHTML(w) {
   const exCount  = w.exercises.length;
   const setCount = w.exercises.reduce((n, ex) => n + ex.sets.length, 0);
 
   const exerciseRows = w.exercises.map(ex => {
-    const setRows = ex.sets.map((s, i) => `
-      <tr>
-        <td class="set-num">${i + 1}</td>
-        <td>${s.reps} reps</td>
-        <td>${s.weight ? s.weight + ' lbs' : '—'}</td>
-      </tr>`).join('');
+    const setRows = ex.sets.map((s, i) => setRowHTML(s, i)).join('');
     return `
       <div class="exercise-row">
         <div class="exercise-row-name">${escHtml(ex.name)}</div>
@@ -282,12 +289,15 @@ function exerciseCardHTML(ex, ei, ctx) {
   const setRows = ex.sets.map((s, si) => `
     <tr>
       <td class="set-num-cell">${si + 1}</td>
-      <td><input class="set-input" type="number" min="0" inputmode="numeric"
-           value="${s.reps || ''}" placeholder="0"
-           onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" /></td>
       <td><input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
            value="${s.weight || ''}" placeholder="0"
            onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" /></td>
+      <td><input class="set-input set-input-target" type="number" min="0" inputmode="numeric"
+           value="${s.reps || ''}" placeholder="0"
+           onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" /></td>
+      <td><input class="set-input set-input-actual" type="number" min="0" inputmode="numeric"
+           value="${s.actualReps != null && s.actualReps !== 0 ? s.actualReps : ''}" placeholder="—"
+           onchange="handleSetChange('${ctx}',${ei},${si},'actualReps',this.value)" /></td>
       <td><button class="btn-remove-set" onclick="handleRemoveSet('${ctx}',${ei},${si})">×</button></td>
     </tr>`).join('');
 
@@ -305,7 +315,7 @@ function exerciseCardHTML(ex, ei, ctx) {
         </div>
       </div>
       <table class="sets-editor">
-        <thead><tr><th>Set</th><th>Reps</th><th>Weight (lbs)</th><th></th></tr></thead>
+        <thead><tr><th>Set</th><th>lbs</th><th>Target</th><th>Actual</th><th></th></tr></thead>
         <tbody>${setRows}</tbody>
       </table>
       <button class="btn btn-ghost btn-sm mt-8" onclick="handleAddSet('${ctx}',${ei})">+ Add Set</button>
@@ -428,7 +438,7 @@ function renderSetRows() {
             onchange="formSetChange(${i},'weight',this.value)" />
         </div>
         <div class="set-field">
-          <span class="set-field-label">Reps</span>
+          <span class="set-field-label">Target Reps</span>
           <input class="set-input" type="number" min="0" inputmode="numeric"
             value="${s.reps || ''}" placeholder="0"
             onchange="formSetChange(${i},'reps',this.value)" />
@@ -462,6 +472,7 @@ function saveExercise() {
     const [weightInput, repsInput] = block.querySelectorAll('input');
     state.formSets[idx].weight = parseFloat(weightInput.value) || 0;
     state.formSets[idx].reps   = parseFloat(repsInput.value)   || 0;
+    // actualReps not present in the plan form — preserve existing value
   });
 
   const exercise = { name, sets: state.formSets.filter(s => s.reps > 0 || s.weight > 0) };
@@ -725,12 +736,7 @@ function historyCardHTML(w) {
   const setCount = w.exercises.reduce((n, ex) => n + ex.sets.length, 0);
 
   const exerciseRows = w.exercises.map(ex => {
-    const setRows = ex.sets.map((s, i) => `
-      <tr>
-        <td class="set-num">${i + 1}</td>
-        <td>${s.reps} reps</td>
-        <td>${s.weight ? s.weight + ' lbs' : '—'}</td>
-      </tr>`).join('');
+    const setRows = ex.sets.map((s, i) => setRowHTML(s, i)).join('');
     return `
       <div class="exercise-row">
         <div class="exercise-row-name">${escHtml(ex.name)}</div>
