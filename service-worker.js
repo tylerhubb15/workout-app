@@ -1,13 +1,13 @@
-const CACHE = 'workout-v6';
+const CACHE = 'workout-v7';
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/js/app.js',
-  '/js/storage.js',
-  '/manifest.json',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
+  './',
+  './index.html',
+  './css/style.css',
+  './js/app.js',
+  './js/storage.js',
+  './manifest.json',
+  './icons/icon-192.svg',
+  './icons/icon-512.svg',
 ];
 
 self.addEventListener('install', event => {
