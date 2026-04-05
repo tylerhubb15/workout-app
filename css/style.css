@@ -636,6 +636,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .set-block-inputs {
   display: flex;
   gap: 10px;
+  padding-right: 2px;
 }
 
 .set-field {
@@ -648,14 +649,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .set-field .set-input {
   flex: 1;
   min-width: 0;
-  width: auto;
+  width: 0; /* force flex to control width, not content */
 }
 
 .set-field-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text3);
   font-weight: 600;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ── History ───────────────────────────────────────────── */
