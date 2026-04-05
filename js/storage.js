@@ -28,3 +28,25 @@ export function updateWorkout(workout) {
 export function deleteWorkout(id) {
   saveWorkouts(loadWorkouts().filter(w => w.id !== id));
 }
+
+// ── Plans ─────────────────────────────────────────────────
+const PLANS_KEY = 'wt_plans';
+
+export function loadPlans() {
+  try { return JSON.parse(localStorage.getItem(PLANS_KEY)) || []; } catch { return []; }
+}
+
+export function savePlans(plans) {
+  localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+}
+
+export function upsertPlan(plan) {
+  const plans = loadPlans();
+  const i = plans.findIndex(p => p.id === plan.id);
+  if (i !== -1) plans[i] = plan; else plans.unshift(plan);
+  savePlans(plans);
+}
+
+export function deletePlan(id) {
+  savePlans(loadPlans().filter(p => p.id !== id));
+}

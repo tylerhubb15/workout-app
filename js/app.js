@@ -1,4 +1,4 @@
-import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout } from './storage.js';
+import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan } from './storage.js';
 
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
@@ -39,6 +39,7 @@ const state = {
     year:  new Date().getFullYear(),
     month: new Date().getMonth(),
   },
+  planDays: new Set(), // DOW indices selected in plan form
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -93,6 +94,7 @@ function navigate(view) {
   if (view === 'calendar') renderCalendar();
   if (view === 'history')  renderHistory();
   if (view === 'exercise') renderExerciseForm();
+  if (view === 'plan')     renderPlan();
 
   window.scrollTo(0, 0);
 }
@@ -450,10 +452,26 @@ function saveExercise() {
 }
 
 // ── Calendar ──────────────────────────────────────────────
+function planDatesSet() {
+  const dates = new Set();
+  for (const plan of loadPlans()) {
+    let cur = new Date(plan.start + 'T00:00:00');
+    const end = new Date(plan.end + 'T00:00:00');
+    while (cur <= end) {
+      if (plan.workoutDays.includes(cur.getDay())) {
+        dates.add(cur.toISOString().slice(0, 10));
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return dates;
+}
+
 function renderCalendar() {
   const { year, month } = state.calendar;
   const today    = todayISO();
   const workoutDates = new Set(loadWorkouts().map(w => w.date));
+  const plannedDates = planDatesSet();
 
   document.getElementById('cal-month-label').textContent =
     new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -467,21 +485,103 @@ function renderCalendar() {
 
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const isToday   = iso === today;
-    const hasLog    = workoutDates.has(iso);
+    const isToday  = iso === today;
+    const hasLog   = workoutDates.has(iso);
+    const hasPlan  = plannedDates.has(iso);
 
     const cls = ['cal-day', isToday ? 'today' : ''].filter(Boolean).join(' ');
-    const dot = hasLog ? `<span class="dot dot-workout"></span>` : '';
+    const dots = (hasLog ? `<span class="dot dot-workout"></span>` : '') +
+                 (hasPlan && !hasLog ? `<span class="dot dot-plan"></span>` : '');
 
     html += `
       <div class="${cls}" onclick="selectDay('${iso}')">
         <span class="cal-day-num">${d}</span>
-        ${dot}
+        ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
       </div>`;
   }
 
   document.getElementById('cal-grid').innerHTML = html;
 }
+
+// ── Plan ──────────────────────────────────────────────────
+function renderPlan() {
+  // Reset form
+  document.getElementById('plan-name').value  = '';
+  document.getElementById('plan-start').value = '';
+  document.getElementById('plan-end').value   = '';
+  state.planDays = new Set();
+  document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
+
+  // Render saved plans
+  const plans = loadPlans();
+  const list  = document.getElementById('plan-list');
+  const DOW_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  if (plans.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-label">No plans yet.</div><p>Fill in the form above and tap Save Plan.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = plans.map(p => {
+    const pips = DOW_LABELS.map((lbl, i) => `
+      <div class="plan-day-pip ${p.workoutDays.includes(i) ? 'on' : 'off'}">${lbl}</div>
+    `).join('');
+    return `
+      <div class="plan-card">
+        <div class="plan-card-name">${escHtml(p.name)}</div>
+        <div class="plan-card-meta">${formatDate(p.start)} — ${formatDate(p.end)}</div>
+        <div class="plan-card-days">${pips}</div>
+        <div class="plan-card-actions">
+          <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit</button>
+          <button class="btn btn-danger" onclick="confirmDeletePlan('${p.id}')">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function savePlan() {
+  const name  = document.getElementById('plan-name').value.trim();
+  const start = document.getElementById('plan-start').value;
+  const end   = document.getElementById('plan-end').value;
+
+  if (!name)  { document.getElementById('plan-name').focus(); return; }
+  if (!start) { alert('Set a start date.'); return; }
+  if (!end)   { alert('Set an end date.'); return; }
+  if (end < start) { alert('End date must be after start date.'); return; }
+  if (state.planDays.size === 0) { alert('Select at least one workout day.'); return; }
+
+  const plan = {
+    id: document.getElementById('plan-name').dataset.editId || uid(),
+    name,
+    start,
+    end,
+    workoutDays: [...state.planDays].sort(),
+  };
+  delete document.getElementById('plan-name').dataset.editId;
+  upsertPlan(plan);
+  renderPlan();
+}
+
+window.loadPlanIntoForm = function(id) {
+  const plan = loadPlans().find(p => p.id === id);
+  if (!plan) return;
+  document.getElementById('plan-name').value  = plan.name;
+  document.getElementById('plan-name').dataset.editId = plan.id;
+  document.getElementById('plan-start').value = plan.start;
+  document.getElementById('plan-end').value   = plan.end;
+  state.planDays = new Set(plan.workoutDays);
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.classList.toggle('active', state.planDays.has(Number(btn.dataset.dow)));
+  });
+  window.scrollTo(0, 0);
+};
+
+window.confirmDeletePlan = function(id) {
+  if (confirm('Delete this plan?')) {
+    deletePlan(id);
+    renderPlan();
+  }
+};
 
 // ── History ───────────────────────────────────────────────
 function renderHistory() {
@@ -664,6 +764,16 @@ document.addEventListener('DOMContentLoaded', () => {
     else                { c.month++; }
     renderCalendar();
   });
+
+  // Plan — day toggles + save
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const dow = Number(btn.dataset.dow);
+      if (state.planDays.has(dow)) { state.planDays.delete(dow); btn.classList.remove('active'); }
+      else                         { state.planDays.add(dow);    btn.classList.add('active'); }
+    });
+  });
+  document.getElementById('btn-save-plan').addEventListener('click', savePlan);
 
   navigate('home');
 });

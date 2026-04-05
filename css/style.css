@@ -877,6 +877,117 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   line-height: 1.5;
 }
 
+/* ── Plan View ─────────────────────────────────────────── */
+.plan-form {
+  padding: 8px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.plan-dates {
+  display: flex;
+  gap: 12px;
+}
+
+.day-picker {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.day-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.day-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.day-picker-hint {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 8px;
+}
+
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
+.plan-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.plan-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 10px; bottom: 10px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.plan-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  padding-left: 10px;
+  margin-bottom: 4px;
+}
+
+.plan-card-meta {
+  font-size: 12px;
+  color: var(--text3);
+  padding-left: 10px;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.plan-card-days {
+  display: flex;
+  gap: 4px;
+  padding-left: 10px;
+  margin-bottom: 12px;
+}
+
+.plan-day-pip {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plan-day-pip.on  { background: var(--accent); color: #fff; }
+.plan-day-pip.off { background: var(--surface2); color: var(--text3); }
+
+.plan-card-actions {
+  display: flex;
+  gap: 8px;
+  padding-left: 10px;
+}
+
 /* ── Safe area for iOS ─────────────────────────────────── */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .bottom-nav {
