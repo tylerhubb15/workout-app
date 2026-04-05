@@ -482,27 +482,30 @@ function saveExercise() {
 // ── Calendar ──────────────────────────────────────────────
 function planDatesSet() {
   const dates = new Set();
-  for (const plan of loadPlans()) {
-    let cur = new Date(plan.start + 'T00:00:00');
-    const end = new Date(plan.end + 'T00:00:00');
-    while (cur <= end) {
-      if (plan.workoutDays.includes(cur.getDay())) {
-        dates.add(cur.toISOString().slice(0, 10));
+  try {
+    for (const plan of loadPlans()) {
+      if (!plan.start || !plan.end || !Array.isArray(plan.workoutDays)) continue;
+      let cur = new Date(plan.start + 'T00:00:00');
+      const end = new Date(plan.end + 'T00:00:00');
+      while (cur <= end) {
+        if (plan.workoutDays.includes(cur.getDay()))
+          dates.add(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
       }
-      cur.setDate(cur.getDate() + 1);
     }
-  }
+  } catch (e) { /* don't let a bad plan kill the calendar */ }
   return dates;
 }
 
 function renderCalendar() {
   const { year, month } = state.calendar;
   const today    = todayISO();
-  const workoutDates = new Set(loadWorkouts().map(w => w.date));
-  const plannedDates = planDatesSet();
 
   document.getElementById('cal-month-label').textContent =
     new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const workoutDates = new Set(loadWorkouts().map(w => w.date));
+  const plannedDates = planDatesSet();
 
   const DOW         = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const firstDow    = new Date(year, month, 1).getDay();
@@ -640,25 +643,42 @@ function renderPlan() {
   }).join('');
 }
 
+function setPlanError(msg) {
+  let el = document.getElementById('plan-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'plan-error';
+    el.style.cssText = 'color:var(--red);font-size:13px;font-weight:600;margin-top:-10px';
+    document.getElementById('btn-save-plan').before(el);
+  }
+  el.textContent = msg;
+}
+
 function savePlan() {
   const name  = document.getElementById('plan-name').value.trim();
   const start = document.getElementById('plan-start').value;
   const end   = document.getElementById('plan-end').value;
 
-  if (!name)  { document.getElementById('plan-name').focus(); return; }
-  if (!start) { alert('Set a start date.'); return; }
-  if (!end)   { alert('Set an end date.'); return; }
-  if (end < start) { alert('End date must be after start date.'); return; }
-  if (state.planDays.size === 0) { alert('Select at least one workout day.'); return; }
+  if (!name)               { setPlanError('Enter a plan name.'); document.getElementById('plan-name').focus(); return; }
+  if (!start)              { setPlanError('Set a start date.'); return; }
+  if (!end)                { setPlanError('Set an end date.'); return; }
+  if (end < start)         { setPlanError('End date must be after start date.'); return; }
+  if (state.planDays.size === 0) { setPlanError('Select at least one workout day.'); return; }
 
+  const editId = document.getElementById('plan-name').dataset.editId;
+  // Preserve existing dayTemplates if editing
+  const existing = editId ? loadPlans().find(p => p.id === editId) : null;
   const plan = {
-    id: document.getElementById('plan-name').dataset.editId || uid(),
+    id: editId || uid(),
     name,
     start,
     end,
     workoutDays: [...state.planDays].sort(),
+    dayTemplates: existing ? (existing.dayTemplates || {}) : {},
   };
   delete document.getElementById('plan-name').dataset.editId;
+  const errEl = document.getElementById('plan-error');
+  if (errEl) errEl.remove();
   upsertPlan(plan);
   renderPlan();
 }
