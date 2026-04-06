@@ -13,6 +13,7 @@
   <title>Workout Tracker</title>
 </head>
 <body>
+<script>if(localStorage.getItem('wt_seen'))document.body.classList.add('seen');</script>
 <!-- ── Splash / Onboarding Overlay ─────────────────────── -->
 <div id="splash">
   <div class="splash-logo">
@@ -83,7 +84,7 @@
             <rect x="3" y="3" width="18" height="18" rx="2"/>
             <path d="M8 12h8M8 8h5M8 16h6"/>
           </svg>
-          Plans
+          Create a workout plan
         </button>
       </div>
       <div class="stats-strip">
@@ -192,6 +193,20 @@
     <div class="page-header">
       <button class="btn-back" id="btn-plan-back">‹</button>
       <h1>Plans</h1>
+    </div>
+    <div class="plan-explainer">
+      <div class="plan-explainer-step">
+        <span class="plan-explainer-num">1</span>
+        <span>Name your plan, set a date range, and pick which days of the week you train.</span>
+      </div>
+      <div class="plan-explainer-step">
+        <span class="plan-explainer-num">2</span>
+        <span>Tap <strong>Edit Days</strong> on a saved plan to assign exercises to each workout day.</span>
+      </div>
+      <div class="plan-explainer-step">
+        <span class="plan-explainer-num">3</span>
+        <span>Your plan shows up in the Calendar. Tap any planned day and your exercises are pre-loaded.</span>
+      </div>
     </div>
     <div class="plan-form">
       <div>

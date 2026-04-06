@@ -948,6 +948,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   gap: 0;
 }
 #splash.hidden { display: none; }
+body.seen #splash { display: none; }
 
 .splash-logo {
   width: 64px;
@@ -1017,6 +1018,40 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ── Plan View ─────────────────────────────────────────── */
+.plan-explainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 20px 20px;
+}
+
+.plan-explainer-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+.plan-explainer-step strong { color: var(--text2); }
+
+.plan-explainer-num {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
 .plan-form {
   padding: 8px 20px 24px;
   display: flex;
