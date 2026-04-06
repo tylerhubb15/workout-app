@@ -1,22 +1,22 @@
 /* ── Variables ─────────────────────────────────────────── */
 :root {
-  --bg:        #0a0808;
-  --surface:   #110e0e;
-  --surface2:  #181414;
-  --surface3:  #211c1c;
+  --bg:        #09090b;
+  --surface:   #111113;
+  --surface2:  #18181c;
+  --surface3:  #212126;
   --border:    rgba(255, 255, 255, 0.06);
   --border2:   rgba(255, 255, 255, 0.12);
-  --accent:    #e8394a;   /* red — primary CTA, today, active states */
+  --accent:    #e8394a;   /* red — primary buttons, errors */
   --accent2:   #ff6b7a;   /* lighter red */
   --accent-dim:#b52535;
-  --blue:      #4f7df5;   /* blue — nav, plans, secondary */
+  --blue:      #4f7df5;   /* blue — nav, cards, plans */
   --blue2:     #7aaaff;
-  --gold:      #f0b429;   /* gold — stats, highlights */
+  --gold:      #f0b429;   /* gold — stats, today, headings */
   --green:     #22c55e;
   --red:       #e8394a;
-  --text:      #ede8e6;
-  --text2:     #8a8082;
-  --text3:     #524a4e;
+  --text:      #eeeef2;
+  --text2:     #888896;
+  --text3:     #50505e;
   --radius:    10px;
   --radius-sm: 6px;
   --nav-h:     64px;
@@ -146,7 +146,7 @@ body {
   left: 0;
   right: 0;
   height: var(--nav-h);
-  background: rgba(14, 10, 10, 0.92);
+  background: rgba(9, 9, 11, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
@@ -345,7 +345,7 @@ body {
   position: absolute;
   left: 0; top: 12px; bottom: 12px;
   width: 3px;
-  background: linear-gradient(180deg, var(--accent), var(--accent2));
+  background: linear-gradient(180deg, var(--blue), var(--blue2));
   border-radius: 0 2px 2px 0;
 }
 .workout-card:active { background: var(--surface2); }
@@ -404,6 +404,12 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--text2);
+}
+
+.vol-pill {
+  background: rgba(240, 180, 41, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(240, 180, 41, 0.2);
 }
 
 .workout-card-exercises {
@@ -888,11 +894,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .cal-day.today {
-  background: var(--accent);
+  background: var(--gold);
 }
 .cal-day.today .cal-day-num {
   font-weight: 800;
-  color: #fff;
+  color: #000;
 }
 
 .cal-day.selected:not(.today) {
@@ -918,8 +924,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .dot-plan    { background: var(--blue); border: 1px solid var(--blue); }
 
 /* Adjust dot color when inside today cell */
-.cal-day.today .dot-workout { background: rgba(255,255,255,0.9); }
-.cal-day.today .dot-plan    { background: rgba(255,255,255,0.6); }
+.cal-day.today .dot-workout { background: rgba(0,0,0,0.5); }
+.cal-day.today .dot-plan    { background: rgba(0,0,0,0.3); }
 
 /* ── Calendar Legend ───────────────────────────────────── */
 .cal-legend {

@@ -202,9 +202,17 @@ function setRowHTML(s, i) {
     </tr>`;
 }
 
+function calcVolume(w) {
+  const vol = w.exercises.reduce((t, ex) =>
+    t + ex.sets.reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0), 0);
+  if (!vol) return null;
+  return vol >= 1000 ? (vol / 1000).toFixed(1) + 'k' : String(vol);
+}
+
 function workoutCardHTML(w) {
   const exCount  = w.exercises.length;
   const setCount = w.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+  const vol      = calcVolume(w);
 
   const exerciseRows = w.exercises.map(ex => {
     const setRows = ex.sets.map((s, i) => setRowHTML(s, i)).join('');
@@ -230,6 +238,7 @@ function workoutCardHTML(w) {
       <div class="workout-card-meta">
         <span class="meta-pill">${exCount} exercise${exCount !== 1 ? 's' : ''}</span>
         <span class="meta-pill">${setCount} set${setCount !== 1 ? 's' : ''}</span>
+        ${vol ? `<span class="meta-pill vol-pill">${vol} lbs</span>` : ''}
       </div>
       <div class="workout-card-exercises">${exerciseRows}</div>
     </div>`;
