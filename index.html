@@ -74,9 +74,18 @@
       <div class="home-date" id="home-date"></div>
       <div class="home-greeting">Lift.</div>
       <div class="home-today-plan" id="home-today-plan"></div>
-      <button class="btn btn-primary btn-full home-start-btn" id="btn-start-workout">
-        + Start Workout
-      </button>
+      <div class="home-cta-row">
+        <button class="btn btn-primary home-start-btn" id="btn-start-workout">
+          + Start Workout
+        </button>
+        <button class="btn btn-secondary home-plan-btn" id="btn-go-plan">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M8 12h8M8 8h5M8 16h6"/>
+          </svg>
+          Plans
+        </button>
+      </div>
       <div class="stats-strip">
         <div class="stat-chip">
           <div class="stat-chip-value" id="stat-total">0</div>
@@ -181,7 +190,8 @@
   <!-- ── Plan View ────────────────────────────────── -->
   <section class="view" id="view-plan">
     <div class="page-header">
-      <h1>Create Plan</h1>
+      <button class="btn-back" id="btn-plan-back">‹</button>
+      <h1>Plans</h1>
     </div>
     <div class="plan-form">
       <div>
@@ -256,13 +266,6 @@
         <path d="M12 7v5l3 3"/>
       </svg>
       History
-    </button>
-    <button class="nav-btn" data-view="plan">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <path d="M8 12h8M8 8h5M8 16h6"/>
-      </svg>
-      Plan
     </button>
   </nav>
 

@@ -252,12 +252,27 @@ body {
   letter-spacing: 0.06em;
 }
 
+.home-cta-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 0;
+}
+
 .home-start-btn {
+  flex: 1;
   font-size: 15px;
   font-weight: 700;
   height: 54px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+.home-plan-btn {
+  height: 54px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 /* ── Stats Strip ───────────────────────────────────────── */

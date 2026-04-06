@@ -108,7 +108,7 @@ function navigate(view) {
   document.getElementById(`view-${view}`).classList.add('active');
 
   // Hide bottom nav on sub-views
-  const hideNav = view === 'exercise' || view === 'workout' || view === 'day' || view === 'plan-editor';
+  const hideNav = view === 'exercise' || view === 'workout' || view === 'day' || view === 'plan-editor' || view === 'plan';
   document.getElementById('bottom-nav').style.display = hideNav ? 'none' : '';
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -919,6 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Home
   document.getElementById('btn-start-workout').addEventListener('click', startWorkout);
+  document.getElementById('btn-go-plan').addEventListener('click', () => navigate('plan'));
 
   // Active workout
   document.getElementById('btn-workout-back').addEventListener('click', () => {
@@ -983,6 +984,9 @@ document.addEventListener('DOMContentLoaded', () => {
     else                { c.month++; }
     renderCalendar();
   });
+
+  // Plan
+  document.getElementById('btn-plan-back').addEventListener('click', () => navigate('home'));
 
   // Plan editor
   document.getElementById('btn-plan-editor-back').addEventListener('click', () => navigate('plan'));
