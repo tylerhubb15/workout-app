@@ -108,6 +108,7 @@ function renderHome() {
     weekday: 'long', month: 'long', day: 'numeric',
   });
   renderStats();
+  renderTodayPlan();
 
   const container = document.getElementById('home-workout-list');
   const workouts  = loadWorkouts().slice(0, 5);
@@ -121,6 +122,52 @@ function renderHome() {
     return;
   }
   container.innerHTML = workouts.map(w => workoutCardHTML(w)).join('');
+}
+
+function renderTodayPlan() {
+  const el = document.getElementById('home-today-plan');
+  if (!el) return;
+  const iso = todayISO();
+  const dow = new Date().getDay();
+
+  // Check if already logged today
+  const logged = loadWorkouts().find(w => w.date === iso);
+  if (logged) {
+    el.innerHTML = `
+      <div class="today-plan-card">
+        <div class="today-plan-label">Today — logged</div>
+        <div class="today-plan-name">${escHtml(logged.name)}</div>
+        <div class="today-plan-exercises">${logged.exercises.map(e => escHtml(e.name)).join(' · ') || 'No exercises'}</div>
+      </div>`;
+    return;
+  }
+
+  // Check for a plan covering today
+  for (const plan of loadPlans()) {
+    if (iso >= plan.start && iso <= plan.end && Array.isArray(plan.workoutDays)) {
+      if (plan.workoutDays.includes(dow)) {
+        const exList = plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0
+          ? plan.dayTemplates[dow].map(e => escHtml(e.name)).join(' · ')
+          : 'Workout day — no exercises set';
+        el.innerHTML = `
+          <div class="today-plan-card">
+            <div class="today-plan-label">Today's plan</div>
+            <div class="today-plan-name">${escHtml(plan.name)}</div>
+            <div class="today-plan-exercises">${exList}</div>
+          </div>`;
+        return;
+      } else if (iso >= plan.start && iso <= plan.end) {
+        el.innerHTML = `
+          <div class="today-plan-card" style="border-left-color: var(--surface3);">
+            <div class="today-plan-label" style="color:var(--text3)">Rest day</div>
+            <div class="today-plan-name" style="color:var(--text2)">${escHtml(plan.name)}</div>
+          </div>`;
+        return;
+      }
+    }
+  }
+
+  el.innerHTML = ''; // no active plan
 }
 
 function renderStats() {

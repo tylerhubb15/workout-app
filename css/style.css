@@ -67,6 +67,7 @@ body {
   align-items: center;
   gap: 14px;
   padding: 22px 20px 10px;
+  padding-top: max(22px, calc(env(safe-area-inset-top) + 12px));
   position: sticky;
   top: 0;
   background: var(--bg);
@@ -213,6 +214,42 @@ body {
   letter-spacing: -0.3px;
   margin-bottom: 20px;
   line-height: 1.2;
+}
+
+/* Today's plan preview */
+.home-today-plan {
+  margin-bottom: 16px;
+}
+
+.today-plan-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  padding-left: 14px;
+}
+
+.today-plan-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.today-plan-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.today-plan-exercises {
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.5;
 }
 
 .home-start-btn {
