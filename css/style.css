@@ -1,21 +1,21 @@
 /* ── Variables ─────────────────────────────────────────── */
 :root {
-  --bg:        #080809;
-  --surface:   #0f0f11;
-  --surface2:  #17171a;
-  --surface3:  #202025;
-  --border:    rgba(255, 255, 255, 0.07);
-  --border2:   rgba(255, 255, 255, 0.13);
-  --accent:    #1a6edb;
-  --accent2:   #4d97f0;
-  --accent-dim:#1254a8;
-  --green:     #2eb87a;
-  --red:       #e03e52;
-  --text:      #ebebef;
-  --text2:     #8888a0;
-  --text3:     #52525e;
-  --radius:    8px;
-  --radius-sm: 5px;
+  --bg:        #08080e;
+  --surface:   #0e0e17;
+  --surface2:  #15151f;
+  --surface3:  #1d1d28;
+  --border:    rgba(255, 255, 255, 0.06);
+  --border2:   rgba(255, 255, 255, 0.11);
+  --accent:    #4f80f5;
+  --accent2:   #7aa3ff;
+  --accent-dim:#2d57c8;
+  --green:     #23c55e;
+  --red:       #f43f5d;
+  --text:      #e6e6f0;
+  --text2:     #82829e;
+  --text3:     #4e4e64;
+  --radius:    10px;
+  --radius-sm: 6px;
   --nav-h:     64px;
 }
 
@@ -59,7 +59,6 @@ body {
 .view::-webkit-scrollbar { display: none; }
 .view.active { display: block; }
 
-#view-exercise { padding-bottom: 32px; }
 
 /* ── Page Header ───────────────────────────────────────── */
 .page-header {
@@ -254,12 +253,13 @@ body {
 
 .home-cta-row {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 0;
 }
 
 .home-start-btn {
-  flex: 1;
+  width: 100%;
   font-size: 15px;
   font-weight: 700;
   height: 54px;
@@ -268,11 +268,10 @@ body {
 }
 
 .home-plan-btn {
-  height: 54px;
-  padding: 0 18px;
+  width: 100%;
+  height: 44px;
   font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
+  font-weight: 600;
 }
 
 /* ── Stats Strip ───────────────────────────────────────── */
@@ -500,7 +499,7 @@ input[type="number"] {
 }
 input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(26,110,219,0.2);
+  box-shadow: 0 0 0 3px rgba(79,128,245,0.18);
 }
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) opacity(0.3);

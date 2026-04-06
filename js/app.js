@@ -107,9 +107,7 @@ function navigate(view) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
 
-  // Hide bottom nav on sub-views
-  const hideNav = view === 'exercise' || view === 'workout' || view === 'day' || view === 'plan-editor' || view === 'plan';
-  document.getElementById('bottom-nav').style.display = hideNav ? 'none' : '';
+  document.getElementById('bottom-nav').style.display = '';
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
