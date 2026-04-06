@@ -27,6 +27,31 @@ const EXERCISES = {
   ],
 };
 
+// ── Exercise metadata helpers ─────────────────────────────
+const MUSCLE_MAP = {
+  'Chest':     ['Bench Press','Incline Bench Press','Decline Bench Press','Dumbbell Bench Press','Dumbbell Incline Press','Chest Fly','Cable Fly','Push-Up','Pike Push-Up','Diamond Push-Up','Pec Deck','Chest Press Machine'],
+  'Back':      ['Barbell Row','Dumbbell Row','Lat Pulldown','Seated Cable Row','T-Bar Row','Pull-Up','Chin-Up','Deadlift','Romanian Deadlift'],
+  'Shoulders': ['Overhead Press','Dumbbell Shoulder Press','Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Cable Lateral Raise'],
+  'Biceps':    ['Bicep Curl','Hammer Curl','Concentration Curl','Preacher Curl','Cable Curl'],
+  'Triceps':   ['Skull Crusher','Tricep Kickback','Overhead Tricep Extension','Tricep Pushdown','Dip'],
+  'Legs':      ['Squat','Leg Press','Leg Curl','Leg Extension','Hack Squat','Goblet Squat','Lunges','Step-Up','Calf Raise','Seated Calf Raise','Hip Thrust','Glute Bridge'],
+  'Core':      ['Plank','Crunch','Leg Raise','Russian Twist','Cable Crunch','Burpee'],
+};
+
+function getMuscleGroup(name) {
+  for (const [group, names] of Object.entries(MUSCLE_MAP)) {
+    if (names.includes(name)) return group;
+  }
+  return '';
+}
+
+function getEquipment(name) {
+  for (const [equip, list] of Object.entries(EXERCISES)) {
+    if (list.includes(name)) return equip;
+  }
+  return '';
+}
+
 // ── State ─────────────────────────────────────────────────
 const state = {
   view: 'home',
@@ -318,28 +343,47 @@ function persistDay() {
 }
 
 // ── Shared Exercise Card ──────────────────────────────────
-// Used by both the active workout view and the day view
+// Used by active workout, day view, and plan template
 function exerciseCardHTML(ex, ei, ctx) {
-  const setRows = ex.sets.map((s, si) => `
-    <tr>
+  const canLog = ctx !== 'planTemplate';
+  const muscle = getMuscleGroup(ex.name);
+  const equip  = getEquipment(ex.name);
+
+  const setRows = ex.sets.map((s, si) => {
+    const done = s.done || false;
+    return `
+    <tr class="set-row${done ? ' set-row-done' : ''}">
       <td class="set-num-cell">${si + 1}</td>
-      <td><input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
-           value="${s.weight || ''}" placeholder="0"
+      <td><input class="set-pill" type="number" min="0" step="2.5" inputmode="decimal"
+           value="${s.weight || ''}" placeholder="–"
            onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" /></td>
-      <td><input class="set-input set-input-target" type="number" min="0" inputmode="numeric"
-           value="${s.reps || ''}" placeholder="0"
+      <td><input class="set-pill" type="number" min="0" inputmode="numeric"
+           value="${s.reps || ''}" placeholder="–"
            onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" /></td>
-      <td><input class="set-input set-input-actual" type="number" min="0" inputmode="numeric"
-           value="${s.actualReps != null && s.actualReps !== 0 ? s.actualReps : ''}" placeholder="—"
-           onchange="handleSetChange('${ctx}',${ei},${si},'actualReps',this.value)" /></td>
+      ${canLog ? `<td class="set-log-cell">
+        <label class="set-check-wrap">
+          <input type="checkbox" ${done ? 'checked' : ''}
+            onchange="handleSetDone('${ctx}',${ei},${si},this.checked)" />
+          <span class="set-check-box"></span>
+        </label>
+      </td>` : ''}
       <td><button class="btn-remove-set" onclick="handleRemoveSet('${ctx}',${ei},${si})">×</button></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
+
+  const muscleTag = muscle
+    ? `<div class="ex-muscle-tag ex-muscle-${muscle.toLowerCase()}">${muscle.toUpperCase()}</div>`
+    : '';
 
   return `
     <div class="active-exercise-card">
+      ${muscleTag}
       <div class="active-exercise-header">
-        <div class="active-exercise-name">${escHtml(ex.name)}</div>
-        <div style="display:flex;gap:8px">
+        <div class="active-exercise-info">
+          <div class="active-exercise-name">${escHtml(ex.name)}</div>
+          ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
           <button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>
           <button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})" title="Remove">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -349,7 +393,15 @@ function exerciseCardHTML(ex, ei, ctx) {
         </div>
       </div>
       <table class="sets-editor">
-        <thead><tr><th>Set</th><th>lbs</th><th>Target</th><th>Actual</th><th></th></tr></thead>
+        <thead>
+          <tr>
+            <th class="set-num-head">#</th>
+            <th>Weight</th>
+            <th>Reps</th>
+            ${canLog ? '<th class="set-log-head">Log</th>' : ''}
+            <th></th>
+          </tr>
+        </thead>
         <tbody>${setRows}</tbody>
       </table>
       <button class="btn btn-ghost btn-sm mt-8" onclick="handleAddSet('${ctx}',${ei})">+ Add Set</button>
@@ -388,6 +440,11 @@ window.handleAddSet = function(ctx, ei) {
   const sets = workoutFor(ctx).exercises[ei].sets;
   const last = sets.slice(-1)[0];
   sets.push({ reps: last ? last.reps : 0, weight: last ? last.weight : 0 });
+  rerenderFor(ctx);
+};
+
+window.handleSetDone = function(ctx, ei, si, checked) {
+  workoutFor(ctx).exercises[ei].sets[si].done = checked;
   rerenderFor(ctx);
 };
 
