@@ -1,25 +1,48 @@
 /* ── Variables ─────────────────────────────────────────── */
 :root {
-  --bg:        #080c09;   /* near-black, green tint */
-  --surface:   #0d1410;   /* very dark forest */
-  --surface2:  #131d15;   /* dark forest */
-  --surface3:  #1a2a1c;   /* medium forest */
-  --border:    rgba(100, 200, 120, 0.07);
-  --border2:   rgba(100, 200, 120, 0.15);
-  --accent:    #c87c3a;   /* burnt amber — primary buttons */
-  --accent2:   #e0a060;   /* lighter amber */
-  --accent-dim:#8a5220;   /* dark amber */
-  --blue:      #3d9e60;   /* jungle green — nav, card stripe, plans */
-  --blue2:     #66bf8a;   /* lighter jungle green */
-  --gold:      #b8a53a;   /* olive gold — stats, headings, today */
-  --green:     #4dbf7a;   /* bright moss — finish/success */
-  --red:       #c0522a;   /* rust red — danger/delete */
-  --text:      #ddeadb;   /* warm off-white, slight green tint */
-  --text2:     #7a9478;   /* muted sage */
-  --text3:     #455242;   /* dark muted sage */
+  --bg:        #0c0c10;
+  --surface:   #13131a;
+  --surface2:  #1c1c25;
+  --surface3:  #25252f;
+  --border:    rgba(255, 255, 255, 0.06);
+  --border2:   rgba(255, 255, 255, 0.11);
+  --accent:    #818cf8;   /* electric indigo — primary actions */
+  --accent2:   #a5b4fc;   /* lighter indigo */
+  --accent-dim:#4338ca;   /* deep indigo */
+  --blue:      #818cf8;   /* same as accent — nav, card stripe, plans */
+  --blue2:     #a5b4fc;
+  --gold:      #fbbf24;   /* amber — stats, highlights */
+  --green:     #34d399;   /* emerald — finish/success */
+  --red:       #f87171;   /* rose — danger/delete */
+  --text:      #f0f0f8;
+  --text2:     #7878a0;
+  --text3:     #44444f;
+  --nav-bg:    rgba(12, 12, 16, 0.92);
   --radius:    10px;
   --radius-sm: 6px;
   --nav-h:     64px;
+}
+
+/* ── Light Mode ─────────────────────────────────────────── */
+body.light {
+  --bg:        #f2f2f8;
+  --surface:   #ffffff;
+  --surface2:  #eaeaf2;
+  --surface3:  #e0e0ec;
+  --border:    rgba(0, 0, 0, 0.07);
+  --border2:   rgba(0, 0, 0, 0.13);
+  --accent:    #6366f1;
+  --accent2:   #818cf8;
+  --accent-dim:#4338ca;
+  --blue:      #6366f1;
+  --blue2:     #818cf8;
+  --gold:      #d97706;
+  --green:     #059669;
+  --red:       #dc2626;
+  --text:      #111118;
+  --text2:     #55556a;
+  --text3:     #8888a0;
+  --nav-bg:    rgba(242, 242, 248, 0.92);
 }
 
 /* ── Reset & Base ──────────────────────────────────────── */
@@ -146,7 +169,7 @@ body {
   left: 0;
   right: 0;
   height: var(--nav-h);
-  background: rgba(9, 9, 11, 0.92);
+  background: var(--nav-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
@@ -198,6 +221,33 @@ body {
 .home-hero {
   padding: 28px 20px 24px;
   position: relative;
+}
+
+.home-hero-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.btn-theme-toggle {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-theme-toggle:active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 
@@ -536,13 +586,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-radius: 4px;
   margin-bottom: 10px;
 }
-.ex-muscle-chest     { background: rgba(200,124,58,0.15);  color: #d4904a; }  /* amber */
-.ex-muscle-back      { background: rgba(61,158,96,0.15);   color: #52b878; }  /* forest green */
-.ex-muscle-shoulders { background: rgba(184,165,58,0.15);  color: #c8b848; }  /* olive gold */
-.ex-muscle-biceps    { background: rgba(102,191,138,0.15); color: #66bf8a; }  /* moss green */
-.ex-muscle-triceps   { background: rgba(192,82,42,0.15);   color: #c86040; }  /* rust */
-.ex-muscle-legs      { background: rgba(77,191,122,0.15);  color: #4dbf7a; }  /* bright moss */
-.ex-muscle-core      { background: rgba(160,140,60,0.15);  color: #b0a040; }  /* khaki */
+.ex-muscle-chest     { background: rgba(129,140,248,0.15); color: #818cf8; }  /* indigo */
+.ex-muscle-back      { background: rgba(52,211,153,0.15);  color: #34d399; }  /* emerald */
+.ex-muscle-shoulders { background: rgba(196,181,253,0.15); color: #c4b5fd; }  /* violet */
+.ex-muscle-biceps    { background: rgba(34,211,238,0.15);  color: #22d3ee; }  /* cyan */
+.ex-muscle-triceps   { background: rgba(251,191,36,0.15);  color: #fbbf24; }  /* amber */
+.ex-muscle-legs      { background: rgba(74,222,128,0.15);  color: #4ade80; }  /* green */
+.ex-muscle-core      { background: rgba(248,113,113,0.15); color: #f87171; }  /* rose */
+
+/* Darker badge text for light mode readability */
+body.light .ex-muscle-chest     { color: #4f46e5; }
+body.light .ex-muscle-back      { color: #059669; }
+body.light .ex-muscle-shoulders { color: #7c3aed; }
+body.light .ex-muscle-biceps    { color: #0891b2; }
+body.light .ex-muscle-triceps   { color: #d97706; }
+body.light .ex-muscle-legs      { color: #16a34a; }
+body.light .ex-muscle-core      { color: #dc2626; }
 
 .active-exercise-header {
   display: flex;

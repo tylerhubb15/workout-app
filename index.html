@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#080c09" />
+  <meta name="theme-color" content="#0c0c10" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="WorkoutLog" />
@@ -13,7 +13,10 @@
   <title>Workout Tracker</title>
 </head>
 <body>
-<script>if(localStorage.getItem('wt_seen'))document.body.classList.add('seen');</script>
+<script>
+  if(localStorage.getItem('wt_seen')) document.body.classList.add('seen');
+  if(localStorage.getItem('wt_theme') === 'light') document.body.classList.add('light');
+</script>
 <!-- ── Splash / Onboarding Overlay ─────────────────────── -->
 <div id="splash">
   <div class="splash-logo">
@@ -72,7 +75,10 @@
   <!-- ── Home View ─────────────────────────────────── -->
   <section class="view active" id="view-home">
     <div class="home-hero">
-      <div class="home-date" id="home-date"></div>
+      <div class="home-hero-topbar">
+        <div class="home-date" id="home-date"></div>
+        <button class="btn-theme-toggle" id="btn-theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme"></button>
+      </div>
       <div class="home-greeting">Lift.</div>
       <div class="home-today-plan" id="home-today-plan"></div>
       <div class="home-cta-row">
