@@ -102,7 +102,8 @@ const state = {
   planDays: new Set(), // DOW indices selected in plan form
   editingPlan: null,   // plan whose days are being edited
   editingPlanDow: null,// day-of-week being edited in plan template
-  exFilterTag: null,   // null | 'muscle:Chest' | 'equip:Barbell' etc.
+  exMuscleFilter: null,  // active muscle group string or null
+  exEquipFilter:  null,  // active equipment group string or null
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -525,80 +526,93 @@ function renderExerciseForm() {
   }
 
   // Populate chips and filter
-  state.exFilterTag = null;
+  state.exMuscleFilter = null;
+  state.exEquipFilter  = null;
   const filterInput = document.getElementById('ex-filter');
   filterInput.value = '';
   renderExFilterTabs();
   renderExChips('');
-  filterInput.oninput = () => renderExChips(filterInput.value.trim().toLowerCase());
+  filterInput.oninput = refreshChips;
 
   renderSetRows();
 }
 
 function renderExFilterTabs() {
-  const muscles  = Object.keys(MUSCLE_MAP);
-  const equips   = Object.keys(EXERCISES);
-  const tag      = state.exFilterTag;
+  const muscles = Object.keys(MUSCLE_MAP);
+  const equips  = Object.keys(EXERCISES);
+  const mf = state.exMuscleFilter;
+  const ef = state.exEquipFilter;
 
-  const muscleBtns = ['All', ...muscles].map(m => {
-    const t = m === 'All' ? null : `muscle:${m}`;
-    const active = tag === t ? ' active' : '';
-    const onclick = t === null ? `setExFilter(null)` : `setExFilter('${t}')`;
-    return `<button class="ex-filter-btn${active}" onclick="${onclick}">${m}</button>`;
+  const muscleBtns = muscles.map(m => {
+    const active = mf === m ? ' active' : '';
+    return `<button class="ex-filter-btn${active}" onclick="setMuscleFilter('${m}')">${m}</button>`;
   }).join('');
 
   const equipBtns = equips.map(e => {
-    const t = `equip:${e}`;
-    const active = tag === t ? ' active' : '';
-    return `<button class="ex-filter-btn${active}" onclick="setExFilter('${t}')">${e}</button>`;
+    const active = ef === e ? ' active' : '';
+    return `<button class="ex-filter-btn${active}" onclick="setEquipFilter('${e}')">${e}</button>`;
   }).join('');
 
   document.getElementById('ex-filter-tabs').innerHTML = `
     <div class="ex-filter-section">
+      <div class="ex-filter-label">Muscle Group</div>
       <div class="ex-filter-row">${muscleBtns}</div>
       <div class="ex-filter-divider"></div>
+      <div class="ex-filter-label">Equipment</div>
       <div class="ex-filter-row">${equipBtns}</div>
     </div>`;
 }
 
-window.setExFilter = function(tag) {
-  state.exFilterTag = tag;
+function refreshChips() {
+  renderExChips(document.getElementById('ex-filter').value.trim().toLowerCase());
+}
+
+window.setMuscleFilter = function(muscle) {
+  state.exMuscleFilter = state.exMuscleFilter === muscle ? null : muscle;
   renderExFilterTabs();
-  const textFilter = document.getElementById('ex-filter').value.trim().toLowerCase();
-  renderExChips(textFilter);
+  refreshChips();
+};
+
+window.setEquipFilter = function(equip) {
+  state.exEquipFilter = state.exEquipFilter === equip ? null : equip;
+  renderExFilterTabs();
+  refreshChips();
 };
 
 function renderExChips(filter) {
   const builtInAll = Object.values(EXERCISES).flat();
-  const used = [...new Set(loadWorkouts().flatMap(w => w.exercises.map(e => e.name)))];
+  const used   = [...new Set(loadWorkouts().flatMap(w => w.exercises.map(e => e.name)))];
   const custom = used.filter(n => !builtInAll.includes(n));
 
   const groups = { ...EXERCISES };
   if (custom.length) groups['Custom'] = custom.sort();
 
-  // Apply active tag filter
-  const tag = state.exFilterTag;
-  let allowedNames = null;
-  if (tag) {
-    const [mode, value] = tag.split(':');
-    if (mode === 'muscle') allowedNames = new Set(MUSCLE_MAP[value] || []);
-    else if (mode === 'equip') allowedNames = new Set(EXERCISES[value] || []);
-  }
+  const mf = state.exMuscleFilter;
+  const ef = state.exEquipFilter;
+  const muscleAllowed = mf ? new Set(MUSCLE_MAP[mf] || []) : null;
 
   let html = '';
   for (const [group, names] of Object.entries(groups)) {
-    let filtered = allowedNames ? names.filter(n => allowedNames.has(n)) : names;
+    // Equipment filter: skip groups that don't match
+    if (ef && group !== ef && group !== 'Custom') continue;
+
+    let filtered = names;
+    // Muscle filter: only keep exercises in that muscle group
+    if (muscleAllowed) filtered = filtered.filter(n => muscleAllowed.has(n));
+    // Text filter
     if (filter) filtered = filtered.filter(n => n.toLowerCase().includes(filter));
     if (!filtered.length) continue;
-    // Only show group header when not filtered to a single equipment type
-    const showGroup = !tag || !tag.startsWith('equip:');
-    if (showGroup) html += `<div class="ex-group-label">${group}</div>`;
+
+    // Show group label only when multiple equipment groups could be visible
+    if (!ef) html += `<div class="ex-group-label">${group}</div>`;
     html += `<div class="ex-chips-row">`;
-    html += filtered.map(n => `<button class="ex-chip" data-name="${escHtml(n)}" onclick="selectExChip(this.dataset.name)">${escHtml(n)}</button>`).join('');
+    html += filtered.map(n =>
+      `<button class="ex-chip" data-name="${escHtml(n)}" onclick="selectExChip(this.dataset.name)">${escHtml(n)}</button>`
+    ).join('');
     html += `</div>`;
   }
 
-  if (!html) html = `<div class="ex-filter-empty">No exercises match</div>`;
+  if (!html) html = `<div class="ex-filter-empty">No exercises match these filters</div>`;
   document.getElementById('ex-chips').innerHTML = html;
 }
 

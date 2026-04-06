@@ -789,22 +789,29 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
   flex-direction: column;
   gap: 0;
 }
+.ex-filter-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin: 8px 0 5px;
+}
 .ex-filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 0;
+  gap: 5px;
 }
 .ex-filter-divider {
   height: 1px;
-  background: var(--border);
-  margin: 4px 0;
+  background: var(--border2);
+  margin: 8px 0 0;
 }
 .ex-filter-btn {
-  background: var(--surface3);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 4px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 4px 11px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text2);
@@ -813,15 +820,15 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
   white-space: nowrap;
 }
 .ex-filter-btn.active {
-  background: var(--blue);
-  border-color: var(--blue);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
   font-weight: 600;
 }
 .ex-filter-empty {
   color: var(--text3);
   font-size: 14px;
-  padding: 12px 0;
+  padding: 16px 0;
   text-align: center;
 }
 
@@ -838,13 +845,13 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
 
 .ex-group-label {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--blue2);
-  padding: 10px 0 6px;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  padding: 10px 0 5px;
 }
-.ex-group-label:first-child { padding-top: 0; }
+.ex-group-label:first-child { padding-top: 4px; }
 
 .ex-chips-row {
   display: flex;
@@ -854,18 +861,19 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
 }
 
 .ex-chip {
-  background: var(--surface2);
+  background: var(--surface3);
   border: 1px solid var(--border2);
-  border-radius: 20px;
-  padding: 6px 14px;
+  border-radius: 8px;
+  padding: 7px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text2);
+  color: var(--text);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 .ex-chip:active { background: var(--accent); border-color: var(--accent); color: #fff; }
+body.light .ex-chip { border-color: var(--border2); }
 
 /* ── Set Block Layout ──────────────────────────────────── */
 .set-block {
