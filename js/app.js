@@ -2,40 +2,75 @@ import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upse
 
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
-  'Dumbbell': [
-    'Dumbbell Bench Press', 'Dumbbell Incline Press', 'Chest Fly',
-    'Dumbbell Row', 'Dumbbell Shoulder Press', 'Lateral Raise', 'Front Raise', 'Rear Delt Fly',
-    'Bicep Curl', 'Hammer Curl', 'Concentration Curl', 'Tricep Kickback', 'Overhead Tricep Extension',
-    'Romanian Deadlift', 'Goblet Squat', 'Lunges', 'Step-Up', 'Calf Raise',
-  ],
   'Barbell': [
-    'Bench Press', 'Incline Bench Press', 'Decline Bench Press',
-    'Deadlift', 'Squat', 'Overhead Press', 'Barbell Row', 'Romanian Deadlift',
-    'Hip Thrust', 'Skull Crusher', 'Preacher Curl',
+    'Barbell Bench Press', 'Barbell Incline Bench Press',
+    'Barbell Deadlift', 'Barbell Bent-Over Row', 'T-Bar Row',
+    'Barbell Overhead Press', 'Upright Row',
+    'Barbell Curl', 'EZ-Bar Curl', 'Preacher Curl', 'Spider Curl',
+    'Close-Grip Bench Press', 'Skull Crusher',
+    'Barbell Back Squat', 'Barbell Front Squat', 'Barbell Walking Lunge',
+    'Romanian Deadlift', 'Stiff-Leg Deadlift', 'Good Morning',
+    'Hip Thrust', 'Sumo Deadlift',
+    'Landmine Rotation',
+    'Barbell Power Clean', 'Barbell Snatch', 'Trap Bar Deadlift', 'Barbell Thruster',
   ],
-  'Bodyweight': [
-    'Dip', 'Pull-Up', 'Chin-Up', 'Push-Up', 'Pike Push-Up', 'Diamond Push-Up',
-    'Plank', 'Crunch', 'Leg Raise', 'Russian Twist', 'Glute Bridge', 'Burpee',
+  'Dumbbell': [
+    'Dumbbell Bench Press', 'Dumbbell Incline Bench Press', 'Dumbbell Decline Bench Press', 'Dumbbell Chest Fly',
+    'Dumbbell Single-Arm Row',
+    'Dumbbell Overhead Press', 'Dumbbell Lateral Raise', 'Dumbbell Front Raise', 'Arnold Press',
+    'Dumbbell Curl', 'Incline Dumbbell Curl', 'Hammer Curl', 'Concentration Curl',
+    'Dumbbell Skull Crusher', 'Overhead Tricep Extension', 'Tricep Kickback',
+    'Dumbbell Front Squat', 'Bulgarian Split Squat', 'Goblet Squat',
+    'Dumbbell Lunge', 'Dumbbell Walking Lunge', 'Step-Up',
+    'Single-Leg Romanian Deadlift', 'Sumo Squat',
+    'Russian Twist', 'Dumbbell Side Bend',
+    "Farmer's Carry", 'Dumbbell Clean and Press',
   ],
   'Cable': [
-    'Cable Fly', 'Lat Pulldown', 'Seated Cable Row', 'Tricep Pushdown',
-    'Face Pull', 'Cable Curl', 'Cable Crunch', 'Cable Lateral Raise', 'T-Bar Row',
+    'Cable Chest Fly',
+    'Lat Pulldown', 'Seated Cable Row', 'Face Pull', 'Straight-Arm Pulldown',
+    'Cable Lateral Raise', 'Cable Rear Delt Fly',
+    'Cable Curl',
+    'Tricep Pushdown', 'Cable Overhead Tricep Extension', 'Single-Arm Pushdown',
+    'Cable Pull-Through', 'Cable Kickback', 'Donkey Kick',
+    'Cable Crunch', 'Pallof Press', 'Cable Woodchop',
   ],
   'Machine': [
-    'Leg Press', 'Leg Curl', 'Leg Extension', 'Chest Press Machine',
-    'Pec Deck', 'Hack Squat', 'Seated Calf Raise',
+    'Pec Deck Fly', 'Chest-Supported Row',
+    'Reverse Pec Deck', 'Machine Shoulder Press',
+    'Machine Curl',
+    'Machine Tricep Press',
+    'Leg Press', 'Hack Squat', 'Leg Extension',
+    'Lying Leg Curl', 'Seated Leg Curl', 'Glute-Ham Raise',
+    'Abductor Machine', 'Reverse Hyperextension',
+    'Standing Calf Raise', 'Seated Calf Raise', 'Leg Press Calf Raise', 'Donkey Calf Raise',
+  ],
+  'Bodyweight': [
+    'Push-Up', 'Diamond Push-Up', 'Chest Dip', 'Dips Chest Focused', 'Tricep Dip',
+    'Pull-Up',
+    'Nordic Hamstring Curl', 'Glute Bridge',
+    'Single-Leg Calf Raise',
+    'Ab Wheel Rollout', 'Decline Sit-Up', 'Hanging Leg Raise', 'Plank',
+    'Sled Push', 'Battle Ropes',
+  ],
+  'Kettlebell': [
+    'Kettlebell Swing',
   ],
 };
 
 // ── Exercise metadata helpers ─────────────────────────────
 const MUSCLE_MAP = {
-  'Chest':     ['Bench Press','Incline Bench Press','Decline Bench Press','Dumbbell Bench Press','Dumbbell Incline Press','Chest Fly','Cable Fly','Push-Up','Pike Push-Up','Diamond Push-Up','Pec Deck','Chest Press Machine'],
-  'Back':      ['Barbell Row','Dumbbell Row','Lat Pulldown','Seated Cable Row','T-Bar Row','Pull-Up','Chin-Up','Deadlift','Romanian Deadlift'],
-  'Shoulders': ['Overhead Press','Dumbbell Shoulder Press','Lateral Raise','Front Raise','Rear Delt Fly','Face Pull','Cable Lateral Raise'],
-  'Biceps':    ['Bicep Curl','Hammer Curl','Concentration Curl','Preacher Curl','Cable Curl'],
-  'Triceps':   ['Skull Crusher','Tricep Kickback','Overhead Tricep Extension','Tricep Pushdown','Dip'],
-  'Legs':      ['Squat','Leg Press','Leg Curl','Leg Extension','Hack Squat','Goblet Squat','Lunges','Step-Up','Calf Raise','Seated Calf Raise','Hip Thrust','Glute Bridge'],
-  'Core':      ['Plank','Crunch','Leg Raise','Russian Twist','Cable Crunch','Burpee'],
+  'Chest':      ['Barbell Bench Press','Barbell Incline Bench Press','Dumbbell Bench Press','Dumbbell Incline Bench Press','Dumbbell Decline Bench Press','Cable Chest Fly','Dumbbell Chest Fly','Pec Deck Fly','Push-Up','Chest Dip','Dips Chest Focused'],
+  'Back':       ['Barbell Deadlift','Pull-Up','Lat Pulldown','Seated Cable Row','Barbell Bent-Over Row','Dumbbell Single-Arm Row','T-Bar Row','Face Pull','Straight-Arm Pulldown','Chest-Supported Row','Trap Bar Deadlift'],
+  'Shoulders':  ['Barbell Overhead Press','Dumbbell Overhead Press','Dumbbell Lateral Raise','Cable Lateral Raise','Dumbbell Front Raise','Reverse Pec Deck','Arnold Press','Upright Row','Machine Shoulder Press','Cable Rear Delt Fly'],
+  'Biceps':     ['Barbell Curl','Dumbbell Curl','Incline Dumbbell Curl','Hammer Curl','Concentration Curl','Cable Curl','EZ-Bar Curl','Preacher Curl','Spider Curl','Machine Curl'],
+  'Triceps':    ['Close-Grip Bench Press','Skull Crusher','Dumbbell Skull Crusher','Tricep Pushdown','Overhead Tricep Extension','Tricep Kickback','Diamond Push-Up','Tricep Dip','Cable Overhead Tricep Extension','Machine Tricep Press','Single-Arm Pushdown'],
+  'Quads':      ['Barbell Back Squat','Barbell Front Squat','Dumbbell Front Squat','Leg Press','Hack Squat','Bulgarian Split Squat','Leg Extension','Goblet Squat','Dumbbell Lunge','Barbell Walking Lunge','Dumbbell Walking Lunge','Step-Up'],
+  'Hamstrings': ['Romanian Deadlift','Lying Leg Curl','Seated Leg Curl','Nordic Hamstring Curl','Stiff-Leg Deadlift','Good Morning','Glute-Ham Raise','Single-Leg Romanian Deadlift','Cable Pull-Through'],
+  'Glutes':     ['Hip Thrust','Glute Bridge','Cable Kickback','Sumo Deadlift','Sumo Squat','Abductor Machine','Reverse Hyperextension','Donkey Kick'],
+  'Calves':     ['Standing Calf Raise','Seated Calf Raise','Leg Press Calf Raise','Single-Leg Calf Raise','Donkey Calf Raise'],
+  'Core':       ['Cable Crunch','Ab Wheel Rollout','Decline Sit-Up','Hanging Leg Raise','Plank','Russian Twist','Landmine Rotation','Pallof Press','Cable Woodchop','Dumbbell Side Bend'],
+  'Full Body':  ['Barbell Power Clean','Barbell Snatch','Kettlebell Swing',"Farmer's Carry",'Dumbbell Clean and Press','Barbell Thruster','Sled Push','Battle Ropes'],
 };
 
 function getMuscleGroup(name) {
@@ -380,7 +415,7 @@ function exerciseCardHTML(ex, ei, ctx) {
   }).join('');
 
   const muscleTag = muscle
-    ? `<div class="ex-muscle-tag ex-muscle-${muscle.toLowerCase()}">${muscle.toUpperCase()}</div>`
+    ? `<div class="ex-muscle-tag ex-muscle-${muscle.toLowerCase().replace(/\s+/g,'-')}">${muscle.toUpperCase()}</div>`
     : '';
 
   return `
@@ -559,7 +594,7 @@ function renderExChips(filter) {
     const showGroup = !tag || !tag.startsWith('equip:');
     if (showGroup) html += `<div class="ex-group-label">${group}</div>`;
     html += `<div class="ex-chips-row">`;
-    html += filtered.map(n => `<button class="ex-chip" onclick="selectExChip('${escHtml(n)}')">${escHtml(n)}</button>`).join('');
+    html += filtered.map(n => `<button class="ex-chip" data-name="${escHtml(n)}" onclick="selectExChip(this.dataset.name)">${escHtml(n)}</button>`).join('');
     html += `</div>`;
   }
 
