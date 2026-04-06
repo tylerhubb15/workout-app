@@ -130,17 +130,9 @@ function renderTodayPlan() {
   const iso = todayISO();
   const dow = new Date().getDay();
 
-  // Check if already logged today
+  // Already logged today — don't show anything, Recent Workouts covers it
   const logged = loadWorkouts().find(w => w.date === iso);
-  if (logged) {
-    el.innerHTML = `
-      <div class="today-plan-card">
-        <div class="today-plan-label">Today — logged</div>
-        <div class="today-plan-name">${escHtml(logged.name)}</div>
-        <div class="today-plan-exercises">${logged.exercises.map(e => escHtml(e.name)).join(' · ') || 'No exercises'}</div>
-      </div>`;
-    return;
-  }
+  if (logged) { el.innerHTML = ''; return; }
 
   // Check for a plan covering today
   for (const plan of loadPlans()) {
@@ -148,20 +140,15 @@ function renderTodayPlan() {
       if (plan.workoutDays.includes(dow)) {
         const exList = plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0
           ? plan.dayTemplates[dow].map(e => escHtml(e.name)).join(' · ')
-          : 'Workout day — no exercises set';
+          : 'Workout day';
         el.innerHTML = `
           <div class="today-plan-card">
-            <div class="today-plan-label">Today's plan</div>
-            <div class="today-plan-name">${escHtml(plan.name)}</div>
+            <div class="today-plan-label">Today — ${escHtml(plan.name)}</div>
             <div class="today-plan-exercises">${exList}</div>
           </div>`;
         return;
       } else if (iso >= plan.start && iso <= plan.end) {
-        el.innerHTML = `
-          <div class="today-plan-card" style="border-left-color: var(--surface3);">
-            <div class="today-plan-label" style="color:var(--text3)">Rest day</div>
-            <div class="today-plan-name" style="color:var(--text2)">${escHtml(plan.name)}</div>
-          </div>`;
+        el.innerHTML = `<div class="today-plan-rest">Rest day · ${escHtml(plan.name)}</div>`;
         return;
       }
     }
