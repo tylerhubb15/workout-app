@@ -1,19 +1,22 @@
 /* ── Variables ─────────────────────────────────────────── */
 :root {
-  --bg:        #08080e;
-  --surface:   #0e0e17;
-  --surface2:  #15151f;
-  --surface3:  #1d1d28;
+  --bg:        #0a0808;
+  --surface:   #110e0e;
+  --surface2:  #181414;
+  --surface3:  #211c1c;
   --border:    rgba(255, 255, 255, 0.06);
-  --border2:   rgba(255, 255, 255, 0.11);
-  --accent:    #4f80f5;
-  --accent2:   #7aa3ff;
-  --accent-dim:#2d57c8;
-  --green:     #23c55e;
-  --red:       #f43f5d;
-  --text:      #e6e6f0;
-  --text2:     #82829e;
-  --text3:     #4e4e64;
+  --border2:   rgba(255, 255, 255, 0.12);
+  --accent:    #e8394a;   /* red — primary CTA, today, active states */
+  --accent2:   #ff6b7a;   /* lighter red */
+  --accent-dim:#b52535;
+  --blue:      #4f7df5;   /* blue — nav, plans, secondary */
+  --blue2:     #7aaaff;
+  --gold:      #f0b429;   /* gold — stats, highlights */
+  --green:     #22c55e;
+  --red:       #e8394a;
+  --text:      #ede8e6;
+  --text2:     #8a8082;
+  --text3:     #524a4e;
   --radius:    10px;
   --radius-sm: 6px;
   --nav-h:     64px;
@@ -143,7 +146,7 @@ body {
   left: 0;
   right: 0;
   height: var(--nav-h);
-  background: rgba(14, 14, 18, 0.92);
+  background: rgba(14, 10, 10, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
@@ -176,7 +179,7 @@ body {
 }
 
 .nav-btn.active {
-  color: var(--accent2);
+  color: var(--blue2);
 }
 .nav-btn.active .nav-icon { transform: scale(1.1); }
 
@@ -188,7 +191,7 @@ body {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--blue);
 }
 
 /* ── Home View ─────────────────────────────────────────── */
@@ -213,6 +216,7 @@ body {
   letter-spacing: -0.3px;
   margin-bottom: 20px;
   line-height: 1.2;
+  color: var(--gold);
 }
 
 /* Today's plan preview */
@@ -231,7 +235,7 @@ body {
 .today-plan-label {
   font-size: 10px;
   font-weight: 800;
-  color: var(--accent2);
+  color: var(--gold);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 3px;
@@ -297,7 +301,7 @@ body {
   font-weight: 700;
   letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
+  color: var(--gold);
 }
 
 .stat-chip-label {
@@ -498,8 +502,8 @@ input[type="number"] {
   appearance: none;
 }
 input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79,128,245,0.18);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(79,125,245,0.18);
 }
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) opacity(0.3);
@@ -576,7 +580,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .sets-editor td { padding: 4px; vertical-align: middle; text-align: center; }
 
 .set-num-cell {
-  color: var(--text3);
+  color: var(--gold);
   font-size: 12px;
   font-weight: 700;
   width: 24px;
@@ -600,7 +604,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   appearance: none;
   transition: border-color 0.2s;
 }
-.set-pill:focus { border-color: var(--accent); }
+.set-pill:focus { border-color: var(--blue); }
 
 /* Done row dims inputs */
 .set-row-done .set-pill { opacity: 0.4; }
@@ -721,7 +725,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--accent);
+  color: var(--blue2);
   padding: 10px 0 6px;
 }
 .ex-group-label:first-child { padding-top: 0; }
@@ -911,7 +915,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
 }
 .dot-workout { background: var(--green); }
-.dot-plan    { background: var(--accent2); border: 1px solid var(--accent2); }
+.dot-plan    { background: var(--blue); border: 1px solid var(--blue); }
 
 /* Adjust dot color when inside today cell */
 .cal-day.today .dot-workout { background: rgba(255,255,255,0.9); }
@@ -1044,7 +1048,7 @@ body.seen #splash { display: none; }
   border-radius: 50%;
   font-size: 11px;
   font-weight: 800;
-  color: var(--accent2);
+  color: var(--gold);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1083,8 +1087,8 @@ body.seen #splash { display: none; }
 }
 
 .day-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--blue);
+  border-color: var(--blue);
   color: #fff;
 }
 
@@ -1115,7 +1119,7 @@ body.seen #splash { display: none; }
   position: absolute;
   left: 0; top: 10px; bottom: 10px;
   width: 3px;
-  background: var(--accent);
+  background: var(--blue);
   border-radius: 0 2px 2px 0;
 }
 
@@ -1152,7 +1156,7 @@ body.seen #splash { display: none; }
   justify-content: center;
 }
 
-.plan-day-pip.on  { background: var(--accent); color: #fff; }
+.plan-day-pip.on  { background: var(--blue); color: #fff; }
 .plan-day-pip.off { background: var(--surface2); color: var(--text3); }
 
 .plan-card-actions {
@@ -1184,7 +1188,7 @@ body.seen #splash { display: none; }
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--accent2);
+  color: var(--blue2);
 }
 
 .plan-day-card-body {
