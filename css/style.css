@@ -715,6 +715,49 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .sets-form-table td { padding: 5px 8px 5px 0; vertical-align: middle; }
 
+/* ── Exercise Filter Tabs ───────────────────────────────── */
+.ex-filter-section {
+  margin: 10px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ex-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
+}
+.ex-filter-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.ex-filter-btn {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.ex-filter-btn.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+  font-weight: 600;
+}
+.ex-filter-empty {
+  color: var(--text3);
+  font-size: 14px;
+  padding: 12px 0;
+  text-align: center;
+}
+
 /* ── Exercise Chips ────────────────────────────────────── */
 .ex-chips {
   display: flex;

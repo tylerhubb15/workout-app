@@ -67,6 +67,7 @@ const state = {
   planDays: new Set(), // DOW indices selected in plan form
   editingPlan: null,   // plan whose days are being edited
   editingPlanDow: null,// day-of-week being edited in plan template
+  exFilterTag: null,   // null | 'muscle:Chest' | 'equip:Barbell' etc.
 };
 
 // ── Helpers ───────────────────────────────────────────────
@@ -489,13 +490,48 @@ function renderExerciseForm() {
   }
 
   // Populate chips and filter
+  state.exFilterTag = null;
   const filterInput = document.getElementById('ex-filter');
   filterInput.value = '';
+  renderExFilterTabs();
   renderExChips('');
   filterInput.oninput = () => renderExChips(filterInput.value.trim().toLowerCase());
 
   renderSetRows();
 }
+
+function renderExFilterTabs() {
+  const muscles  = Object.keys(MUSCLE_MAP);
+  const equips   = Object.keys(EXERCISES);
+  const tag      = state.exFilterTag;
+
+  const muscleBtns = ['All', ...muscles].map(m => {
+    const t = m === 'All' ? null : `muscle:${m}`;
+    const active = tag === t ? ' active' : '';
+    const onclick = t === null ? `setExFilter(null)` : `setExFilter('${t}')`;
+    return `<button class="ex-filter-btn${active}" onclick="${onclick}">${m}</button>`;
+  }).join('');
+
+  const equipBtns = equips.map(e => {
+    const t = `equip:${e}`;
+    const active = tag === t ? ' active' : '';
+    return `<button class="ex-filter-btn${active}" onclick="setExFilter('${t}')">${e}</button>`;
+  }).join('');
+
+  document.getElementById('ex-filter-tabs').innerHTML = `
+    <div class="ex-filter-section">
+      <div class="ex-filter-row">${muscleBtns}</div>
+      <div class="ex-filter-divider"></div>
+      <div class="ex-filter-row">${equipBtns}</div>
+    </div>`;
+}
+
+window.setExFilter = function(tag) {
+  state.exFilterTag = tag;
+  renderExFilterTabs();
+  const textFilter = document.getElementById('ex-filter').value.trim().toLowerCase();
+  renderExChips(textFilter);
+};
 
 function renderExChips(filter) {
   const builtInAll = Object.values(EXERCISES).flat();
@@ -505,15 +541,29 @@ function renderExChips(filter) {
   const groups = { ...EXERCISES };
   if (custom.length) groups['Custom'] = custom.sort();
 
+  // Apply active tag filter
+  const tag = state.exFilterTag;
+  let allowedNames = null;
+  if (tag) {
+    const [mode, value] = tag.split(':');
+    if (mode === 'muscle') allowedNames = new Set(MUSCLE_MAP[value] || []);
+    else if (mode === 'equip') allowedNames = new Set(EXERCISES[value] || []);
+  }
+
   let html = '';
   for (const [group, names] of Object.entries(groups)) {
-    const filtered = filter ? names.filter(n => n.toLowerCase().includes(filter)) : names;
+    let filtered = allowedNames ? names.filter(n => allowedNames.has(n)) : names;
+    if (filter) filtered = filtered.filter(n => n.toLowerCase().includes(filter));
     if (!filtered.length) continue;
-    html += `<div class="ex-group-label">${group}</div><div class="ex-chips-row">`;
+    // Only show group header when not filtered to a single equipment type
+    const showGroup = !tag || !tag.startsWith('equip:');
+    if (showGroup) html += `<div class="ex-group-label">${group}</div>`;
+    html += `<div class="ex-chips-row">`;
     html += filtered.map(n => `<button class="ex-chip" onclick="selectExChip('${escHtml(n)}')">${escHtml(n)}</button>`).join('');
     html += `</div>`;
   }
 
+  if (!html) html = `<div class="ex-filter-empty">No exercises match</div>`;
   document.getElementById('ex-chips').innerHTML = html;
 }
 
