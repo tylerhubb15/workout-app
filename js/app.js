@@ -116,7 +116,7 @@ function getRirContext(plan, iso) {
   const date       = new Date(iso + 'T00:00:00');
   const weekNum    = Math.floor(Math.round((date - start) / 86400000) / 7); // 0-indexed
   const weekInCycle = weekNum % msLen;
-  const targetRIR  = (msLen - 1) - weekInCycle; // week 0→RIR(n-1), last week→RIR 0
+  const targetRIR  = Math.max(0, (msLen - 1) - weekNum); // clamp at 0 — never resets after hitting zero
   const blockNum   = Math.floor(weekNum / msLen);
   return { weekNum, weekInCycle, targetRIR, blockNum, msLen };
 }
