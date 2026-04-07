@@ -134,7 +134,7 @@ function findLastLoggedSet(workouts, planName, exName, dow, beforeIso) {
 }
 
 function computeAdjustedReps(templateReps, lastSet, targetRIR) {
-  if (!lastSet) return templateReps;
+  if (!lastSet) return 0; // Week 1: no target — lifter logs what they hit at RIR
   const estimatedMax = lastSet.actualReps + lastSet.rir;
   return Math.max(1, estimatedMax - targetRIR);
 }
@@ -445,9 +445,10 @@ function persistDay() {
 // ── Shared Exercise Card ──────────────────────────────────
 // Used by active workout, day view, and plan template
 function exerciseCardHTML(ex, ei, ctx) {
-  const canLog = ctx !== 'planTemplate';
-  const muscle = getMuscleGroup(ex.name);
-  const equip  = getEquipment(ex.name);
+  const canLog   = ctx !== 'planTemplate';
+  const planRIR  = ctx === 'planTemplate' && state.editingPlan && state.editingPlan.rir;
+  const muscle   = getMuscleGroup(ex.name);
+  const equip    = getEquipment(ex.name);
 
   const setRows = ex.sets.map((s, si) => {
     const done = s.done || false;
@@ -457,10 +458,10 @@ function exerciseCardHTML(ex, ei, ctx) {
       <td><input class="set-pill" type="number" min="0" step="2.5" inputmode="decimal"
            value="${s.weight || ''}" placeholder="–"
            onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" /></td>
-      <td><input class="set-pill" type="number" min="0" inputmode="numeric"
-           value="${s.reps || ''}" placeholder="–"
+      ${planRIR ? '' : `<td><input class="set-pill" type="number" min="0" inputmode="numeric"
+           value="${s.reps || ''}" placeholder="${s.rir != null ? 'Log reps' : '–'}"
            onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" />
-        ${(canLog && s.rir != null) ? `<span class="set-rir-label">@RIR ${s.rir}</span>` : ''}</td>
+        ${(canLog && s.rir != null) ? `<span class="set-rir-label">@RIR ${s.rir}</span>` : ''}</td>`}
       ${canLog ? `<td class="set-log-cell">
         <label class="set-check-wrap">
           <input type="checkbox" ${done ? 'checked' : ''}
@@ -498,7 +499,7 @@ function exerciseCardHTML(ex, ei, ctx) {
           <tr>
             <th class="set-num-head">#</th>
             <th>Weight</th>
-            <th>Reps</th>
+            ${planRIR ? '' : `<th>Reps</th>`}
             ${canLog ? '<th class="set-log-head">Log</th>' : ''}
             <th></th>
           </tr>
@@ -682,6 +683,9 @@ window.selectExChip = function(name) {
 };
 
 function renderSetRows() {
+  const inRirTemplate = state.exerciseContext === 'planTemplate'
+    && state.editingPlan && state.editingPlan.rir;
+
   document.getElementById('sets-form-body').innerHTML = state.formSets.map((s, i) => `
     <div class="set-block">
       <div class="set-block-header">
@@ -690,17 +694,17 @@ function renderSetRows() {
       </div>
       <div class="set-block-inputs">
         <div class="set-field">
-          <span class="set-field-label">Weight (lbs)</span>
+          <span class="set-field-label">Starting Weight (lbs)</span>
           <input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
             value="${s.weight || ''}" placeholder="0"
             onchange="formSetChange(${i},'weight',this.value)" />
         </div>
-        <div class="set-field">
+        ${inRirTemplate ? '' : `<div class="set-field">
           <span class="set-field-label">Target Reps</span>
           <input class="set-input" type="number" min="0" inputmode="numeric"
             value="${s.reps || ''}" placeholder="0"
             onchange="formSetChange(${i},'reps',this.value)" />
-        </div>
+        </div>`}
       </div>
     </div>`).join('');
 }
@@ -726,14 +730,23 @@ function saveExercise() {
   if (!name) { document.getElementById('exercise-name').focus(); return; }
 
   // Flush any uncommitted input values
+  const inRirTemplate = state.exerciseContext === 'planTemplate'
+    && state.editingPlan && state.editingPlan.rir;
   document.querySelectorAll('#sets-form-body .set-block').forEach((block, idx) => {
-    const [weightInput, repsInput] = block.querySelectorAll('input');
-    state.formSets[idx].weight = parseFloat(weightInput.value) || 0;
-    state.formSets[idx].reps   = parseFloat(repsInput.value)   || 0;
-    // actualReps not present in the plan form — preserve existing value
+    const inputs = block.querySelectorAll('input');
+    state.formSets[idx].weight = parseFloat(inputs[0].value) || 0;
+    if (!inRirTemplate && inputs[1]) {
+      state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
+    }
   });
 
-  const exercise = { name, sets: state.formSets.filter(s => s.reps > 0 || s.weight > 0) };
+  // For RIR templates only weight matters; keep all sets regardless of reps
+  const exercise = {
+    name,
+    sets: inRirTemplate
+      ? state.formSets
+      : state.formSets.filter(s => s.reps > 0 || s.weight > 0),
+  };
   if (exercise.sets.length === 0) exercise.sets = [{ reps: 0, weight: 0 }];
 
   const target = workoutFor(state.exerciseContext);

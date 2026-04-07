@@ -1,4 +1,4 @@
-const CACHE = 'workout-v31';
+const CACHE = 'workout-v32';
 const APP_SHELL = [
   './',
   './index.html',
