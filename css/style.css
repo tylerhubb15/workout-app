@@ -1334,6 +1334,24 @@ body.seen #splash { display: none; }
   display: flex;
   gap: 8px;
   padding-left: 10px;
+  flex-wrap: wrap;
+}
+
+.plan-card-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.plan-active-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(129,140,248,0.15);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 /* ── Plan Day Editor ───────────────────────────────────── */

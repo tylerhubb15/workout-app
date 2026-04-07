@@ -50,3 +50,15 @@ export function upsertPlan(plan) {
 export function deletePlan(id) {
   savePlans(loadPlans().filter(p => p.id !== id));
 }
+
+// ── Active Plan ───────────────────────────────────────────
+const ACTIVE_PLAN_KEY = 'wt_active_plan';
+
+export function loadActivePlanId() {
+  return localStorage.getItem(ACTIVE_PLAN_KEY) || null;
+}
+
+export function saveActivePlanId(id) {
+  if (id) localStorage.setItem(ACTIVE_PLAN_KEY, id);
+  else localStorage.removeItem(ACTIVE_PLAN_KEY);
+}

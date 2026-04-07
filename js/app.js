@@ -1,4 +1,4 @@
-import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan } from './storage.js';
+import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan, loadActivePlanId, saveActivePlanId } from './storage.js';
 
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
@@ -231,27 +231,24 @@ function renderTodayPlan() {
   const logged = loadWorkouts().find(w => w.date === iso);
   if (logged) { el.innerHTML = ''; return; }
 
-  // Check for a plan covering today
-  for (const plan of loadPlans()) {
-    if (iso >= plan.start && iso <= plan.end && Array.isArray(plan.workoutDays)) {
-      if (plan.workoutDays.includes(dow)) {
-        const exList = plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0
-          ? plan.dayTemplates[dow].map(e => escHtml(e.name)).join(' · ')
-          : 'Workout day';
-        el.innerHTML = `
-          <div class="today-plan-card">
-            <div class="today-plan-label">Today — ${escHtml(plan.name)}</div>
-            <div class="today-plan-exercises">${exList}</div>
-          </div>`;
-        return;
-      } else if (iso >= plan.start && iso <= plan.end) {
-        el.innerHTML = `<div class="today-plan-rest">Rest day · ${escHtml(plan.name)}</div>`;
-        return;
-      }
+  // Check the active plan for today
+  const plan = getActivePlan();
+  if (plan && iso >= plan.start && iso <= plan.end && Array.isArray(plan.workoutDays)) {
+    if (plan.workoutDays.includes(dow)) {
+      const exList = plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0
+        ? plan.dayTemplates[dow].map(e => escHtml(e.name)).join(' · ')
+        : 'Workout day';
+      el.innerHTML = `
+        <div class="today-plan-card">
+          <div class="today-plan-label">Today — ${escHtml(plan.name)}</div>
+          <div class="today-plan-exercises">${exList}</div>
+        </div>`;
+    } else {
+      el.innerHTML = `<div class="today-plan-rest">Rest day · ${escHtml(plan.name)}</div>`;
     }
+  } else {
+    el.innerHTML = ''; // no active plan or today out of range
   }
-
-  el.innerHTML = ''; // no active plan
 }
 
 function renderStats() {
@@ -372,32 +369,29 @@ window.selectDay = function(iso) {
     ? JSON.parse(JSON.stringify(existing))
     : { id: uid(), date: iso, name: '', exercises: [] };
 
-  // If the day has no exercises, check for a plan template and pre-load it
+  // If the day has no exercises, pre-load from the active plan
   if (state.dayWorkout.exercises.length === 0) {
     const dow = new Date(iso + 'T00:00:00').getDay();
-    for (const plan of loadPlans()) {
-      if (iso >= plan.start && iso <= plan.end &&
-          plan.workoutDays.includes(dow) &&
-          plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0) {
-        state.dayWorkout.exercises = JSON.parse(JSON.stringify(plan.dayTemplates[dow]));
-        if (!state.dayWorkout.name) state.dayWorkout.name = plan.name;
+    const plan = getActivePlan();
+    if (plan && iso >= plan.start && iso <= plan.end &&
+        plan.workoutDays.includes(dow) &&
+        plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0) {
+      state.dayWorkout.exercises = JSON.parse(JSON.stringify(plan.dayTemplates[dow]));
+      if (!state.dayWorkout.name) state.dayWorkout.name = plan.name;
 
-        // RIR: adjust target reps based on last week's logged performance
-        const rirCtx = getRirContext(plan, iso);
-        if (rirCtx) {
-          const allWorkouts = loadWorkouts();
-          state.dayWorkout.exercises = state.dayWorkout.exercises.map(ex => ({
-            ...ex,
-            sets: ex.sets.map(s => {
-              const lastSet = findLastLoggedSet(allWorkouts, plan.name, ex.name, dow, iso);
-              const adjReps = computeAdjustedReps(s.reps, lastSet, rirCtx.targetRIR);
-              return { ...s, reps: adjReps, rir: rirCtx.targetRIR };
-            }),
-          }));
-          state.dayWorkout._rirCtx = rirCtx;
-        }
-
-        break;
+      // RIR: adjust target reps based on last week's logged performance
+      const rirCtx = getRirContext(plan, iso);
+      if (rirCtx) {
+        const allWorkouts = loadWorkouts();
+        state.dayWorkout.exercises = state.dayWorkout.exercises.map(ex => ({
+          ...ex,
+          sets: ex.sets.map(s => {
+            const lastSet = findLastLoggedSet(allWorkouts, plan.name, ex.name, dow, iso);
+            const adjReps = computeAdjustedReps(s.reps, lastSet, rirCtx.targetRIR);
+            return { ...s, reps: adjReps, rir: rirCtx.targetRIR };
+          }),
+        }));
+        state.dayWorkout._rirCtx = rirCtx;
       }
     }
   }
@@ -766,18 +760,23 @@ function saveExercise() {
 }
 
 // ── Calendar ──────────────────────────────────────────────
+function getActivePlan() {
+  const id = loadActivePlanId();
+  if (!id) return null;
+  return loadPlans().find(p => p.id === id) || null;
+}
+
 function planDatesSet() {
   const dates = new Set();
   try {
-    for (const plan of loadPlans()) {
-      if (!plan.start || !plan.end || !Array.isArray(plan.workoutDays)) continue;
-      let cur = new Date(plan.start + 'T00:00:00');
-      const end = new Date(plan.end + 'T00:00:00');
-      while (cur <= end) {
-        if (plan.workoutDays.includes(cur.getDay()))
-          dates.add(cur.toISOString().slice(0, 10));
-        cur.setDate(cur.getDate() + 1);
-      }
+    const plan = getActivePlan();
+    if (!plan || !plan.start || !plan.end || !Array.isArray(plan.workoutDays)) return dates;
+    let cur = new Date(plan.start + 'T00:00:00');
+    const end = new Date(plan.end + 'T00:00:00');
+    while (cur <= end) {
+      if (plan.workoutDays.includes(cur.getDay()))
+        dates.add(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
     }
   } catch (e) { /* don't let a bad plan kill the calendar */ }
   return dates;
@@ -1131,16 +1130,22 @@ function renderPlan() {
     return;
   }
 
+  const activePlanId = loadActivePlanId();
   list.innerHTML = plans.map(p => {
+    const isActive = p.id === activePlanId;
     const pips = DOW_LABELS.map((lbl, i) => `
       <div class="plan-day-pip ${p.workoutDays.includes(i) ? 'on' : 'off'}">${lbl}</div>
     `).join('');
+    const activeBtn = isActive
+      ? `<span class="plan-active-badge">● Active</span>`
+      : `<button class="btn btn-secondary btn-sm" onclick="setActivePlan('${p.id}')">Set Active</button>`;
     return `
-      <div class="plan-card">
+      <div class="plan-card${isActive ? ' plan-card-active' : ''}">
         <div class="plan-card-name">${escHtml(p.name)}${p.rir ? '<span class="rir-badge">RIR</span>' : ''}</div>
         <div class="plan-card-meta">${formatDate(p.start)} — ${formatDate(p.end)}</div>
         <div class="plan-card-days">${pips}</div>
         <div class="plan-card-actions">
+          ${activeBtn}
           <button class="btn btn-primary btn-sm" onclick="openPlanEditor('${p.id}')">Edit Days</button>
           <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit</button>
           <button class="btn btn-danger" onclick="confirmDeletePlan('${p.id}')">Delete</button>
@@ -1208,9 +1213,15 @@ window.loadPlanIntoForm = function(id) {
   window.scrollTo(0, 0);
 };
 
+window.setActivePlan = function(id) {
+  saveActivePlanId(id);
+  renderPlan();
+};
+
 window.confirmDeletePlan = function(id) {
   if (confirm('Delete this plan?')) {
     deletePlan(id);
+    if (loadActivePlanId() === id) saveActivePlanId(null);
     renderPlan();
   }
 };
