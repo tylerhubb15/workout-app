@@ -206,49 +206,67 @@ function renderHome() {
   });
   renderStats();
   renderTodayPlan();
-
-  const container = document.getElementById('home-workout-list');
-  const workouts  = loadWorkouts().slice(0, 5);
-
-  if (workouts.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-label">No sessions logged yet.</div>
-        <p>Tap <strong>Start Workout</strong> to begin.</p>
-      </div>`;
-    return;
-  }
-  container.innerHTML = workouts.map(w => workoutCardHTML(w)).join('');
 }
 
 function renderTodayPlan() {
   const el = document.getElementById('home-today-plan');
   if (!el) return;
-  const iso = todayISO();
-  const dow = new Date().getDay();
 
-  // Already logged today — don't show anything, Recent Workouts covers it
-  const logged = loadWorkouts().find(w => w.date === iso);
-  if (logged) { el.innerHTML = ''; return; }
-
-  // Check the active plan for today
   const plan = getActivePlan();
-  if (plan && iso >= plan.start && iso <= plan.end && Array.isArray(plan.workoutDays)) {
-    if (plan.workoutDays.includes(dow)) {
-      const exList = plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0
-        ? plan.dayTemplates[dow].map(e => escHtml(e.name)).join(' · ')
-        : 'Workout day';
-      el.innerHTML = `
-        <div class="today-plan-card">
-          <div class="today-plan-label">Today — ${escHtml(plan.name)}</div>
-          <div class="today-plan-exercises">${exList}</div>
-        </div>`;
-    } else {
-      el.innerHTML = `<div class="today-plan-rest">Rest day · ${escHtml(plan.name)}</div>`;
-    }
+  if (!plan || !Array.isArray(plan.workoutDays)) { el.innerHTML = ''; return; }
+
+  const todayIso = todayISO();
+  const todayDow = new Date().getDay();
+  const logged   = loadWorkouts().find(w => w.date === todayIso);
+
+  // Decide which workout day to surface:
+  // — today, if it's an unlogged workout day within the plan window
+  // — otherwise, the next upcoming workout day within the plan window
+  let targetIso = null;
+  let targetDow = null;
+  let label     = null;
+
+  const todayIsWorkoutDay = plan.workoutDays.includes(todayDow)
+    && todayIso >= plan.start && todayIso <= plan.end;
+
+  if (todayIsWorkoutDay && !logged) {
+    targetIso = todayIso;
+    targetDow = todayDow;
+    label = 'Today';
   } else {
-    el.innerHTML = ''; // no active plan or today out of range
+    // Scan up to 14 days ahead for the next workout day in range
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      const dow = d.getDay();
+      if (iso > plan.end) break;
+      if (iso < plan.start) continue;
+      if (plan.workoutDays.includes(dow)) {
+        targetIso = iso;
+        targetDow = dow;
+        label = i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'long' });
+        break;
+      }
+    }
   }
+
+  if (!targetIso) { el.innerHTML = ''; return; }
+
+  const exList = plan.dayTemplates && plan.dayTemplates[targetDow] && plan.dayTemplates[targetDow].length > 0
+    ? plan.dayTemplates[targetDow].map(e => escHtml(e.name)).join(' · ')
+    : 'Workout day';
+
+  const rirCtx = getRirContext(plan, targetIso);
+  const rirBadge = rirCtx
+    ? `<span class="today-plan-rir">Wk&nbsp;${rirCtx.weekInCycle + 1}/${rirCtx.msLen} · RIR&nbsp;${rirCtx.targetRIR}</span>`
+    : '';
+
+  el.innerHTML = `
+    <div class="today-plan-card">
+      <div class="today-plan-label">${label} — ${escHtml(plan.name)} ${rirBadge}</div>
+      <div class="today-plan-exercises">${exList}</div>
+    </div>`;
 }
 
 function renderStats() {
@@ -1321,6 +1339,15 @@ function updateThemeBtn() {
     ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`
     : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
 }
+
+window.toggleRirGuide = function() {
+  const body   = document.getElementById('rir-guide-body');
+  const toggle = document.getElementById('rir-guide-toggle');
+  const open   = body.hasAttribute('hidden');
+  body.toggleAttribute('hidden', !open);
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.classList.toggle('open', open);
+};
 
 window.toggleTheme = function() {
   const isLight = document.body.classList.toggle('light');

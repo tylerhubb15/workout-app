@@ -108,8 +108,27 @@
         </div>
       </div>
     </div>
-    <div class="section-title">Recent Workouts</div>
-    <div class="workout-list" id="home-workout-list"></div>
+    <!-- RIR Training Guide -->
+    <div class="rir-guide-card">
+      <button class="rir-guide-header" onclick="toggleRirGuide()" aria-expanded="false" id="rir-guide-toggle">
+        <span>What is RIR training?</span>
+        <svg class="rir-guide-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="rir-guide-body" id="rir-guide-body" hidden>
+        <p><strong>RIR (Reps in Reserve)</strong> is a way to measure how hard you're training relative to failure. RIR&nbsp;3 means you could do 3 more reps; RIR&nbsp;0 means you're at failure.</p>
+        <p>A <strong>mesocycle</strong> is a training block (typically 4 weeks) that uses progressively decreasing RIR to drive hypertrophy:</p>
+        <div class="rir-table">
+          <div class="rir-row"><span class="rir-week">Week 1</span><span class="rir-val">RIR 3</span><span class="rir-desc">Easy — build the habit, feel the movements</span></div>
+          <div class="rir-row"><span class="rir-week">Week 2</span><span class="rir-val">RIR 2</span><span class="rir-desc">Moderate — increasing effort</span></div>
+          <div class="rir-row"><span class="rir-week">Week 3</span><span class="rir-val">RIR 1</span><span class="rir-desc">Hard — leaving one rep in the tank</span></div>
+          <div class="rir-row"><span class="rir-week">Week 4</span><span class="rir-val">RIR 0</span><span class="rir-desc">Max effort — true failure, peak stimulus</span></div>
+        </div>
+        <p>After week 4, deload or start a new mesocycle with slightly higher loads than week 1. This <strong>progressive overload</strong> cycle is the foundation of long-term muscle growth.</p>
+        <p style="color:var(--text3);font-size:11px;margin-top:8px">Tip: When the app shows a target RIR for a set, log the reps you actually hit — the next session's targets auto-adjust based on your performance.</p>
+      </div>
+    </div>
   </section>
 
   <!-- ── Active Workout View ───────────────────────── -->

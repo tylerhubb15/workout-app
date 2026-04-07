@@ -305,6 +305,101 @@ body {
   letter-spacing: 0.06em;
 }
 
+.today-plan-rir {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: rgba(129,140,248,0.12);
+  border: 1px solid rgba(129,140,248,0.25);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+/* RIR Guide collapsible */
+.rir-guide-card {
+  margin: 0 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.rir-guide-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  text-align: left;
+}
+
+.rir-guide-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  color: var(--text3);
+}
+
+.rir-guide-header.open .rir-guide-chevron {
+  transform: rotate(180deg);
+}
+
+.rir-guide-body {
+  padding: 0 16px 16px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+  border-top: 1px solid var(--border);
+}
+
+.rir-guide-body p {
+  margin: 10px 0 0;
+}
+
+.rir-table {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rir-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.rir-week {
+  min-width: 52px;
+  font-weight: 700;
+  color: var(--text3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rir-val {
+  min-width: 44px;
+  font-weight: 800;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.rir-desc {
+  color: var(--text2);
+  font-size: 12px;
+}
+
 .home-cta-row {
   display: flex;
   flex-direction: column;
