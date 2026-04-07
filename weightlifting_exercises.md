@@ -1,6 +1,7 @@
 # Weightlifting Exercises by Muscle Group
 
 ## Chest
+
 - Barbell Bench Press - Barbell
 - Dumbbell Bench Press - Dumbbell
 - Dumbbell Incline Bench Press - Dumbbell
@@ -12,8 +13,11 @@
 - Push-Up - Bodyweight
 - Chest Dip - Dip Bar
 - Dips Chest Focused - Dip Bar
+- Dumbbell Incline Press Fly - Dumbbell
+- Push Up Deficit - Bodyweight
 
 ## Back
+
 - Barbell Deadlift - Barbell
 - Pull-Up - Pull-Up Bar
 - Lat Pulldown - Cable Machine
@@ -24,8 +28,10 @@
 - Face Pull - Cable Machine
 - Straight-Arm Pulldown - Cable Machine
 - Chest-Supported Row - Machine
+- Dumbbell Bent Over Row - Dumbbell
 
 ## Shoulders
+
 - Barbell Overhead Press - Barbell
 - Dumbbell Overhead Press - Dumbbell
 - Dumbbell Lateral Raise - Dumbbell
@@ -36,8 +42,11 @@
 - Upright Row - Barbell / Dumbbell
 - Machine Shoulder Press - Machine
 - Cable Rear Delt Fly - Cable Machine
+- Dumbbell Lateral Super ROM - Dumbbell
+- Dumbell Bent Raise - Dumbbell
 
 ## Biceps
+
 - Barbell Curl - Barbell
 - Dumbbell Curl - Dumbbell
 - Incline Dumbbell Curl - Dumbbell
@@ -48,8 +57,12 @@
 - Preacher Curl - EZ-Bar / Dumbbell
 - Spider Curl - EZ-Bar / Dumbbell
 - Machine Curl - Machine
+- Dumbbell Alternating Curl - Dumbbell
+- Dumbbell Preacher Curl - Dumbbell
+- Dumbbell Pracher Hammer Curl - Dumbbell
 
 ## Triceps
+
 - Close-Grip Bench Press - Barbell
 - Skull Crusher - EZ-Bar / Barbell
 - Dumbbell Skull Crusher - Dumbbell
@@ -61,8 +74,10 @@
 - Cable Overhead Tricep Extension - Cable Machine
 - Machine Tricep Press - Machine
 - Single-Arm Pushdown - Cable Machine
+- Tricep EZ Bar Overhead Extension - Barbbell
 
 ## Legs – Quads
+
 - Barbell Back Squat - Barbell
 - Barbell Front Squat - Barbell
 - Dumbbell Front Squat - Dumbbell
@@ -77,6 +92,7 @@
 - Step-Up - Dumbbell / Barbell
 
 ## Legs – Hamstrings
+
 - Romanian Deadlift - Barbell / Dumbbell
 - Lying Leg Curl - Machine
 - Seated Leg Curl - Machine
@@ -86,8 +102,10 @@
 - Glute-Ham Raise - GHD Machine
 - Single-Leg Romanian Deadlift - Dumbbell / Barbell
 - Cable Pull-Through - Cable Machine
+- Dumbbell Stiff-Leg Deadlift - Dumbbell
 
 ## Legs – Glutes
+
 - Hip Thrust - Barbell / Smith Machine
 - Glute Bridge - Barbell / Bodyweight
 - Cable Kickback - Cable Machine
@@ -98,6 +116,7 @@
 - Donkey Kick - Cable Machine / Bodyweight
 
 ## Calves
+
 - Standing Calf Raise - Machine / Dumbbell / Barbell
 - Seated Calf Raise - Machine
 - Leg Press Calf Raise - Machine
@@ -105,6 +124,7 @@
 - Donkey Calf Raise - Machine / Bodyweight
 
 ## Core / Abs
+
 - Cable Crunch - Cable Machine
 - Ab Wheel Rollout - Ab Wheel
 - Decline Sit-Up - Bench
@@ -117,6 +137,7 @@
 - Dumbbell Side Bend - Dumbbell
 
 ## Compound / Full Body
+
 - Barbell Power Clean - Barbell
 - Barbell Snatch - Barbell
 - Kettlebell Swing - Kettlebell

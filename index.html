@@ -243,6 +243,22 @@
         </div>
         <div class="day-picker-hint">Blue = workout &nbsp;·&nbsp; Gray = rest</div>
       </div>
+      <div class="rir-form-block">
+        <div class="field-label">RIR Periodization</div>
+        <label class="rir-toggle-wrap">
+          <input type="checkbox" id="plan-rir-toggle" />
+          <span>Enable auto-progression (Reps in Reserve)</span>
+        </label>
+        <div id="plan-rir-options" style="display:none; margin-top:12px">
+          <div class="field-label">Mesocycle Length</div>
+          <select id="plan-mesocycle-length" class="input">
+            <option value="3">3 weeks (RIR 2 → 1 → 0)</option>
+            <option value="4" selected>4 weeks (RIR 3 → 2 → 1 → 0)</option>
+            <option value="5">5 weeks (RIR 4 → 3 → 2 → 1 → 0)</option>
+            <option value="6">6 weeks (RIR 5 → … → 0)</option>
+          </select>
+        </div>
+      </div>
       <button class="btn btn-primary btn-full" id="btn-save-plan">Save Plan</button>
     </div>
     <div class="section-title">Saved Plans</div>

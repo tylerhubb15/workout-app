@@ -106,6 +106,39 @@ const state = {
   exEquipFilter:  null,  // active equipment group string or null
 };
 
+// ── RIR Helpers ───────────────────────────────────────────
+function getRirContext(plan, iso) {
+  if (!plan.rir) return null;
+  const msLen      = plan.mesocycleLength || 4;
+  const start      = new Date(plan.start + 'T00:00:00');
+  const date       = new Date(iso + 'T00:00:00');
+  const weekNum    = Math.floor(Math.round((date - start) / 86400000) / 7); // 0-indexed
+  const weekInCycle = weekNum % msLen;
+  const targetRIR  = (msLen - 1) - weekInCycle; // week 0→RIR(n-1), last week→RIR 0
+  const blockNum   = Math.floor(weekNum / msLen);
+  return { weekNum, weekInCycle, targetRIR, blockNum, msLen };
+}
+
+function findLastLoggedSet(workouts, planName, exName, dow, beforeIso) {
+  const sorted = workouts
+    .filter(w => w.date < beforeIso && w.name === planName)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  for (const w of sorted) {
+    if (new Date(w.date + 'T00:00:00').getDay() !== dow) continue;
+    const ex = w.exercises.find(e => e.name === exName);
+    if (!ex) continue;
+    const set = ex.sets.find(s => s.actualReps != null && s.rir != null);
+    if (set) return set;
+  }
+  return null;
+}
+
+function computeAdjustedReps(templateReps, lastSet, targetRIR) {
+  if (!lastSet) return templateReps;
+  const estimatedMax = lastSet.actualReps + lastSet.rir;
+  return Math.max(1, estimatedMax - targetRIR);
+}
+
 // ── Helpers ───────────────────────────────────────────────
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -231,10 +264,13 @@ function setRowHTML(s, i) {
   const repsDisplay = (s.actualReps != null && s.actualReps > 0)
     ? `${s.actualReps}<span style="color:var(--text3);font-size:11px"> / ${s.reps}</span>`
     : `${s.reps}`;
+  const rirDisplay = s.rir != null
+    ? `<span class="set-rir-history">RIR ${s.rir}</span>`
+    : '';
   return `
     <tr>
       <td class="set-num">${i + 1}</td>
-      <td>${repsDisplay} reps</td>
+      <td>${repsDisplay} reps ${rirDisplay}</td>
       <td>${s.weight ? s.weight + ' lbs' : '—'}</td>
     </tr>`;
 }
@@ -341,6 +377,22 @@ window.selectDay = function(iso) {
           plan.dayTemplates && plan.dayTemplates[dow] && plan.dayTemplates[dow].length > 0) {
         state.dayWorkout.exercises = JSON.parse(JSON.stringify(plan.dayTemplates[dow]));
         if (!state.dayWorkout.name) state.dayWorkout.name = plan.name;
+
+        // RIR: adjust target reps based on last week's logged performance
+        const rirCtx = getRirContext(plan, iso);
+        if (rirCtx) {
+          const allWorkouts = loadWorkouts();
+          state.dayWorkout.exercises = state.dayWorkout.exercises.map(ex => ({
+            ...ex,
+            sets: ex.sets.map(s => {
+              const lastSet = findLastLoggedSet(allWorkouts, plan.name, ex.name, dow, iso);
+              const adjReps = computeAdjustedReps(s.reps, lastSet, rirCtx.targetRIR);
+              return { ...s, reps: adjReps, rir: rirCtx.targetRIR };
+            }),
+          }));
+          state.dayWorkout._rirCtx = rirCtx;
+        }
+
         break;
       }
     }
@@ -355,10 +407,14 @@ function renderDay() {
   if (!w) return;
 
   document.getElementById('day-view-title').textContent = formatDateLong(w.date);
-  document.getElementById('day-view-subtitle').textContent =
-    w.exercises.length > 0
-      ? `${w.exercises.length} exercise${w.exercises.length !== 1 ? 's' : ''}`
-      : 'No exercises yet';
+  let daySubtitle = w.exercises.length > 0
+    ? `${w.exercises.length} exercise${w.exercises.length !== 1 ? 's' : ''}`
+    : 'No exercises yet';
+  if (w._rirCtx) {
+    const { weekInCycle, targetRIR, msLen } = w._rirCtx;
+    daySubtitle += ` · Wk ${weekInCycle + 1}/${msLen} · RIR ${targetRIR}`;
+  }
+  document.getElementById('day-view-subtitle').textContent = daySubtitle;
 
   const container = document.getElementById('day-exercises');
   if (w.exercises.length === 0) {
@@ -403,7 +459,8 @@ function exerciseCardHTML(ex, ei, ctx) {
            onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" /></td>
       <td><input class="set-pill" type="number" min="0" inputmode="numeric"
            value="${s.reps || ''}" placeholder="–"
-           onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" /></td>
+           onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" />
+        ${(canLog && s.rir != null) ? `<span class="set-rir-label">@RIR ${s.rir}</span>` : ''}</td>
       ${canLog ? `<td class="set-log-cell">
         <label class="set-check-wrap">
           <input type="checkbox" ${done ? 'checked' : ''}
@@ -488,7 +545,11 @@ window.handleAddSet = function(ctx, ei) {
 };
 
 window.handleSetDone = function(ctx, ei, si, checked) {
-  workoutFor(ctx).exercises[ei].sets[si].done = checked;
+  const set = workoutFor(ctx).exercises[ei].sets[si];
+  set.done = checked;
+  if (checked && set.rir != null) {
+    set.actualReps = set.reps; // user edits reps field before ticking LOG
+  }
   rerenderFor(ctx);
 };
 
@@ -820,6 +881,9 @@ function renderPlan() {
   document.getElementById('plan-name').value  = '';
   document.getElementById('plan-start').value = '';
   document.getElementById('plan-end').value   = '';
+  document.getElementById('plan-rir-toggle').checked = false;
+  document.getElementById('plan-rir-options').style.display = 'none';
+  document.getElementById('plan-mesocycle-length').value = '4';
   state.planDays = new Set();
   document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
 
@@ -839,7 +903,7 @@ function renderPlan() {
     `).join('');
     return `
       <div class="plan-card">
-        <div class="plan-card-name">${escHtml(p.name)}</div>
+        <div class="plan-card-name">${escHtml(p.name)}${p.rir ? '<span class="rir-badge">RIR</span>' : ''}</div>
         <div class="plan-card-meta">${formatDate(p.start)} — ${formatDate(p.end)}</div>
         <div class="plan-card-days">${pips}</div>
         <div class="plan-card-actions">
@@ -883,6 +947,8 @@ function savePlan() {
     end,
     workoutDays: [...state.planDays].sort(),
     dayTemplates: existing ? (existing.dayTemplates || {}) : {},
+    rir: document.getElementById('plan-rir-toggle').checked,
+    mesocycleLength: parseInt(document.getElementById('plan-mesocycle-length').value, 10),
   };
   delete document.getElementById('plan-name').dataset.editId;
   const errEl = document.getElementById('plan-error');
@@ -898,6 +964,9 @@ window.loadPlanIntoForm = function(id) {
   document.getElementById('plan-name').dataset.editId = plan.id;
   document.getElementById('plan-start').value = plan.start;
   document.getElementById('plan-end').value   = plan.end;
+  document.getElementById('plan-rir-toggle').checked = !!plan.rir;
+  document.getElementById('plan-rir-options').style.display = plan.rir ? '' : 'none';
+  document.getElementById('plan-mesocycle-length').value = plan.mesocycleLength || 4;
   state.planDays = new Set(plan.workoutDays);
   document.querySelectorAll('.day-btn').forEach(btn => {
     btn.classList.toggle('active', state.planDays.has(Number(btn.dataset.dow)));
@@ -1126,6 +1195,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   document.getElementById('btn-save-plan').addEventListener('click', savePlan);
+  document.getElementById('plan-rir-toggle').addEventListener('change', e => {
+    document.getElementById('plan-rir-options').style.display = e.target.checked ? '' : 'none';
+  });
 
   navigate('home');
 });
