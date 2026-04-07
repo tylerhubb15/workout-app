@@ -905,23 +905,25 @@ function renderPlanDayMuscles() {
   const rows = Object.keys(MUSCLE_MAP).map(group => {
     const count = counts[group] || 0;
     const selected = template.filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group).length;
-    const canDrill = count > 0;
-    const metaText = count > 0 ? `${selected}/${count} chosen` : '';
-    const metaColor = (selected === count && count > 0) ? 'var(--green)' : 'var(--text2)';
-    const arrow = canDrill ? `<span class="muscle-row-arrow">›</span>` : '';
+    const done = selected === count && count > 0;
+    const metaColor = done ? 'var(--green)' : 'var(--accent)';
+
+    const drillBtn = count > 0 ? `
+      <button class="muscle-drill-btn" onclick="openMuscleGroupPicker('${group}')">
+        ${selected}/${count} chosen — Select exercises ›
+      </button>` : '';
 
     return `
       <div class="muscle-count-row">
-        <div class="muscle-count-label-wrap" ${canDrill ? `onclick="openMuscleGroupPicker('${group}')" style="cursor:pointer"` : ''}>
+        <div class="muscle-count-label-wrap">
           <div class="muscle-count-label">${group}</div>
-          ${metaText ? `<div class="muscle-count-meta" style="color:${metaColor}">${metaText}</div>` : ''}
+          <div style="color:${metaColor}">${drillBtn}</div>
         </div>
         <div class="muscle-count-stepper">
           <button class="stepper-btn" onclick="adjustMuscleCount('${group}',-1)">−</button>
           <span class="stepper-val">${count}</span>
           <button class="stepper-btn" onclick="adjustMuscleCount('${group}',1)">+</button>
         </div>
-        ${arrow}
       </div>`;
   }).join('');
 
@@ -963,45 +965,62 @@ function renderMuscleGroupPicker() {
   const dow = state.editingPlanDow;
   const limit = state.editingPlanMuscleCounts[group] || 0;
   const template = state.editingPlan.dayTemplates[dow] || [];
-  const selectedNames = template
-    .filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group)
-    .map(e => e.name);
-  const selectedCount = selectedNames.length;
+  // Selected exercises for this group, in their current order
+  const selectedExs = template.filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group);
+  const selectedNames = selectedExs.map(e => e.name);
+  const selectedCount = selectedExs.length;
+  const atLimit = selectedCount >= limit;
 
   document.getElementById('plan-muscle-picker-title').textContent = group;
   const subtitleEl = document.getElementById('plan-muscle-picker-subtitle');
   subtitleEl.textContent = `${selectedCount} of ${limit} selected`;
   subtitleEl.style.color = selectedCount === limit ? 'var(--green)' : 'var(--text2)';
 
-  const exercises = MUSCLE_MAP[group] || [];
-  const rows = exercises.map(name => {
-    const isSel = selectedNames.includes(name);
-    const ex = isSel ? template.find(e => e.name === name) : null;
-    const setCount = ex ? ex.sets.length : 3;
-    const atLimit = !isSel && selectedCount >= limit;
-
-    const checkSvg = isSel
-      ? `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>`
-      : '';
-
-    const setAdjuster = isSel ? `
-      <div class="ex-pick-sets" onclick="event.stopPropagation()">
-        <span class="ex-pick-sets-label">Sets</span>
-        <button class="stepper-btn" style="width:26px;height:26px;font-size:15px" onclick="adjustExSetCount('${escHtml(name)}',-1)">−</button>
-        <span class="stepper-val" style="font-size:14px;min-width:18px">${setCount}</span>
-        <button class="stepper-btn" style="width:26px;height:26px;font-size:15px" onclick="adjustExSetCount('${escHtml(name)}',1)">+</button>
-      </div>` : '';
-
+  // ── Selected section (reorderable) ──
+  const checkSvg = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>`;
+  const selectedRows = selectedExs.map((ex, i) => {
+    const isFirst = i === 0;
+    const isLast  = i === selectedExs.length - 1;
     return `
-      <div class="ex-pick-row${isSel ? ' selected' : ''}${atLimit ? ' at-limit' : ''}"
-           onclick="toggleMuscleExercise('${escHtml(name)}')">
+      <div class="ex-pick-row selected">
         <div class="ex-pick-check">${checkSvg}</div>
-        <div class="ex-pick-name">${escHtml(name)}</div>
-        ${setAdjuster}
+        <div class="ex-pick-name">${escHtml(ex.name)}</div>
+        <div class="ex-pick-reorder" onclick="event.stopPropagation()">
+          <button class="reorder-btn${isFirst ? ' disabled' : ''}" onclick="reorderMuscleExercise('${escHtml(ex.name)}','up')" ${isFirst ? 'disabled' : ''}>▲</button>
+          <button class="reorder-btn${isLast ? ' disabled' : ''}" onclick="reorderMuscleExercise('${escHtml(ex.name)}','down')" ${isLast ? 'disabled' : ''}>▼</button>
+        </div>
+        <div class="ex-pick-sets" onclick="event.stopPropagation()">
+          <span class="ex-pick-sets-label">Sets</span>
+          <button class="stepper-btn" style="width:26px;height:26px;font-size:15px" onclick="adjustExSetCount('${escHtml(ex.name)}',-1)">−</button>
+          <span class="stepper-val" style="font-size:14px;min-width:18px">${ex.sets.length}</span>
+          <button class="stepper-btn" style="width:26px;height:26px;font-size:15px" onclick="adjustExSetCount('${escHtml(ex.name)}',1)">+</button>
+        </div>
+        <button class="ex-pick-remove" onclick="toggleMuscleExercise('${escHtml(ex.name)}')" title="Remove">×</button>
       </div>`;
   }).join('');
 
-  document.getElementById('plan-muscle-picker-body').innerHTML = rows || `<div class="empty-state"><div class="empty-label">No exercises found.</div></div>`;
+  // ── Custom exercise input ──
+  const customInput = !atLimit ? `
+    <div class="custom-ex-row">
+      <input type="text" id="custom-ex-input" class="input" placeholder="Custom exercise name…" autocomplete="off" style="flex:1;height:38px;font-size:13px" />
+      <button class="btn btn-primary btn-sm" onclick="addCustomMuscleExercise()">+ Add</button>
+    </div>` : '';
+
+  // ── Available exercises ──
+  const available = (MUSCLE_MAP[group] || []).filter(n => !selectedNames.includes(n));
+  const availableRows = available.map(name => `
+    <div class="ex-pick-row${atLimit ? ' at-limit' : ''}" onclick="${atLimit ? '' : `toggleMuscleExercise('${escHtml(name)}')`}">
+      <div class="ex-pick-check"></div>
+      <div class="ex-pick-name">${escHtml(name)}</div>
+    </div>`).join('');
+
+  const selectedSection = selectedRows
+    ? `<div class="picker-section-label">Selected</div>${selectedRows}<div class="picker-section-divider"></div>`
+    : '';
+  const availableSection = `<div class="picker-section-label">Available</div>${availableRows || '<div class="empty-state" style="padding:12px 0"><div class="empty-label">All exercises selected.</div></div>'}`;
+
+  document.getElementById('plan-muscle-picker-body').innerHTML =
+    `${selectedSection}${customInput}${availableSection}`;
 }
 
 window.toggleMuscleExercise = function(name) {
@@ -1035,6 +1054,53 @@ window.adjustExSetCount = function(name, delta) {
   } else if (ex.sets.length > 1) {
     ex.sets.pop();
   }
+  renderMuscleGroupPicker();
+};
+
+window.reorderMuscleExercise = function(name, direction) {
+  const dow = state.editingPlanDow;
+  const group = state.editingPlanMuscleGroup;
+  const exercises = state.editingPlan.dayTemplates[dow] || [];
+  // Find all indices of exercises in this group
+  const groupIndices = exercises
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => (e.muscleGroup || getMuscleGroup(e.name)) === group)
+    .map(({ i }) => i);
+  const posInGroup = groupIndices.findIndex(i => exercises[i].name === name);
+  if (posInGroup < 0) return;
+
+  if (direction === 'up' && posInGroup > 0) {
+    const a = groupIndices[posInGroup];
+    const b = groupIndices[posInGroup - 1];
+    [exercises[a], exercises[b]] = [exercises[b], exercises[a]];
+  } else if (direction === 'down' && posInGroup < groupIndices.length - 1) {
+    const a = groupIndices[posInGroup];
+    const b = groupIndices[posInGroup + 1];
+    [exercises[a], exercises[b]] = [exercises[b], exercises[a]];
+  }
+  renderMuscleGroupPicker();
+};
+
+window.addCustomMuscleExercise = function() {
+  const input = document.getElementById('custom-ex-input');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) return;
+  const dow = state.editingPlanDow;
+  const group = state.editingPlanMuscleGroup;
+  const limit = state.editingPlanMuscleCounts[group] || 0;
+  if (!state.editingPlan.dayTemplates[dow]) state.editingPlan.dayTemplates[dow] = [];
+  const exercises = state.editingPlan.dayTemplates[dow];
+  const selected = exercises.filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group).length;
+  if (selected >= limit) return;
+  // Don't add duplicates
+  if (exercises.some(e => e.name.toLowerCase() === name.toLowerCase())) return;
+  exercises.push({
+    name,
+    muscleGroup: group,
+    sets: Array.from({ length: 3 }, () => ({ weight: 0, reps: 0 })),
+  });
+  input.value = '';
   renderMuscleGroupPicker();
 };
 

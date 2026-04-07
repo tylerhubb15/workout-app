@@ -1404,6 +1404,21 @@ body.seen #splash { display: none; }
   color: var(--text);
 }
 
+.muscle-drill-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(129,140,248,0.12);
+  border: 1px solid rgba(129,140,248,0.25);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .muscle-count-meta {
   font-size: 11px;
   margin-top: 2px;
@@ -1497,6 +1512,65 @@ body.seen #splash { display: none; }
   font-size: 11px;
   color: var(--text2);
   font-weight: 500;
+}
+
+.ex-pick-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.reorder-btn {
+  background: var(--surface2);
+  border: 1px solid var(--surface3);
+  border-radius: 4px;
+  color: var(--text2);
+  font-size: 9px;
+  width: 22px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
+.reorder-btn:active { background: var(--accent-dim); color: #fff; }
+.reorder-btn.disabled { opacity: 0.25; cursor: default; }
+
+.ex-pick-remove {
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.ex-pick-remove:active { color: var(--red); }
+
+.picker-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  padding: 16px 0 6px;
+}
+.picker-section-label:first-child { padding-top: 8px; }
+
+.picker-section-divider {
+  height: 1px;
+  background: var(--surface3);
+  margin: 8px 0;
+}
+
+.custom-ex-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
 }
 
 /* ── Safe area for iOS ─────────────────────────────────── */
