@@ -1382,10 +1382,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-splash-dismiss').addEventListener('click', () => {
     localStorage.setItem('wt_seen', '1');
     splash.classList.add('hidden');
+    splash.style.display = '';
   });
 
   window.showSplash = function() {
     splash.classList.remove('hidden');
+    splash.style.display = 'flex';
   };
 
   // Bottom nav
