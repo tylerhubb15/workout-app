@@ -1374,7 +1374,7 @@ document.addEventListener('DOMContentLoaded', () => {
   registerServiceWorker();
   updateThemeBtn();
 
-  // Splash screen — show once, then never again
+  // Splash screen — show once on first visit; re-openable via info icon
   const splash = document.getElementById('splash');
   if (localStorage.getItem('wt_seen')) {
     splash.classList.add('hidden');
@@ -1383,6 +1383,10 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('wt_seen', '1');
     splash.classList.add('hidden');
   });
+
+  window.showSplash = function() {
+    splash.classList.remove('hidden');
+  };
 
   // Bottom nav
   document.querySelectorAll('.nav-btn').forEach(btn => {
