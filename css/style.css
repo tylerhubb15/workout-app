@@ -1196,8 +1196,9 @@ body.light .ex-chip { border-color: var(--border2); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 32px 28px;
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding: 48px 28px 40px;
   gap: 0;
 }
 #splash.hidden { display: none; }
