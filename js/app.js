@@ -1383,6 +1383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('wt_seen', '1');
     splash.classList.add('hidden');
     splash.style.display = '';
+    document.body.classList.add('seen');
   });
 
   window.showSplash = function() {
