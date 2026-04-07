@@ -264,8 +264,13 @@ function renderTodayPlan() {
 
   el.innerHTML = `
     <div class="today-plan-card">
-      <div class="today-plan-label">${label} — ${escHtml(plan.name)} ${rirBadge}</div>
-      <div class="today-plan-exercises">${exList}</div>
+      <div class="today-plan-card-top">
+        <div>
+          <div class="today-plan-label">${label} — ${escHtml(plan.name)} ${rirBadge}</div>
+          <div class="today-plan-exercises">${exList}</div>
+        </div>
+        <button class="today-plan-start-btn" onclick="selectDay('${targetIso}')">Start ›</button>
+      </div>
     </div>`;
 }
 

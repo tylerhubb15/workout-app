@@ -219,7 +219,7 @@ body {
 
 /* ── Home View ─────────────────────────────────────────── */
 .home-hero {
-  padding: 28px 20px 24px;
+  padding: calc(max(28px, env(safe-area-inset-top) + 16px)) 20px 24px;
   position: relative;
 }
 
@@ -234,8 +234,8 @@ body {
   background: var(--surface2);
   border: 1px solid var(--border2);
   border-radius: 50%;
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -243,6 +243,7 @@ body {
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
+  touch-action: manipulation;
 }
 .btn-theme-toggle:active {
   background: var(--accent);
@@ -280,6 +281,31 @@ body {
   border-left: 2px solid var(--accent);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
+}
+
+.today-plan-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.today-plan-card-top > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.today-plan-start-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  white-space: nowrap;
 }
 
 .today-plan-label {
