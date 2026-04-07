@@ -102,6 +102,8 @@ const state = {
   planDays: new Set(), // DOW indices selected in plan form
   editingPlan: null,   // plan whose days are being edited
   editingPlanDow: null,// day-of-week being edited in plan template
+  editingPlanMuscleCounts: {}, // { 'Chest': 2, 'Back': 3 } — stepper values for current day
+  editingPlanMuscleGroup: null,// which muscle group picker is open
   exMuscleFilter: null,  // active muscle group string or null
   exEquipFilter:  null,  // active equipment group string or null
 };
@@ -189,8 +191,10 @@ function navigate(view) {
   if (view === 'calendar') renderCalendar();
   if (view === 'history')  renderHistory();
   if (view === 'exercise') renderExerciseForm();
-  if (view === 'plan')         renderPlan();
-  if (view === 'plan-editor')  renderPlanEditor();
+  if (view === 'plan')              renderPlan();
+  if (view === 'plan-editor')       renderPlanEditor();
+  if (view === 'plan-day-muscles')  renderPlanDayMuscles();
+  if (view === 'plan-muscle-picker') renderMuscleGroupPicker();
 
   window.scrollTo(0, 0);
 }
@@ -837,30 +841,17 @@ function renderPlanEditor() {
     const exercises = (plan.dayTemplates[dow] || []);
     const exRows = exercises.length === 0
       ? `<div class="empty-state" style="padding:12px 0 4px"><div class="empty-label">No exercises set.</div></div>`
-      : exercises.map((ex, ei) => {
-          const setMeta = ex.sets.map(s => `${s.weight}lbs×${s.reps}`).join(', ');
-          return `
+      : exercises.map(ex => `
             <div class="plan-day-ex-row">
-              <div>
-                <div class="plan-day-ex-name">${escHtml(ex.name)}</div>
-                <div class="plan-day-ex-meta">${setMeta || 'No sets'}</div>
-              </div>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-secondary btn-sm" onclick="planTemplateEditEx(${dow},${ei})">Edit</button>
-                <button class="btn btn-icon btn-secondary" onclick="planTemplateRemoveEx(${dow},${ei})">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
-                  </svg>
-                </button>
-              </div>
-            </div>`;
-        }).join('');
+              <div class="plan-day-ex-name">${escHtml(ex.name)}</div>
+              <div class="plan-day-ex-meta">${ex.sets.length} set${ex.sets.length !== 1 ? 's' : ''}</div>
+            </div>`).join('');
 
     return `
       <div class="plan-day-card">
         <div class="plan-day-card-header">
           <span class="plan-day-card-title">${DOW_NAMES[dow]}</span>
-          <button class="btn btn-secondary btn-sm" onclick="planTemplateAddEx(${dow})">+ Add Exercise</button>
+          <button class="btn btn-primary btn-sm" onclick="openPlanDayMuscles(${dow})">Configure Day</button>
         </div>
         <div class="plan-day-card-body">${exRows}</div>
       </div>`;
@@ -886,6 +877,170 @@ window.planTemplateRemoveEx = function(dow, ei) {
   state.editingPlan.dayTemplates[dow].splice(ei, 1);
   upsertPlan(state.editingPlan);
   renderPlanEditor();
+};
+
+// ── Plan Day Muscle Count Flow ────────────────────────────
+window.openPlanDayMuscles = function(dow) {
+  state.editingPlanDow = dow;
+  // Derive current counts from existing exercises in this day's template
+  const existing = state.editingPlan.dayTemplates[dow] || [];
+  const counts = {};
+  for (const ex of existing) {
+    const g = ex.muscleGroup || getMuscleGroup(ex.name) || 'Other';
+    counts[g] = (counts[g] || 0) + 1;
+  }
+  state.editingPlanMuscleCounts = counts;
+  navigate('plan-day-muscles');
+};
+
+function renderPlanDayMuscles() {
+  const plan = state.editingPlan;
+  if (!plan) return;
+  const dow = state.editingPlanDow;
+  document.getElementById('plan-day-muscles-title').textContent = DOW_NAMES[dow];
+
+  const template = plan.dayTemplates[dow] || [];
+  const counts = state.editingPlanMuscleCounts;
+
+  const rows = Object.keys(MUSCLE_MAP).map(group => {
+    const count = counts[group] || 0;
+    const selected = template.filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group).length;
+    const canDrill = count > 0;
+    const metaText = count > 0 ? `${selected}/${count} chosen` : '';
+    const metaColor = (selected === count && count > 0) ? 'var(--green)' : 'var(--text2)';
+    const arrow = canDrill ? `<span class="muscle-row-arrow">›</span>` : '';
+
+    return `
+      <div class="muscle-count-row">
+        <div class="muscle-count-label-wrap" ${canDrill ? `onclick="openMuscleGroupPicker('${group}')" style="cursor:pointer"` : ''}>
+          <div class="muscle-count-label">${group}</div>
+          ${metaText ? `<div class="muscle-count-meta" style="color:${metaColor}">${metaText}</div>` : ''}
+        </div>
+        <div class="muscle-count-stepper">
+          <button class="stepper-btn" onclick="adjustMuscleCount('${group}',-1)">−</button>
+          <span class="stepper-val">${count}</span>
+          <button class="stepper-btn" onclick="adjustMuscleCount('${group}',1)">+</button>
+        </div>
+        ${arrow}
+      </div>`;
+  }).join('');
+
+  document.getElementById('plan-day-muscles-body').innerHTML = rows;
+}
+
+window.adjustMuscleCount = function(group, delta) {
+  const current = state.editingPlanMuscleCounts[group] || 0;
+  const newCount = Math.max(0, current + delta);
+  state.editingPlanMuscleCounts[group] = newCount;
+
+  // If count decreased, trim excess exercises from that group
+  const dow = state.editingPlanDow;
+  if (!state.editingPlan.dayTemplates[dow]) state.editingPlan.dayTemplates[dow] = [];
+  const exercises = state.editingPlan.dayTemplates[dow];
+  const groupExercises = exercises.filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group);
+  if (groupExercises.length > newCount) {
+    const toRemove = groupExercises.length - newCount;
+    for (let i = 0; i < toRemove; i++) {
+      // Find the last occurrence of this group and remove it
+      for (let j = exercises.length - 1; j >= 0; j--) {
+        if ((exercises[j].muscleGroup || getMuscleGroup(exercises[j].name)) === group) {
+          exercises.splice(j, 1);
+          break;
+        }
+      }
+    }
+  }
+  renderPlanDayMuscles();
+};
+
+window.openMuscleGroupPicker = function(group) {
+  state.editingPlanMuscleGroup = group;
+  navigate('plan-muscle-picker');
+};
+
+function renderMuscleGroupPicker() {
+  const group = state.editingPlanMuscleGroup;
+  const dow = state.editingPlanDow;
+  const limit = state.editingPlanMuscleCounts[group] || 0;
+  const template = state.editingPlan.dayTemplates[dow] || [];
+  const selectedNames = template
+    .filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group)
+    .map(e => e.name);
+  const selectedCount = selectedNames.length;
+
+  document.getElementById('plan-muscle-picker-title').textContent = group;
+  const subtitleEl = document.getElementById('plan-muscle-picker-subtitle');
+  subtitleEl.textContent = `${selectedCount} of ${limit} selected`;
+  subtitleEl.style.color = selectedCount === limit ? 'var(--green)' : 'var(--text2)';
+
+  const exercises = MUSCLE_MAP[group] || [];
+  const rows = exercises.map(name => {
+    const isSel = selectedNames.includes(name);
+    const ex = isSel ? template.find(e => e.name === name) : null;
+    const setCount = ex ? ex.sets.length : 3;
+    const atLimit = !isSel && selectedCount >= limit;
+
+    const checkSvg = isSel
+      ? `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>`
+      : '';
+
+    const setAdjuster = isSel ? `
+      <div class="ex-pick-sets" onclick="event.stopPropagation()">
+        <span class="ex-pick-sets-label">Sets</span>
+        <button class="stepper-btn" style="width:26px;height:26px;font-size:15px" onclick="adjustExSetCount('${escHtml(name)}',-1)">−</button>
+        <span class="stepper-val" style="font-size:14px;min-width:18px">${setCount}</span>
+        <button class="stepper-btn" style="width:26px;height:26px;font-size:15px" onclick="adjustExSetCount('${escHtml(name)}',1)">+</button>
+      </div>` : '';
+
+    return `
+      <div class="ex-pick-row${isSel ? ' selected' : ''}${atLimit ? ' at-limit' : ''}"
+           onclick="toggleMuscleExercise('${escHtml(name)}')">
+        <div class="ex-pick-check">${checkSvg}</div>
+        <div class="ex-pick-name">${escHtml(name)}</div>
+        ${setAdjuster}
+      </div>`;
+  }).join('');
+
+  document.getElementById('plan-muscle-picker-body').innerHTML = rows || `<div class="empty-state"><div class="empty-label">No exercises found.</div></div>`;
+}
+
+window.toggleMuscleExercise = function(name) {
+  const dow = state.editingPlanDow;
+  const group = state.editingPlanMuscleGroup;
+  const limit = state.editingPlanMuscleCounts[group] || 0;
+  if (!state.editingPlan.dayTemplates[dow]) state.editingPlan.dayTemplates[dow] = [];
+  const exercises = state.editingPlan.dayTemplates[dow];
+  const idx = exercises.findIndex(e => e.name === name && (e.muscleGroup || getMuscleGroup(e.name)) === group);
+  if (idx >= 0) {
+    exercises.splice(idx, 1);
+  } else {
+    const selected = exercises.filter(e => (e.muscleGroup || getMuscleGroup(e.name)) === group).length;
+    if (selected >= limit) return; // at limit, ignore
+    exercises.push({
+      name,
+      muscleGroup: group,
+      sets: Array.from({ length: 3 }, () => ({ weight: 0, reps: 0 })),
+    });
+  }
+  renderMuscleGroupPicker();
+};
+
+window.adjustExSetCount = function(name, delta) {
+  const dow = state.editingPlanDow;
+  const exercises = state.editingPlan.dayTemplates[dow] || [];
+  const ex = exercises.find(e => e.name === name);
+  if (!ex) return;
+  if (delta > 0) {
+    ex.sets.push({ weight: 0, reps: 0 });
+  } else if (ex.sets.length > 1) {
+    ex.sets.pop();
+  }
+  renderMuscleGroupPicker();
+};
+
+window.savePlanDay = function() {
+  upsertPlan(state.editingPlan);
+  navigate('plan-editor');
 };
 
 // ── Plan ──────────────────────────────────────────────────
@@ -1198,6 +1353,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Plan editor
   document.getElementById('btn-plan-editor-back').addEventListener('click', () => navigate('plan'));
+
+  // Plan day muscle count + picker
+  document.getElementById('btn-plan-day-muscles-back').addEventListener('click', () => navigate('plan-editor'));
+  document.getElementById('btn-plan-day-muscles-done').addEventListener('click', savePlanDay);
+  document.getElementById('btn-plan-muscle-picker-back').addEventListener('click', () => navigate('plan-day-muscles'));
 
   // Plan — day toggles + save
   document.querySelectorAll('.day-btn').forEach(btn => {
