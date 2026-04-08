@@ -354,12 +354,48 @@ function renderTodayPlan() {
 
 function renderStats() {
   const workouts = loadWorkouts();
-  const totalEx  = workouts.reduce((n, w) => n + w.exercises.length, 0);
-  const totalSets = workouts.reduce((n, w) =>
-    n + w.exercises.reduce((m, ex) => m + ex.sets.length, 0), 0);
-  document.getElementById('stat-total').textContent     = workouts.length;
-  document.getElementById('stat-exercises').textContent = totalEx;
-  document.getElementById('stat-sets').textContent      = totalSets;
+  const today = todayISO();
+
+  // Streak: consecutive days going back from today (or yesterday if today not logged)
+  const loggedDates = new Set(workouts.map(w => w.date));
+  let streak = 0;
+  const startFrom = loggedDates.has(today) ? 0 : 1;
+  for (let i = startFrom; i < 365; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    if (loggedDates.has(iso)) { streak++; } else { break; }
+  }
+
+  // This week: Mon–Sun containing today
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun
+  const mondayOffset = (dow === 0 ? -6 : 1 - dow);
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const weekCount = workouts.filter(w => {
+    const d = new Date(w.date + 'T00:00:00');
+    return d >= monday && d <= sunday;
+  }).length;
+
+  // Last workout
+  const sorted = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+  const last = sorted[0];
+  let lastName = '—', lastLabel = 'Last workout';
+  if (last) {
+    lastName = last.name || 'Workout';
+    const diffMs = new Date(today + 'T00:00:00') - new Date(last.date + 'T00:00:00');
+    const diffDays = Math.round(diffMs / 86400000);
+    lastLabel = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : `${diffDays}d ago`;
+  }
+
+  document.getElementById('stat-streak').textContent   = streak;
+  document.getElementById('stat-week').textContent     = weekCount;
+  document.getElementById('stat-last-name').textContent = lastName;
+  document.getElementById('stat-last-label').textContent = lastLabel;
 }
 
 function setRowHTML(s, i, prWeight) {

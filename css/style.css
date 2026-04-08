@@ -488,6 +488,20 @@ body {
   letter-spacing: 0.06em;
 }
 
+.stat-chip-last {
+  flex: 1.4;
+  min-width: 0;
+}
+
+.stat-chip-last-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Section Title ─────────────────────────────────────── */
 .section-title {
   font-size: 11px;
