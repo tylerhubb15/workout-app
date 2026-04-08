@@ -62,3 +62,27 @@ export function saveActivePlanId(id) {
   if (id) localStorage.setItem(ACTIVE_PLAN_KEY, id);
   else localStorage.removeItem(ACTIVE_PLAN_KEY);
 }
+
+// ── Body Weight Log ───────────────────────────────────────
+const BW_KEY = 'wt_bodyweights';
+
+export function loadBodyWeights() {
+  try { return JSON.parse(localStorage.getItem(BW_KEY)) || []; } catch { return []; }
+}
+
+export function saveBodyWeights(entries) {
+  localStorage.setItem(BW_KEY, JSON.stringify(entries));
+}
+
+export function logBodyWeight(date, weight) {
+  const entries = loadBodyWeights();
+  const i = entries.findIndex(e => e.date === date);
+  if (i !== -1) entries[i].weight = weight;
+  else entries.push({ date, weight });
+  entries.sort((a, b) => b.date.localeCompare(a.date));
+  saveBodyWeights(entries);
+}
+
+export function deleteBodyWeight(date) {
+  saveBodyWeights(loadBodyWeights().filter(e => e.date !== date));
+}

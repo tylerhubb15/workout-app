@@ -1,4 +1,4 @@
-import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan, loadActivePlanId, saveActivePlanId } from './storage.js';
+import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan, loadActivePlanId, saveActivePlanId, loadBodyWeights, logBodyWeight, deleteBodyWeight } from './storage.js';
 
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
@@ -255,6 +255,8 @@ const state = {
   editingPlanMuscleGroup: null,// which muscle group picker is open
   exMuscleFilter: null,  // active muscle group string or null
   exEquipFilter:  null,  // active equipment group string or null
+  exHistoryName:   null, // exercise name for exercise-history view
+  exHistoryBackTo: 'history',
 };
 
 // ── RIR Helpers ───────────────────────────────────────────
@@ -412,12 +414,14 @@ function navigate(view) {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
 
-  if (view === 'home')     renderHome();
-  if (view === 'workout')  renderWorkout();
-  if (view === 'day')      renderDay();
-  if (view === 'calendar') renderCalendar();
-  if (view === 'history')  renderHistory();
-  if (view === 'exercise') renderExerciseForm();
+  if (view === 'home')             renderHome();
+  if (view === 'workout')          renderWorkout();
+  if (view === 'day')              renderDay();
+  if (view === 'calendar')         renderCalendar();
+  if (view === 'history')          renderHistory();
+  if (view === 'exercise')         renderExerciseForm();
+  if (view === 'bodyweight')       renderBodyWeight();
+  if (view === 'exercise-history') renderExerciseHistory();
   if (view === 'plan')              renderPlan();
   if (view === 'plan-editor')       renderPlanEditor();
   if (view === 'plan-day-muscles')  renderPlanDayMuscles();
@@ -432,6 +436,7 @@ function renderHome() {
     weekday: 'long', month: 'long', day: 'numeric',
   });
   renderStats();
+  renderBwHomeWidget();
   renderTodayPlan();
 }
 
@@ -545,6 +550,142 @@ function renderStats() {
   document.getElementById('stat-week').textContent     = weekCount;
   document.getElementById('stat-last-name').textContent = lastName;
   document.getElementById('stat-last-label').textContent = lastLabel;
+}
+
+// ── Body Weight ───────────────────────────────────────────
+function makeSvgLineChart(data, { w = 300, h = 90 } = {}) {
+  if (data.length < 2) return '';
+  const pad = { t: 8, b: 22, l: 38, r: 8 };
+  const iW = w - pad.l - pad.r;
+  const iH = h - pad.t - pad.b;
+  const vals = data.map(d => d.value);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const rangeV = maxV - minV || 1;
+  const xS = i => pad.l + (i / (data.length - 1)) * iW;
+  const yS = v => pad.t + iH - ((v - minV) / rangeV) * iH;
+  const pts = data.map((d, i) => `${xS(i).toFixed(1)},${yS(d.value).toFixed(1)}`).join(' ');
+  const dots = data.map((d, i) =>
+    `<circle cx="${xS(i).toFixed(1)}" cy="${yS(d.value).toFixed(1)}" r="3" fill="var(--accent)"/>`
+  ).join('');
+  const yLabels = [minV, maxV].map(v =>
+    `<text x="${pad.l - 5}" y="${yS(v) + 4}" text-anchor="end" font-size="9" fill="var(--text3)">${v}</text>`
+  ).join('');
+  const fmtDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const xLabels = `
+    <text x="${pad.l}" y="${h - 3}" text-anchor="start" font-size="9" fill="var(--text3)">${fmtDate(data[0].date)}</text>
+    <text x="${w - pad.r}" y="${h - 3}" text-anchor="end" font-size="9" fill="var(--text3)">${fmtDate(data[data.length - 1].date)}</text>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible">
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>
+    ${dots}${yLabels}${xLabels}
+  </svg>`;
+}
+
+function renderSparkline(entries) {
+  if (entries.length < 2) return '';
+  const vals = entries.map(e => e.weight);
+  const minV = Math.min(...vals), maxV = Math.max(...vals), rng = maxV - minV || 1;
+  const sw = 60, sh = 24;
+  const xS = i => (i / (entries.length - 1)) * sw;
+  const yS = v => sh - 2 - ((v - minV) / rng) * (sh - 4);
+  const pts = entries.map((e, i) => `${xS(i).toFixed(1)},${yS(e.weight).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${sw} ${sh}" width="${sw}" height="${sh}" style="display:block">
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function renderBwHomeWidget() {
+  const entries = loadBodyWeights();
+  const valEl   = document.getElementById('bw-home-value');
+  const sparkEl = document.getElementById('bw-home-sparkline');
+  if (!valEl) return;
+  if (entries.length === 0) { valEl.textContent = '— lbs'; sparkEl.innerHTML = ''; return; }
+  valEl.textContent = entries[0].weight + ' lbs';
+  sparkEl.innerHTML = renderSparkline([...entries].slice(0, 14).reverse());
+}
+
+function renderBodyWeight() {
+  const entries = loadBodyWeights();
+  document.getElementById('bw-date').value  = todayISO();
+  const todayEntry = entries.find(e => e.date === todayISO());
+  document.getElementById('bw-input').value = todayEntry ? todayEntry.weight : '';
+
+  const graphEl = document.getElementById('bw-graph-section');
+  if (entries.length >= 2) {
+    const chartData = [...entries].reverse().map(e => ({ date: e.date, value: e.weight }));
+    graphEl.innerHTML = `<div class="bw-graph-wrap">${makeSvgLineChart(chartData, { w: 320, h: 100 })}</div>`;
+  } else {
+    graphEl.innerHTML = entries.length === 0
+      ? '<div class="bw-empty">No entries yet — log your first weight above.</div>' : '';
+  }
+
+  const listEl = document.getElementById('bw-list');
+  if (entries.length === 0) { listEl.innerHTML = ''; return; }
+  listEl.innerHTML = `
+    <div class="section-title" style="padding: 16px 0 8px">History</div>
+    ${entries.map(e => `
+      <div class="bw-list-row">
+        <span class="bw-list-date">${formatDate(e.date)}</span>
+        <span class="bw-list-weight">${e.weight} lbs</span>
+        <button class="btn btn-ghost btn-sm" onclick="deleteBwEntry('${e.date}')">Remove</button>
+      </div>`).join('')}`;
+}
+
+window.deleteBwEntry = function(date) {
+  deleteBodyWeight(date);
+  renderBodyWeight();
+  renderBwHomeWidget();
+};
+
+// ── Exercise History ──────────────────────────────────────
+window.showExerciseHistory = function(name, event) {
+  event.stopPropagation();
+  state.exHistoryName   = name;
+  state.exHistoryBackTo = state.view;
+  navigate('exercise-history');
+};
+
+function renderExerciseHistory() {
+  const name = state.exHistoryName;
+  document.getElementById('ex-history-title').textContent = name || 'Exercise';
+
+  const workouts = loadWorkouts();
+  const sessions = workouts
+    .filter(w => w.exercises.some(e => e.name === name))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const content = document.getElementById('ex-history-content');
+  if (sessions.length === 0) {
+    content.innerHTML = '<div class="ex-history-empty">No history logged for this exercise yet.</div>';
+    return;
+  }
+
+  // Graph: max weight per session
+  const graphData = sessions.map(w => {
+    const ex  = w.exercises.find(e => e.name === name);
+    const max = Math.max(...ex.sets.map(s => s.weight || 0));
+    return { date: w.date, value: max };
+  });
+
+  const sessionsHtml = [...sessions].reverse().map(w => {
+    const ex = w.exercises.find(e => e.name === name);
+    const setRows = ex.sets.map((s, i) => {
+      const hit = s.actualReps != null ? ` · hit ${s.actualReps}` : '';
+      return `<div class="ex-history-set-row">
+        <span class="ex-history-set-num">Set ${i + 1}</span>
+        <span class="ex-history-set-val">${s.reps} reps × ${s.weight || 0} lbs${hit}</span>
+      </div>`;
+    }).join('');
+    return `<div class="ex-history-session">
+      <div class="ex-history-session-header">${formatDate(w.date)} <span class="ex-history-session-name">· ${escHtml(w.name)}</span></div>
+      ${setRows}
+    </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="ex-history-graph-wrap">${makeSvgLineChart(graphData, { w: 320, h: 100 })}</div>
+    <div class="ex-history-subtitle">Max weight per session</div>
+    <div class="ex-history-sessions">${sessionsHtml}</div>`;
 }
 
 function setRowHTML(s, i, prWeight) {
@@ -1619,7 +1760,7 @@ function historyCardHTML(w, prMap) {
     const setRows = ex.sets.map((s, i) => setRowHTML(s, i, exPR)).join('');
     return `
       <div class="exercise-row">
-        <div class="exercise-row-name">${escHtml(ex.name)}</div>
+        <div class="exercise-row-name ex-history-link" onclick="showExerciseHistory('${escHtml(ex.name)}',event)">${escHtml(ex.name)} <span class="ex-history-link-hint">›</span></div>
         <table class="sets-table">
           <thead><tr><th></th><th>Reps</th><th>Weight</th></tr></thead>
           <tbody>${setRows}</tbody>
@@ -1910,6 +2051,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-save-plan').addEventListener('click', savePlan);
   document.getElementById('plan-rir-toggle').addEventListener('change', e => {
     document.getElementById('plan-rir-options').style.display = e.target.checked ? '' : 'none';
+  });
+
+  // Body weight view
+  document.getElementById('btn-bw-back').addEventListener('click', () => navigate('home'));
+  document.getElementById('btn-bw-save').addEventListener('click', () => {
+    const weight = parseFloat(document.getElementById('bw-input').value);
+    const date   = document.getElementById('bw-date').value || todayISO();
+    if (!weight || weight <= 0 || weight > 999) return;
+    logBodyWeight(date, weight);
+    renderBodyWeight();
+    renderBwHomeWidget();
+  });
+
+  // Exercise history view
+  document.getElementById('btn-ex-history-back').addEventListener('click', () => {
+    navigate(state.exHistoryBackTo || 'history');
   });
 
   navigate('home');

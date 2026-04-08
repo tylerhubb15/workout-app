@@ -127,6 +127,15 @@
           Plans
         </button>
       </div>
+      <div class="bw-home-strip" onclick="navigate('bodyweight')" role="button" tabindex="0">
+        <div class="bw-home-left">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9-4-9-9-9z"/><path d="M12 8v4l2 2"/><path d="M7 12h1M16 12h1M12 7v1M12 16v1"/></svg>
+          <span class="bw-home-label">Body Weight</span>
+          <span class="bw-home-value" id="bw-home-value">— lbs</span>
+        </div>
+        <div id="bw-home-sparkline" class="bw-home-sparkline"></div>
+        <span class="bw-home-arrow">›</span>
+      </div>
       <div class="stats-strip">
         <div class="stat-chip">
           <div class="stat-chip-value" id="stat-streak">0</div>
@@ -346,6 +355,35 @@
     </div>
     <div id="progress-graph-section"></div>
     <div class="history-list" id="history-list"></div>
+  </section>
+
+  <!-- ── Body Weight View ─────────────────────────────── -->
+  <section class="view" id="view-bodyweight">
+    <div class="page-header">
+      <button class="btn-back" id="btn-bw-back">‹</button>
+      <h1>Body Weight</h1>
+    </div>
+    <div class="bw-content">
+      <div class="bw-log-card">
+        <div class="field-label">Log weight</div>
+        <div class="bw-log-row">
+          <input type="number" id="bw-input" placeholder="lbs" step="0.1" min="0" max="999" inputmode="decimal" />
+          <input type="date" id="bw-date" />
+          <button class="btn btn-primary" id="btn-bw-save">Save</button>
+        </div>
+      </div>
+      <div id="bw-graph-section"></div>
+      <div id="bw-list"></div>
+    </div>
+  </section>
+
+  <!-- ── Exercise History View ─────────────────────────── -->
+  <section class="view" id="view-exercise-history">
+    <div class="page-header">
+      <button class="btn-back" id="btn-ex-history-back">‹</button>
+      <h1 id="ex-history-title">Exercise</h1>
+    </div>
+    <div class="ex-history-content" id="ex-history-content"></div>
   </section>
 
   <!-- ── Plan Day Muscle Count Overview ───────────────── -->
