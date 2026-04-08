@@ -361,7 +361,7 @@ function renderWorkout() {
     container.innerHTML = emptyExerciseState();
     return;
   }
-  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'workout')).join('');
+  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'workout', w.exercises.length)).join('');
 }
 
 function syncWorkoutFields() {
@@ -440,9 +440,12 @@ function renderDay() {
   const container = document.getElementById('day-exercises');
   if (w.exercises.length === 0) {
     container.innerHTML = emptyExerciseState();
+    document.getElementById('btn-day-finish-workout').disabled = true;
     return;
   }
-  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'day')).join('');
+  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'day', w.exercises.length)).join('');
+  const allDone = w.exercises.every(ex => ex.sets.every(s => s.done));
+  document.getElementById('btn-day-finish-workout').disabled = !allDone;
 }
 
 // Save or update the day's workout in localStorage
@@ -465,10 +468,11 @@ function persistDay() {
 
 // ── Shared Exercise Card ──────────────────────────────────
 // Used by active workout, day view, and plan template
-function exerciseCardHTML(ex, ei, ctx) {
+function exerciseCardHTML(ex, ei, ctx, totalCount) {
   const canLog   = ctx !== 'planTemplate';
   const planRIR  = ctx === 'planTemplate' && state.editingPlan && state.editingPlan.rir;
-  const muscle   = getMuscleGroup(ex.name);
+  const muscle   = ex.muscleGroup || getMuscleGroup(ex.name);
+  const canReorder = ctx !== 'planTemplate' && totalCount > 1;
   const equip    = getEquipment(ex.name);
 
   const setRows = ex.sets.map((s, si) => {
@@ -507,6 +511,8 @@ function exerciseCardHTML(ex, ei, ctx) {
           ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
+          ${canReorder ? `<button class="reorder-btn${ei === 0 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'up')" ${ei === 0 ? 'disabled' : ''}>▲</button>
+          <button class="reorder-btn${ei === totalCount - 1 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'down')" ${ei === totalCount - 1 ? 'disabled' : ''}>▼</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>
           <button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})" title="Remove">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -562,7 +568,7 @@ window.handleRemoveSet = function(ctx, ei, si) {
 window.handleAddSet = function(ctx, ei) {
   const sets = workoutFor(ctx).exercises[ei].sets;
   const last = sets.slice(-1)[0];
-  sets.push({ reps: last ? last.reps : 0, weight: last ? last.weight : 0 });
+  sets.push({ reps: last ? last.reps : 0, weight: last ? last.weight : 0, ...(last?.rir != null ? { rir: last.rir } : {}) });
   rerenderFor(ctx);
 };
 
@@ -583,6 +589,14 @@ window.handleEditExercise = function(ctx, ei) {
 
 window.handleRemoveExercise = function(ctx, ei) {
   workoutFor(ctx).exercises.splice(ei, 1);
+  rerenderFor(ctx);
+};
+
+window.handleMoveExercise = function(ctx, ei, direction) {
+  const exercises = workoutFor(ctx).exercises;
+  const swapIdx = direction === 'up' ? ei - 1 : ei + 1;
+  if (swapIdx < 0 || swapIdx >= exercises.length) return;
+  [exercises[ei], exercises[swapIdx]] = [exercises[swapIdx], exercises[ei]];
   rerenderFor(ctx);
 };
 
@@ -1171,6 +1185,7 @@ function renderPlan() {
           ${activeBtn}
           <button class="btn btn-primary btn-sm" onclick="openPlanEditor('${p.id}')">Edit Days</button>
           <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit</button>
+          <button class="btn btn-secondary btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
           <button class="btn btn-danger" onclick="confirmDeletePlan('${p.id}')">Delete</button>
         </div>
       </div>`;
@@ -1247,6 +1262,25 @@ window.confirmDeletePlan = function(id) {
     if (loadActivePlanId() === id) saveActivePlanId(null);
     renderPlan();
   }
+};
+
+window.copyPlan = function(id) {
+  const plan = loadPlans().find(p => p.id === id);
+  if (!plan) return;
+  const dur = new Date(plan.end) - new Date(plan.start);
+  const todayStr = todayISO();
+  const endStr = new Date(new Date(todayStr).getTime() + dur).toISOString().slice(0, 10);
+  upsertPlan({
+    id: uid(),
+    name: plan.name + ' (Copy)',
+    start: todayStr,
+    end: endStr,
+    workoutDays: [...plan.workoutDays],
+    dayTemplates: JSON.parse(JSON.stringify(plan.dayTemplates || {})),
+    rir: plan.rir,
+    mesocycleLength: plan.mesocycleLength,
+  });
+  renderPlan();
 };
 
 // ── History ───────────────────────────────────────────────
@@ -1423,22 +1457,12 @@ document.addEventListener('DOMContentLoaded', () => {
     state.editingExIndex  = null;
     navigate('exercise');
   });
-  document.getElementById('btn-day-start-workout').addEventListener('click', () => {
+  document.getElementById('btn-day-finish-workout').addEventListener('click', () => {
     const w = state.dayWorkout;
     if (!w) return;
-    // Move day's planned exercises into the active workout flow
-    state.activeWorkout = {
-      id: w.id,
-      date: w.date,
-      name: w.name || '',
-      exercises: JSON.parse(JSON.stringify(w.exercises)),
-    };
-    // Remove the draft so finishing the workout doesn't create a duplicate
-    const workouts = loadWorkouts();
-    if (workouts.some(x => x.id === w.id)) deleteWorkout(w.id);
+    persistDay();
     state.dayWorkout = null;
-    state.exerciseContext = 'workout';
-    navigate('workout');
+    navigate('calendar');
   });
 
   // Exercise form
