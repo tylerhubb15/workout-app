@@ -1969,6 +1969,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Home
   document.getElementById('btn-start-workout').addEventListener('click', startWorkout);
   document.getElementById('btn-go-plan').addEventListener('click', () => navigate('plan'));
+  document.getElementById('bw-home-strip').addEventListener('click', () => navigate('bodyweight'));
 
   // Active workout
   document.getElementById('btn-workout-back').addEventListener('click', () => {
