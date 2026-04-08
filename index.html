@@ -180,6 +180,10 @@
         <div class="field-label">Date</div>
         <input type="date" id="workout-date" />
       </div>
+      <div>
+        <div class="field-label">Notes</div>
+        <textarea id="workout-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
+      </div>
     </div>
     <div class="section-title">Exercises</div>
     <div class="exercises-section" id="active-exercises"></div>
@@ -197,6 +201,9 @@
         <h1 id="day-view-title"></h1>
         <div class="page-subtitle" id="day-view-subtitle"></div>
       </div>
+    </div>
+    <div style="padding:0 20px 8px">
+      <textarea id="day-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
     </div>
     <div class="exercises-section" id="day-exercises"></div>
     <div class="workout-actions">
@@ -331,7 +338,9 @@
   <section class="view" id="view-history">
     <div class="page-header">
       <h1>History</h1>
+      <button class="btn btn-secondary btn-sm" id="btn-export-csv" onclick="exportToCSV()" style="margin-left:auto">Export CSV</button>
     </div>
+    <div id="progress-graph-section"></div>
     <div class="history-list" id="history-list"></div>
   </section>
 
@@ -358,6 +367,29 @@
     </div>
     <div id="plan-muscle-picker-body" style="padding: 0 20px 32px"></div>
   </section>
+
+  <!-- ── Modal Overlay ─────────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-msg" id="modal-msg"></div>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- ── Rest Timer Chip ────────────────────────────── -->
+  <div class="rest-timer" id="rest-timer" hidden>
+    <div class="rest-timer-inner">
+      <div class="rest-timer-label">Rest</div>
+      <div class="rest-timer-count" id="rest-timer-count">90</div>
+      <div class="rest-timer-presets">
+        <button onclick="setRestTimer(60)">60s</button>
+        <button onclick="setRestTimer(90)">90s</button>
+        <button onclick="setRestTimer(120)">2m</button>
+      </div>
+    </div>
+    <button class="rest-timer-dismiss" onclick="dismissRestTimer()" aria-label="Dismiss timer">×</button>
+  </div>
 
   <!-- ── Bottom Navigation ─────────────────────────── -->
   <nav class="bottom-nav" id="bottom-nav">
