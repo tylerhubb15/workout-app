@@ -434,10 +434,41 @@ function navigate(view) {
 }
 
 // ── Home ──────────────────────────────────────────────────
+const HOME_GREETINGS = [
+  'Lift.',
+  'Let\'s work.',
+  'No excuses.',
+  'Time to grind.',
+  'Show up.',
+  'Get after it.',
+  'Stay consistent.',
+  'One more rep.',
+  'Built different.',
+  'Earn it.',
+  'Do the work.',
+  'Rise & grind.',
+  'Progress, not perfection.',
+  'Trust the process.',
+  'You vs. you.',
+  'Make it count.',
+  'Outwork yesterday.',
+  'Pain is temporary.',
+  'Champions train.',
+  'Prove them wrong.',
+  'Beast mode: on.',
+  'Stronger every day.',
+  'No days off.',
+  'Commit to the grind.',
+  'Leave it all in the gym.',
+];
+
 function renderHome() {
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric',
   });
+  // Pick a phrase that changes daily (same phrase all day, different each day)
+  const dayIndex = Math.floor(Date.now() / 86400000) % HOME_GREETINGS.length;
+  document.getElementById('home-greeting').textContent = HOME_GREETINGS[dayIndex];
   renderStats();
   renderBwHomeWidget();
   renderTodayPlan();
