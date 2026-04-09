@@ -466,9 +466,12 @@ function renderHome() {
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric',
   });
-  // Pick a phrase that changes daily (same phrase all day, different each day)
-  const dayIndex = Math.floor(Date.now() / 86400000) % HOME_GREETINGS.length;
-  document.getElementById('home-greeting').textContent = HOME_GREETINGS[dayIndex];
+  // Pick a phrase once per session (fresh each time the app is opened)
+  if (!sessionStorage.getItem('wt_greeting')) {
+    sessionStorage.setItem('wt_greeting', Math.floor(Math.random() * HOME_GREETINGS.length));
+  }
+  const greetingIndex = parseInt(sessionStorage.getItem('wt_greeting'), 10);
+  document.getElementById('home-greeting').textContent = HOME_GREETINGS[greetingIndex];
   renderStats();
   renderBwHomeWidget();
   renderTodayPlan();
