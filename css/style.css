@@ -2132,6 +2132,44 @@ input.input-error, select.input-error {
   margin-left: 4px;
 }
 
+/* ── PR Toast ──────────────────────────────────────────── */
+#pr-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(251,191,36,0.18), rgba(251,191,36,0.08));
+  border: 1px solid rgba(251,191,36,0.45);
+  border-radius: 14px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+  color: var(--gold);
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease;
+  pointer-events: none;
+}
+#pr-toast.pr-toast-in {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+#pr-toast.pr-toast-out {
+  transform: translateX(-50%) translateY(-100px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.pr-toast-icon { font-size: 20px; line-height: 1; }
+.pr-toast-body { display: flex; flex-direction: column; gap: 1px; }
+.pr-toast-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
+.pr-toast-ex { font-size: 14px; font-weight: 700; }
+.pr-toast-weight { font-size: 12px; opacity: 0.85; }
+
 /* ── Modal Overlay ─────────────────────────────────────── */
 .modal-overlay {
   position: fixed;

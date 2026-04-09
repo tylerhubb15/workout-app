@@ -260,6 +260,7 @@ const state = {
   exEquipFilter:  null,  // active equipment group string or null
   exHistoryName:   null, // exercise name for exercise-history view
   exHistoryBackTo: 'history',
+  _sessionPRs: {}, // max weight logged per exercise in the current active workout session
 };
 
 // ── RIR Helpers ───────────────────────────────────────────
@@ -357,6 +358,24 @@ function showModal({ title, msg, onConfirm, confirmText = 'OK', confirmClass = '
 // Convenience wrappers
 function showAlert(title, msg) {
   showModal({ title, msg, confirmText: 'OK' });
+}
+
+function showPRToast(exerciseName, weight) {
+  const toast = document.getElementById('pr-toast');
+  if (!toast) return;
+  toast.querySelector('.pr-toast-ex').textContent = exerciseName;
+  toast.querySelector('.pr-toast-weight').textContent = weight + ' lbs';
+  toast.hidden = false;
+  toast.classList.remove('pr-toast-out');
+  // Force reflow so the transition fires from the hidden position
+  void toast.offsetWidth;
+  toast.classList.add('pr-toast-in');
+  clearTimeout(toast._prTimeout);
+  toast._prTimeout = setTimeout(() => {
+    toast.classList.remove('pr-toast-in');
+    toast.classList.add('pr-toast-out');
+    setTimeout(() => { toast.hidden = true; toast.classList.remove('pr-toast-out'); }, 350);
+  }, 2500);
 }
 
 // ── Rest Timer ────────────────────────────────────────────
@@ -790,6 +809,7 @@ window.toggleCard = function(el) { el.classList.toggle('expanded'); };
 // ── Active Workout (Start Workout flow) ───────────────────
 function startWorkout() {
   state.activeWorkout = { id: uid(), name: '', date: todayISO(), exercises: [] };
+  state._sessionPRs = {};
   state.exerciseContext = 'workout';
   navigate('workout');
 }
@@ -806,7 +826,8 @@ function renderWorkout() {
     container.innerHTML = emptyExerciseState();
     return;
   }
-  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'workout', w.exercises.length)).join('');
+  const prMap = buildPRMap();
+  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'workout', w.exercises.length, prMap)).join('');
 }
 
 function syncWorkoutFields() {
@@ -941,7 +962,7 @@ function persistDay() {
 
 // ── Shared Exercise Card ──────────────────────────────────
 // Used by active workout, day view, and plan template
-function exerciseCardHTML(ex, ei, ctx, totalCount) {
+function exerciseCardHTML(ex, ei, ctx, totalCount, prMap) {
   const readOnly = ctx === 'day' && state.dayIsReadOnly;
   const canLog   = ctx !== 'planTemplate' && !readOnly;
   const planRIR  = ctx === 'planTemplate' && state.editingPlan && state.editingPlan.rir;
@@ -949,15 +970,19 @@ function exerciseCardHTML(ex, ei, ctx, totalCount) {
   const muscleClass = muscle ? ` muscle-${muscle.toLowerCase().replace(/\s+/g, '-')}` : '';
   const canReorder = ctx !== 'planTemplate' && totalCount > 1 && !readOnly;
   const equip    = getEquipment(ex.name);
+  const historicalPR = prMap ? (prMap[ex.name] || 0) : 0;
 
   const setRows = ex.sets.map((s, si) => {
     const done = s.done || false;
+    const isPR = done && s.weight > 0 && s.weight > historicalPR;
+    const prBadge = isPR ? `<span class="pr-badge">PR</span>` : '';
     return `
     <tr class="set-row${done ? ' set-row-done' : ''}">
       <td class="set-num-cell">${si + 1}</td>
       <td><input class="set-pill" type="number" min="0" step="2.5" inputmode="decimal"
            value="${s.weight || ''}" placeholder="–"
-           onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" ${readOnly ? 'disabled' : ''}/></td>
+           onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" ${readOnly ? 'disabled' : ''}/>
+        ${prBadge}</td>
       ${planRIR ? '' : `<td><input class="set-pill" type="number" min="0" inputmode="numeric"
            value="${s.reps || ''}" placeholder="${(s.rir != null || s.erTarget != null) ? 'Log reps' : '–'}"
            onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" ${readOnly ? 'disabled' : ''}/>
@@ -1049,12 +1074,25 @@ window.handleAddSet = function(ctx, ei) {
 };
 
 window.handleSetDone = function(ctx, ei, si, checked) {
-  const set = workoutFor(ctx).exercises[ei].sets[si];
+  const ex  = workoutFor(ctx).exercises[ei];
+  const set = ex.sets[si];
   set.done = checked;
   if (checked) {
     if (set.rir != null) set.actualReps = set.reps;
     navigator.vibrate && navigator.vibrate(30);
     startRestTimer(90);
+    // PR detection (active workout only)
+    if (ctx === 'workout' && set.weight > 0) {
+      const historical = buildPRMap();
+      const historicalMax = historical[ex.name] || 0;
+      const sessionMax   = state._sessionPRs[ex.name] || 0;
+      if (set.weight > Math.max(historicalMax, sessionMax)) {
+        state._sessionPRs[ex.name] = set.weight;
+        showPRToast(ex.name, set.weight);
+      } else if (set.weight > sessionMax) {
+        state._sessionPRs[ex.name] = set.weight;
+      }
+    }
   } else {
     // un-checking a set — stop the timer if it's from that set
     clearInterval(_restInterval);
