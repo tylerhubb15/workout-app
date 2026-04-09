@@ -172,6 +172,27 @@
         <p style="color:var(--text3);font-size:11px;margin-top:8px">Tip: When the app shows a target RIR for a set, log the reps you actually hit — the next session's targets auto-adjust based on your performance.</p>
       </div>
     </div>
+    <!-- ER Training Guide -->
+    <div class="rir-guide-card">
+      <button class="rir-guide-header" onclick="toggleErGuide()" aria-expanded="false" id="er-guide-toggle">
+        <span>What is Effective Reps (ER) training?</span>
+        <svg class="rir-guide-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="rir-guide-body" id="er-guide-body" hidden>
+        <p><strong>Effective Reps (ER)</strong> are the reps performed close to muscular failure — typically the last few reps of a set where the muscle is under maximum tension. These are the reps that drive the most growth.</p>
+        <p>The <strong>ER rest-pause method</strong> lets you accumulate a target number of effective reps in one extended set:</p>
+        <div class="rir-table">
+          <div class="rir-row"><span class="rir-week">Step 1</span><span class="rir-val">Ignition</span><span class="rir-desc">Do 12–15 reps to near-failure (your ignition set)</span></div>
+          <div class="rir-row"><span class="rir-week">Step 2</span><span class="rir-val">Rest 10–15s</span><span class="rir-desc">Take a brief rest — just enough to recover 1–2 reps</span></div>
+          <div class="rir-row"><span class="rir-week">Step 3</span><span class="rir-val">Keep going</span><span class="rir-desc">Do as many reps as possible to failure again</span></div>
+          <div class="rir-row"><span class="rir-week">Step 4</span><span class="rir-val">Repeat</span><span class="rir-desc">Continue until you hit your ER target (e.g. 20 total reps)</span></div>
+        </div>
+        <p><strong>Example:</strong> ER Target 20 · Ignition 13 reps → rest → 3 reps → rest → 2 → 1 → 1 = 20 total effective reps.</p>
+        <p style="color:var(--text3);font-size:11px;margin-top:8px">Tip: Set the ER Target in the exercise form. Log each mini-set as a separate set. The target keeps you from stopping too early or going too long.</p>
+      </div>
+    </div>
   </section>
 
   <!-- ── Active Workout View ───────────────────────── -->
@@ -189,15 +210,15 @@
         <div class="field-label">Date</div>
         <input type="date" id="workout-date" />
       </div>
-      <div>
-        <div class="field-label">Notes</div>
-        <textarea id="workout-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
-      </div>
     </div>
     <div class="section-title">Exercises</div>
     <div class="exercises-section" id="active-exercises"></div>
     <div class="workout-actions">
       <button class="btn btn-secondary btn-full" id="btn-add-exercise">+ Add Exercise</button>
+      <div class="notes-action-wrap">
+        <div class="field-label">Notes</div>
+        <textarea id="workout-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
+      </div>
       <button class="btn btn-success btn-full" id="btn-finish-workout">Finish Workout</button>
     </div>
   </section>
@@ -211,12 +232,14 @@
         <div class="page-subtitle" id="day-view-subtitle"></div>
       </div>
     </div>
-    <div style="padding:0 20px 8px">
-      <textarea id="day-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
-    </div>
+    <div id="day-readonly-banner" hidden style="margin:0 20px 8px;padding:10px 14px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);border-radius:8px;color:#34d399;font-size:13px;font-weight:600;">✓ Completed Workout — view only</div>
     <div class="exercises-section" id="day-exercises"></div>
     <div class="workout-actions">
       <button class="btn btn-secondary btn-full" id="btn-day-add-exercise">+ Add Exercise</button>
+      <div class="notes-action-wrap">
+        <div class="field-label">Notes</div>
+        <textarea id="day-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
+      </div>
       <button class="btn btn-success btn-full" id="btn-day-finish-workout" disabled>Finish Workout</button>
     </div>
   </section>
@@ -243,6 +266,7 @@
         <div class="ex-chips" id="ex-chips"></div>
       </div>
       <div class="sets-form-section">
+        <div id="selected-exercise-name" class="selected-exercise-name" hidden></div>
         <div class="field-label">Sets</div>
         <div id="sets-form-body"></div>
         <button class="btn btn-secondary btn-sm" id="btn-add-set">+ Add Set</button>

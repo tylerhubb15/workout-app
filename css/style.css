@@ -892,6 +892,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   padding: 16px;
   margin-bottom: 10px;
 }
+.active-exercise-card.muscle-chest      { border-left: 3px solid #818cf8; }
+.active-exercise-card.muscle-back       { border-left: 3px solid #34d399; }
+.active-exercise-card.muscle-shoulders  { border-left: 3px solid #c4b5fd; }
+.active-exercise-card.muscle-biceps     { border-left: 3px solid #22d3ee; }
+.active-exercise-card.muscle-triceps    { border-left: 3px solid #fbbf24; }
+.active-exercise-card.muscle-quads      { border-left: 3px solid #818cf8; }
+.active-exercise-card.muscle-hamstrings { border-left: 3px solid #34d399; }
+.active-exercise-card.muscle-glutes     { border-left: 3px solid #f472b6; }
+.active-exercise-card.muscle-calves     { border-left: 3px solid #2dd4bf; }
+.active-exercise-card.muscle-core       { border-left: 3px solid #f87171; }
+.active-exercise-card.muscle-full-body  { border-left: 3px solid #fb923c; }
 
 /* ── Muscle group badge ─────────────────────────────────── */
 .ex-muscle-tag {
@@ -1080,6 +1091,61 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.notes-action-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rep-mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.rep-mode-btn {
+  flex: 1;
+  padding: 7px 4px;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-align: center;
+}
+
+.rep-mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.selected-exercise-name {
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.selected-ex-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  margin-right: 4px;
+}
+
+.selected-ex-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
 }
 
 .sets-form-table {

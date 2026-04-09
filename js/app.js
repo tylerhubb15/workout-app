@@ -241,8 +241,10 @@ const state = {
   view: 'home',
   activeWorkout: null,       // workout in progress (Start Workout flow)
   dayWorkout: null,          // workout being edited from the calendar day view
+  dayIsReadOnly: false,      // true when viewing a previously completed workout
   editingExIndex: null,
   formSets: [],
+  formRepMode: 'target',     // 'target' | 'rir' | 'er' — rep mode for the exercise form
   exerciseContext: 'workout', // 'workout' | 'day' — which view the exercise form serves
   calendar: {
     year:  new Date().getFullYear(),
@@ -800,6 +802,7 @@ window.selectDay = function(iso) {
   state.dayWorkout = existing
     ? JSON.parse(JSON.stringify(existing))
     : { id: uid(), date: iso, name: '', exercises: [] };
+  state.dayIsReadOnly = !!existing;
 
   // If the day has no exercises, pre-load from the active plan
   if (state.dayWorkout.exercises.length === 0) {
@@ -836,7 +839,8 @@ function renderDay() {
   const w = state.dayWorkout;
   if (!w) return;
 
-  document.getElementById('day-notes').value = w.notes || '';
+  const notesEl = document.getElementById('day-notes');
+  if (notesEl) notesEl.value = w.notes || '';
   document.getElementById('day-view-title').textContent = formatDateLong(w.date);
   let daySubtitle = w.exercises.length > 0
     ? `${w.exercises.length} exercise${w.exercises.length !== 1 ? 's' : ''}`
@@ -847,15 +851,36 @@ function renderDay() {
   }
   document.getElementById('day-view-subtitle').textContent = daySubtitle;
 
+  const readOnlyBanner = document.getElementById('day-readonly-banner');
+  const addBtn = document.getElementById('btn-day-add-exercise');
+  const finishBtn = document.getElementById('btn-day-finish-workout');
+  const notesWrap = document.querySelector('#view-day .notes-action-wrap');
+
+  if (state.dayIsReadOnly) {
+    if (readOnlyBanner) readOnlyBanner.hidden = false;
+    if (addBtn) addBtn.hidden = true;
+    if (finishBtn) finishBtn.hidden = true;
+    if (notesWrap) notesWrap.hidden = true;
+  } else {
+    if (readOnlyBanner) readOnlyBanner.hidden = true;
+    if (addBtn) addBtn.hidden = false;
+    if (finishBtn) finishBtn.hidden = false;
+    if (notesWrap) notesWrap.hidden = false;
+  }
+
   const container = document.getElementById('day-exercises');
   if (w.exercises.length === 0) {
     container.innerHTML = emptyExerciseState();
-    document.getElementById('btn-day-finish-workout').disabled = true;
+    if (!state.dayIsReadOnly) {
+      document.getElementById('btn-day-finish-workout').disabled = true;
+    }
     return;
   }
   container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'day', w.exercises.length)).join('');
-  const allDone = w.exercises.every(ex => ex.sets.every(s => s.done));
-  document.getElementById('btn-day-finish-workout').disabled = !allDone;
+  if (!state.dayIsReadOnly) {
+    const allDone = w.exercises.every(ex => ex.sets.every(s => s.done));
+    document.getElementById('btn-day-finish-workout').disabled = !allDone;
+  }
 }
 
 // Save or update the day's workout in localStorage
@@ -882,10 +907,12 @@ function persistDay() {
 // ── Shared Exercise Card ──────────────────────────────────
 // Used by active workout, day view, and plan template
 function exerciseCardHTML(ex, ei, ctx, totalCount) {
-  const canLog   = ctx !== 'planTemplate';
+  const readOnly = ctx === 'day' && state.dayIsReadOnly;
+  const canLog   = ctx !== 'planTemplate' && !readOnly;
   const planRIR  = ctx === 'planTemplate' && state.editingPlan && state.editingPlan.rir;
   const muscle   = ex.muscleGroup || getMuscleGroup(ex.name);
-  const canReorder = ctx !== 'planTemplate' && totalCount > 1;
+  const muscleClass = muscle ? ` muscle-${muscle.toLowerCase().replace(/\s+/g, '-')}` : '';
+  const canReorder = ctx !== 'planTemplate' && totalCount > 1 && !readOnly;
   const equip    = getEquipment(ex.name);
 
   const setRows = ex.sets.map((s, si) => {
@@ -895,18 +922,19 @@ function exerciseCardHTML(ex, ei, ctx, totalCount) {
       <td class="set-num-cell">${si + 1}</td>
       <td><input class="set-pill" type="number" min="0" step="2.5" inputmode="decimal"
            value="${s.weight || ''}" placeholder="–"
-           onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" /></td>
+           onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" ${readOnly ? 'disabled' : ''}/></td>
       ${planRIR ? '' : `<td><input class="set-pill" type="number" min="0" inputmode="numeric"
-           value="${s.reps || ''}" placeholder="${s.rir != null ? 'Log reps' : '–'}"
-           onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" />
-        ${(canLog && s.rir != null) ? `<span class="set-rir-label">@RIR ${s.rir}</span>` : ''}</td>`}
+           value="${s.reps || ''}" placeholder="${(s.rir != null || s.erTarget != null) ? 'Log reps' : '–'}"
+           onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" ${readOnly ? 'disabled' : ''}/>
+        ${(canLog && s.rir != null) ? `<span class="set-rir-label">@RIR&nbsp;${s.rir}</span>` : ''}
+        ${(canLog && s.erTarget != null) ? `<span class="set-rir-label">ER&nbsp;${s.erTarget}</span>` : ''}</td>`}
       ${canLog ? `<td class="set-log-cell">
         <label class="set-check-wrap">
           <input type="checkbox" ${done ? 'checked' : ''}
             onchange="handleSetDone('${ctx}',${ei},${si},this.checked)" />
           <span class="set-check-box"></span>
         </label>
-      </td>` : ''}
+      </td>` : (readOnly && done ? `<td class="set-log-cell"><span style="color:var(--green);font-size:14px">✓</span></td>` : `<td></td>`)}
       <td><button class="btn-remove-set" onclick="handleRemoveSet('${ctx}',${ei},${si})">×</button></td>
     </tr>`;
   }).join('');
@@ -916,7 +944,7 @@ function exerciseCardHTML(ex, ei, ctx, totalCount) {
     : '';
 
   return `
-    <div class="active-exercise-card">
+    <div class="active-exercise-card${muscleClass}">
       ${muscleTag}
       <div class="active-exercise-header">
         <div class="active-exercise-info">
@@ -926,12 +954,12 @@ function exerciseCardHTML(ex, ei, ctx, totalCount) {
         <div style="display:flex;gap:8px;flex-shrink:0">
           ${canReorder ? `<button class="reorder-btn${ei === 0 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'up')" ${ei === 0 ? 'disabled' : ''}>▲</button>
           <button class="reorder-btn${ei === totalCount - 1 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'down')" ${ei === totalCount - 1 ? 'disabled' : ''}>▼</button>` : ''}
-          <button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>
-          <button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})" title="Remove">
+          ${!readOnly ? `<button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>` : ''}
+          ${!readOnly ? `<button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})" title="Remove">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
             </svg>
-          </button>
+          </button>` : ''}
         </div>
       </div>
       <table class="sets-editor">
@@ -946,7 +974,7 @@ function exerciseCardHTML(ex, ei, ctx, totalCount) {
         </thead>
         <tbody>${setRows}</tbody>
       </table>
-      <button class="btn btn-ghost btn-sm mt-8" onclick="handleAddSet('${ctx}',${ei})">+ Add Set</button>
+      ${!readOnly ? `<button class="btn btn-ghost btn-sm mt-8" onclick="handleAddSet('${ctx}',${ei})">+ Add Set</button>` : ''}
     </div>`;
 }
 
@@ -1036,9 +1064,13 @@ function renderExerciseForm() {
     const ex = workoutFor(state.exerciseContext).exercises[state.editingExIndex];
     document.getElementById('exercise-name').value = ex.name;
     state.formSets = ex.sets.map(s => ({ ...s }));
+    state.formRepMode = ex.repMode || 'target';
+    updateSelectedExerciseName(ex.name);
   } else {
     document.getElementById('exercise-name').value = '';
     state.formSets = [{ reps: 0, weight: 0 }];
+    state.formRepMode = 'target';
+    updateSelectedExerciseName('');
   }
 
   // Populate chips and filter
@@ -1138,7 +1170,21 @@ function renderExChips(filter) {
 
 window.selectExChip = function(name) {
   document.getElementById('exercise-name').value = name;
+  updateSelectedExerciseName(name);
 };
+
+function updateSelectedExerciseName(name) {
+  const el = document.getElementById('selected-exercise-name');
+  if (!el) return;
+  if (name) {
+    const muscle = getMuscleGroup(name);
+    const muscleClass = muscle ? ` ex-muscle-${muscle.toLowerCase().replace(/\s+/g, '-')}` : '';
+    el.innerHTML = `<span class="selected-ex-label">Selected:</span> <span class="selected-ex-name${muscleClass}">${escHtml(name)}</span>`;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
 
 window.clearExSearch = function() {
   const input = document.getElementById('ex-filter');
@@ -1152,7 +1198,47 @@ function renderSetRows() {
   const inRirTemplate = state.exerciseContext === 'planTemplate'
     && state.editingPlan && state.editingPlan.rir;
 
-  document.getElementById('sets-form-body').innerHTML = state.formSets.map((s, i) => `
+  const mode = inRirTemplate ? 'planRir' : state.formRepMode;
+
+  const modeToggle = inRirTemplate ? '' : `
+    <div class="rep-mode-toggle">
+      <button class="rep-mode-btn${mode === 'target' ? ' active' : ''}" onclick="setFormRepMode('target')">Target Reps</button>
+      <button class="rep-mode-btn${mode === 'rir' ? ' active' : ''}" onclick="setFormRepMode('rir')">RIR</button>
+      <button class="rep-mode-btn${mode === 'er' ? ' active' : ''}" onclick="setFormRepMode('er')">ER</button>
+    </div>`;
+
+  document.getElementById('sets-form-body').innerHTML = modeToggle + state.formSets.map((s, i) => {
+    let repFields = '';
+    if (mode === 'target') {
+      repFields = `<div class="set-field">
+          <span class="set-field-label">Target Reps</span>
+          <input class="set-input" type="number" min="0" inputmode="numeric"
+            value="${s.reps || ''}" placeholder="0"
+            onchange="formSetChange(${i},'reps',this.value)" />
+        </div>`;
+    } else if (mode === 'rir') {
+      repFields = `<div class="set-field">
+          <span class="set-field-label">RIR Target</span>
+          <input class="set-input" type="number" min="0" max="10" inputmode="numeric"
+            value="${s.rir != null ? s.rir : ''}" placeholder="e.g. 2"
+            onchange="formSetChange(${i},'rir',this.value)" />
+        </div>`;
+    } else if (mode === 'er') {
+      repFields = `<div class="set-field">
+          <span class="set-field-label">Ignition Reps</span>
+          <input class="set-input" type="number" min="0" inputmode="numeric"
+            value="${s.reps || ''}" placeholder="e.g. 12"
+            onchange="formSetChange(${i},'reps',this.value)" />
+        </div>
+        <div class="set-field">
+          <span class="set-field-label">ER Target (total)</span>
+          <input class="set-input" type="number" min="0" inputmode="numeric"
+            value="${s.erTarget || ''}" placeholder="e.g. 20"
+            onchange="formSetChange(${i},'erTarget',this.value)" />
+        </div>`;
+    }
+
+    return `
     <div class="set-block">
       <div class="set-block-header">
         <span class="set-block-num">Set ${i + 1}</span>
@@ -1165,15 +1251,16 @@ function renderSetRows() {
             value="${s.weight || ''}" placeholder="0"
             onchange="formSetChange(${i},'weight',this.value)" />
         </div>
-        ${inRirTemplate ? '' : `<div class="set-field">
-          <span class="set-field-label">Target Reps</span>
-          <input class="set-input" type="number" min="0" inputmode="numeric"
-            value="${s.reps || ''}" placeholder="0"
-            onchange="formSetChange(${i},'reps',this.value)" />
-        </div>`}
+        ${repFields}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
+
+window.setFormRepMode = function(mode) {
+  state.formRepMode = mode;
+  renderSetRows();
+};
 
 window.formSetChange = function(i, field, val) {
   state.formSets[i][field] = parseFloat(val) || 0;
@@ -1187,7 +1274,10 @@ window.formRemoveSet = function(i) {
 
 function addFormSet() {
   const last = state.formSets.slice(-1)[0];
-  state.formSets.push({ reps: last ? last.reps : 0, weight: last ? last.weight : 0 });
+  const newSet = { reps: last ? last.reps : 0, weight: last ? last.weight : 0 };
+  if (last?.rir != null) newSet.rir = last.rir;
+  if (last?.erTarget != null) newSet.erTarget = last.erTarget;
+  state.formSets.push(newSet);
   renderSetRows();
 }
 
@@ -1198,20 +1288,27 @@ function saveExercise() {
   // Flush any uncommitted input values
   const inRirTemplate = state.exerciseContext === 'planTemplate'
     && state.editingPlan && state.editingPlan.rir;
+  const mode = inRirTemplate ? 'planRir' : state.formRepMode;
   document.querySelectorAll('#sets-form-body .set-block').forEach((block, idx) => {
     const inputs = block.querySelectorAll('input');
     state.formSets[idx].weight = parseFloat(inputs[0].value) || 0;
-    if (!inRirTemplate && inputs[1]) {
-      state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
+    if (mode === 'target') {
+      if (inputs[1]) state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
+    } else if (mode === 'rir') {
+      if (inputs[1]) state.formSets[idx].rir = parseFloat(inputs[1].value) || 0;
+    } else if (mode === 'er') {
+      if (inputs[1]) state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
+      if (inputs[2]) state.formSets[idx].erTarget = parseFloat(inputs[2].value) || 0;
     }
   });
 
   // For RIR templates only weight matters; keep all sets regardless of reps
   const exercise = {
     name,
+    repMode: inRirTemplate ? undefined : state.formRepMode,
     sets: inRirTemplate
       ? state.formSets
-      : state.formSets.filter(s => s.reps > 0 || s.weight > 0),
+      : state.formSets.filter(s => s.reps > 0 || s.weight > 0 || s.erTarget > 0),
   };
   if (exercise.sets.length === 0) exercise.sets = [{ reps: 0, weight: 0 }];
 
@@ -1918,6 +2015,15 @@ function updateThemeBtn() {
 window.toggleRirGuide = function() {
   const body   = document.getElementById('rir-guide-body');
   const toggle = document.getElementById('rir-guide-toggle');
+  const open   = body.hasAttribute('hidden');
+  body.toggleAttribute('hidden', !open);
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.classList.toggle('open', open);
+};
+
+window.toggleErGuide = function() {
+  const body   = document.getElementById('er-guide-body');
+  const toggle = document.getElementById('er-guide-toggle');
   const open   = body.hasAttribute('hidden');
   body.toggleAttribute('hidden', !open);
   toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
