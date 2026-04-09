@@ -491,9 +491,53 @@ function renderHome() {
   }
   const greetingIndex = parseInt(sessionStorage.getItem('wt_greeting'), 10);
   document.getElementById('home-greeting').textContent = HOME_GREETINGS[greetingIndex];
+  renderContextLine();
   renderStats();
   renderBwHomeWidget();
   renderTodayPlan();
+}
+
+function renderContextLine() {
+  const el = document.getElementById('home-context');
+  if (!el) return;
+  const workouts = loadWorkouts();
+  const today = todayISO();
+  const loggedToday = workouts.some(w => w.date === today);
+
+  // Reuse streak calc
+  const loggedDates = new Set(workouts.map(w => w.date));
+  let streak = 0;
+  const startFrom = loggedDates.has(today) ? 0 : 1;
+  for (let i = startFrom; i < 365; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    if (loggedDates.has(d.toISOString().slice(0, 10))) streak++; else break;
+  }
+
+  let line = '';
+  if (!workouts.length) {
+    line = 'Ready to start your first session?';
+  } else if (loggedToday && streak >= 7) {
+    line = `🔥 ${streak}-day streak — you're on fire`;
+  } else if (loggedToday) {
+    line = 'Crushed it today ✓';
+  } else if (streak >= 7) {
+    line = `🔥 ${streak}-day streak — keep it going`;
+  } else if (streak >= 3) {
+    line = `🔥 ${streak} days in a row — stay consistent`;
+  } else if (streak === 2) {
+    line = '2 days in a row — build the habit';
+  } else if (streak === 1) {
+    line = 'New streak started — come back tomorrow';
+  } else {
+    const sorted = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+    const diffMs = new Date(today + 'T00:00:00') - new Date(sorted[0].date + 'T00:00:00');
+    const diffDays = Math.round(diffMs / 86400000);
+    if (diffDays === 1) line = 'Last session was yesterday — time to grind';
+    else if (diffDays <= 3) line = `${diffDays} days since your last session`;
+    else line = `${diffDays} days off — time to get back`;
+  }
+
+  el.textContent = line;
 }
 
 function renderTodayPlan() {
@@ -606,6 +650,44 @@ function renderStats() {
   document.getElementById('stat-week').textContent     = weekCount;
   document.getElementById('stat-last-name').textContent = lastName;
   document.getElementById('stat-last-label').textContent = lastLabel;
+  renderWeekStrip(loggedDates, today);
+}
+
+function renderWeekStrip(loggedDates, today) {
+  const el = document.getElementById('week-strip');
+  if (!el) return;
+
+  // Monday of the current week
+  const now = new Date();
+  const dow = now.getDay();
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+
+  const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  el.innerHTML = DAY_LABELS.map((label, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const iso = d.toISOString().slice(0, 10);
+    const isToday  = iso === today;
+    const logged   = loggedDates.has(iso);
+    const isFuture = iso > today;
+
+    const dotClass = ['week-dot',
+      logged   ? 'week-dot-logged'  : '',
+      isToday  ? 'week-dot-today'   : '',
+      isFuture ? 'week-dot-future'  : '',
+    ].filter(Boolean).join(' ');
+
+    const labelClass = 'week-day-label' + (isToday ? ' week-day-label-today' : '');
+
+    return `
+      <div class="week-day">
+        <div class="${dotClass}">${logged ? '<span class="week-dot-check">✓</span>' : ''}</div>
+        <div class="${labelClass}">${label}</div>
+      </div>`;
+  }).join('');
 }
 
 // ── Body Weight ───────────────────────────────────────────
