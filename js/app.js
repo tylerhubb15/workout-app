@@ -1330,7 +1330,7 @@ function addFormSet() {
 
 function saveExercise() {
   const name = document.getElementById('exercise-name').value.trim();
-  if (!name) { document.getElementById('exercise-name').focus(); return; }
+  if (!name) { showAlert('No exercise selected', 'Select an exercise from the list or tap + Add Custom Exercise.'); return; }
 
   // Flush any uncommitted input values
   const inRirTemplate = state.exerciseContext === 'planTemplate'

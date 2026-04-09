@@ -1100,7 +1100,7 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
 }
 
 .custom-ex-open-btn {
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--accent);
   font-size: 13px;
   padding: 0;
