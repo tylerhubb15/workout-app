@@ -1099,6 +1099,39 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
   gap: 6px;
 }
 
+.custom-ex-open-btn {
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.custom-ex-muscle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.custom-ex-muscle-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  background: var(--surface3);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.custom-ex-muscle-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .rep-mode-toggle {
   display: flex;
   gap: 6px;

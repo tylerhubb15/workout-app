@@ -245,6 +245,7 @@ const state = {
   editingExIndex: null,
   formSets: [],
   formRepMode: 'target',     // 'target' | 'rir' | 'er' — rep mode for the exercise form
+  customExMuscleGroup: null, // muscle group set via the custom exercise modal
   exerciseContext: 'workout', // 'workout' | 'day' — which view the exercise form serves
   calendar: {
     year:  new Date().getFullYear(),
@@ -1065,11 +1066,13 @@ function renderExerciseForm() {
     document.getElementById('exercise-name').value = ex.name;
     state.formSets = ex.sets.map(s => ({ ...s }));
     state.formRepMode = ex.repMode || 'target';
+    state.customExMuscleGroup = ex.muscleGroup || null;
     updateSelectedExerciseName(ex.name);
   } else {
     document.getElementById('exercise-name').value = '';
     state.formSets = [{ reps: 0, weight: 0 }];
     state.formRepMode = 'target';
+    state.customExMuscleGroup = null;
     updateSelectedExerciseName('');
   }
 
@@ -1169,6 +1172,7 @@ function renderExChips(filter) {
 }
 
 window.selectExChip = function(name) {
+  state.customExMuscleGroup = null;
   document.getElementById('exercise-name').value = name;
   updateSelectedExerciseName(name);
 };
@@ -1177,9 +1181,12 @@ function updateSelectedExerciseName(name) {
   const el = document.getElementById('selected-exercise-name');
   if (!el) return;
   if (name) {
-    const muscle = getMuscleGroup(name);
+    const muscle = getMuscleGroup(name) || state.customExMuscleGroup || '';
     const muscleClass = muscle ? ` ex-muscle-${muscle.toLowerCase().replace(/\s+/g, '-')}` : '';
-    el.innerHTML = `<span class="selected-ex-label">Selected:</span> <span class="selected-ex-name${muscleClass}">${escHtml(name)}</span>`;
+    const muscleTag = muscle
+      ? ` <span class="ex-muscle-tag${muscleClass}" style="font-size:10px;padding:2px 8px;vertical-align:middle;margin-left:6px">${muscle.toUpperCase()}</span>`
+      : '';
+    el.innerHTML = `<span class="selected-ex-label">Selected:</span> <span class="selected-ex-name">${escHtml(name)}</span>${muscleTag}`;
     el.hidden = false;
   } else {
     el.hidden = true;
@@ -1192,6 +1199,46 @@ window.clearExSearch = function() {
   document.getElementById('ex-search-clear').hidden = true;
   input.focus();
   refreshChips();
+};
+
+window.openCustomExModal = function() {
+  const muscles = Object.keys(MUSCLE_MAP);
+  state._pendingCustomMuscle = state.customExMuscleGroup || null;
+  showModal({
+    title: 'Custom Exercise',
+    msg: `
+      <div class="field-label" style="margin-top:4px">Exercise Name</div>
+      <input type="text" id="modal-custom-ex-name" autocomplete="off"
+        style="margin-top:6px;width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;color:var(--text);font-size:15px;outline:none"
+        placeholder="e.g. Banded Pull-Apart" />
+      <div class="field-label" style="margin-top:14px;margin-bottom:8px">Muscle Group</div>
+      <div class="custom-ex-muscle-grid" id="custom-ex-muscle-grid">
+        ${muscles.map(m => `<button class="custom-ex-muscle-btn${state._pendingCustomMuscle === m ? ' active' : ''}" data-muscle="${escHtml(m)}" onclick="selectCustomExMuscle('${escHtml(m)}')">${escHtml(m)}</button>`).join('')}
+      </div>`,
+    confirmText: 'Add',
+    cancelText: 'Cancel',
+    onConfirm: () => {
+      const nameEl = document.getElementById('modal-custom-ex-name');
+      const name = nameEl ? nameEl.value.trim() : '';
+      if (!name) return;
+      state.customExMuscleGroup = state._pendingCustomMuscle || null;
+      state._pendingCustomMuscle = null;
+      document.getElementById('exercise-name').value = name;
+      updateSelectedExerciseName(name);
+    },
+    onCancel: () => { state._pendingCustomMuscle = null; },
+  });
+  setTimeout(() => {
+    const inp = document.getElementById('modal-custom-ex-name');
+    if (inp) inp.focus();
+  }, 80);
+};
+
+window.selectCustomExMuscle = function(muscle) {
+  state._pendingCustomMuscle = muscle;
+  document.querySelectorAll('.custom-ex-muscle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.muscle === muscle);
+  });
 };
 
 function renderSetRows() {
@@ -1303,14 +1350,17 @@ function saveExercise() {
   });
 
   // For RIR templates only weight matters; keep all sets regardless of reps
+  const resolvedMuscle = state.customExMuscleGroup || getMuscleGroup(name) || undefined;
   const exercise = {
     name,
     repMode: inRirTemplate ? undefined : state.formRepMode,
+    muscleGroup: resolvedMuscle,
     sets: inRirTemplate
       ? state.formSets
       : state.formSets.filter(s => s.reps > 0 || s.weight > 0 || s.erTarget > 0),
   };
   if (exercise.sets.length === 0) exercise.sets = [{ reps: 0, weight: 0 }];
+  state.customExMuscleGroup = null;
 
   const target = workoutFor(state.exerciseContext);
   if (state.editingExIndex !== null) target.exercises[state.editingExIndex] = exercise;
