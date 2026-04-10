@@ -540,45 +540,6 @@ function renderStats() {
   const completedDates = new Set(completedWorkouts.map(w => w.date));
   const plannedDates   = new Set(plannedWorkouts.map(w => w.date));
 
-  // Streak: consecutive days going back from today (or yesterday if today not logged)
-  let streak = 0;
-  const startFrom = completedDates.has(today) ? 0 : 1;
-  for (let i = startFrom; i < 365; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const iso = d.toISOString().slice(0, 10);
-    if (completedDates.has(iso)) { streak++; } else { break; }
-  }
-
-  // This week: Mon–Sun containing today
-  const now = new Date();
-  const dow = now.getDay(); // 0=Sun
-  const mondayOffset = (dow === 0 ? -6 : 1 - dow);
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayOffset);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const weekCount = completedWorkouts.filter(w => {
-    const d = new Date(w.date + 'T00:00:00');
-    return d >= monday && d <= sunday;
-  }).length;
-
-  // Last workout (completed only)
-  const sorted = [...completedWorkouts].sort((a, b) => b.date.localeCompare(a.date));
-  const last = sorted[0];
-  let lastName = '—', lastLabel = 'Last workout';
-  if (last) {
-    lastName = last.name || 'Workout';
-    const diffMs = new Date(today + 'T00:00:00') - new Date(last.date + 'T00:00:00');
-    const diffDays = Math.round(diffMs / 86400000);
-    lastLabel = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : `${diffDays}d ago`;
-  }
-
-  document.getElementById('stat-streak').textContent   = streak;
-  document.getElementById('stat-week').textContent     = weekCount;
-  document.getElementById('stat-last-name').textContent = lastName;
-  document.getElementById('stat-last-label').textContent = lastLabel;
   renderWeekStrip(completedDates, plannedDates, today);
 }
 
