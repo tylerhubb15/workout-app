@@ -271,7 +271,7 @@ function getRirContext(plan, iso) {
   const date       = new Date(iso + 'T00:00:00');
   const weekNum    = Math.floor(Math.round((date - start) / 86400000) / 7); // 0-indexed
   const weekInCycle = weekNum % msLen;
-  const targetRIR  = Math.max(0, (msLen - 1) - weekNum); // clamp at 0 — never resets after hitting zero
+  const targetRIR  = Math.min(3, Math.max(0, (msLen - 1) - weekNum)); // always 3→0, never exceeds 3
   const blockNum   = Math.floor(weekNum / msLen);
   return { weekNum, weekInCycle, targetRIR, blockNum, msLen };
 }
@@ -689,8 +689,10 @@ function renderWeekStrip(completedDates, plannedDates, today) {
     ].filter(Boolean).join(' ');
 
     const labelClass = 'week-day-label' + (isToday ? ' week-day-label-today' : '');
-    const inner = completed ? '<span class="week-dot-check">✓</span>'
-                : planned   ? '<span class="week-dot-plan-dot"></span>'
+    const isPastMissed = !completed && !planned && !isToday && !isFuture;
+    const inner = completed    ? '<span class="week-dot-check">✓</span>'
+                : planned      ? '<span class="week-dot-plan-dot"></span>'
+                : isPastMissed ? '<span class="week-dot-frown">☹</span>'
                 : '';
 
     return `
@@ -1387,8 +1389,9 @@ window.openCustomExModal = function() {
     onConfirm: () => {
       const nameEl = document.getElementById('modal-custom-ex-name');
       const name = nameEl ? nameEl.value.trim() : '';
-      if (!name) return;
-      state.customExMuscleGroup = state._pendingCustomMuscle || null;
+      if (!name) { showAlert('Name required', 'Enter a name for the exercise.'); return; }
+      if (!state._pendingCustomMuscle) { showAlert('Muscle group required', 'Select a muscle group before adding.'); return; }
+      state.customExMuscleGroup = state._pendingCustomMuscle;
       state._pendingCustomMuscle = null;
       document.getElementById('exercise-name').value = name;
       updateSelectedExerciseName(name);

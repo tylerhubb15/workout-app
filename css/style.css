@@ -691,6 +691,12 @@ body {
   opacity: 0.3;
 }
 
+.week-dot-frown {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.5;
+}
+
 .week-dot-planned {
   background: transparent;
   border: 2px dashed var(--accent);
