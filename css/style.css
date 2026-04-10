@@ -270,21 +270,18 @@ body {
   margin-bottom: 8px;
 }
 
-.home-greeting {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  margin-bottom: 6px;
-  line-height: 1.2;
-  color: var(--text);
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.home-context {
-  font-size: 13px;
-  color: var(--text2);
-  margin-bottom: 18px;
-  font-style: italic;
-  min-height: 18px;
+.home-brand-name {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
 }
 
 /* Today's plan preview */

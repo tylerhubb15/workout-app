@@ -453,93 +453,16 @@ function navigate(view) {
 }
 
 // ── Home ──────────────────────────────────────────────────
-const HOME_GREETINGS = [
-  'Lift.',
-  'Let\'s work.',
-  'No excuses.',
-  'Time to grind.',
-  'Show up.',
-  'Get after it.',
-  'Stay consistent.',
-  'One more rep.',
-  'Built different.',
-  'Earn it.',
-  'Do the work.',
-  'Rise & grind.',
-  'Progress, not perfection.',
-  'Trust the process.',
-  'You vs. you.',
-  'Make it count.',
-  'Outwork yesterday.',
-  'Pain is temporary.',
-  'Champions train.',
-  'Prove them wrong.',
-  'Beast mode: on.',
-  'Stronger every day.',
-  'No days off.',
-  'Commit to the grind.',
-  'Leave it all in the gym.',
-];
 
 function renderHome() {
   document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric',
   });
-  // Pick a phrase once per session (fresh each time the app is opened)
-  if (!sessionStorage.getItem('wt_greeting')) {
-    sessionStorage.setItem('wt_greeting', Math.floor(Math.random() * HOME_GREETINGS.length));
-  }
-  const greetingIndex = parseInt(sessionStorage.getItem('wt_greeting'), 10);
-  document.getElementById('home-greeting').textContent = HOME_GREETINGS[greetingIndex];
-  renderContextLine();
   renderStats();
   renderBwHomeWidget();
   renderTodayPlan();
 }
 
-function renderContextLine() {
-  const el = document.getElementById('home-context');
-  if (!el) return;
-  const workouts = loadWorkouts();
-  const today = todayISO();
-  const completedWorkouts = workouts.filter(w => (w.status ?? 'completed') === 'completed');
-  const loggedToday = completedWorkouts.some(w => w.date === today);
-
-  // Reuse streak calc
-  const completedDates = new Set(completedWorkouts.map(w => w.date));
-  let streak = 0;
-  const startFrom = completedDates.has(today) ? 0 : 1;
-  for (let i = startFrom; i < 365; i++) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    if (completedDates.has(d.toISOString().slice(0, 10))) streak++; else break;
-  }
-
-  let line = '';
-  if (!completedWorkouts.length) {
-    line = 'Ready to start your first session?';
-  } else if (loggedToday && streak >= 7) {
-    line = `🔥 ${streak}-day streak — you're on fire`;
-  } else if (loggedToday) {
-    line = 'Crushed it today ✓';
-  } else if (streak >= 7) {
-    line = `🔥 ${streak}-day streak — keep it going`;
-  } else if (streak >= 3) {
-    line = `🔥 ${streak} days in a row — stay consistent`;
-  } else if (streak === 2) {
-    line = '2 days in a row — build the habit';
-  } else if (streak === 1) {
-    line = 'New streak started — come back tomorrow';
-  } else {
-    const sorted = [...completedWorkouts].sort((a, b) => b.date.localeCompare(a.date));
-    const diffMs = new Date(today + 'T00:00:00') - new Date(sorted[0].date + 'T00:00:00');
-    const diffDays = Math.round(diffMs / 86400000);
-    if (diffDays === 1) line = 'Last session was yesterday — time to grind';
-    else if (diffDays <= 3) line = `${diffDays} days since your last session`;
-    else line = `${diffDays} days off — time to get back`;
-  }
-
-  el.textContent = line;
-}
 
 function renderTodayPlan() {
   const el = document.getElementById('home-today-plan');
