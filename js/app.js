@@ -694,7 +694,7 @@ function renderWeekStrip(completedDates, plannedDates, today) {
                 : '';
 
     return `
-      <div class="week-day" onclick="selectDay('${iso}')" style="cursor:pointer">
+      <div class="week-day" onclick="selectDay('${iso}','home')" style="cursor:pointer">
         <div class="${dotClass}">${inner}</div>
         <div class="${labelClass}">${label}</div>
       </div>`;
@@ -945,7 +945,7 @@ function finishWorkout() {
 }
 
 // ── Day View (calendar drill-down) ────────────────────────
-window.selectDay = function(iso) {
+window.selectDay = function(iso, from) {
   const workouts = loadWorkouts();
   const existing = workouts.find(w => w.date === iso);
   state.dayWorkout = existing
@@ -981,6 +981,7 @@ window.selectDay = function(iso) {
   }
 
   state.exerciseContext = 'day';
+  state.dayReturnView = from || 'calendar';
   navigate('day');
 };
 
@@ -2322,7 +2323,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('workout-notes').addEventListener('input', syncWorkoutFields);
 
   // Day view
-  document.getElementById('btn-day-back').addEventListener('click', () => navigate('calendar'));
+  document.getElementById('btn-day-back').addEventListener('click', () => navigate(state.dayReturnView || 'calendar'));
   document.getElementById('btn-day-add-exercise').addEventListener('click', () => {
     state.exerciseContext = 'day';
     state.editingExIndex  = null;
