@@ -602,7 +602,7 @@ function renderTodayPlan() {
           <div class="today-plan-label">${label} — ${escHtml(plan.name)} ${rirBadge}</div>
           <div class="today-plan-exercises">${exList}</div>
         </div>
-        <button class="today-plan-start-btn" onclick="selectDay('${targetIso}')">Start ›</button>
+        <button class="today-plan-start-btn" onclick="selectDay('${targetIso}','home')">Start ›</button>
       </div>
     </div>`;
 }
