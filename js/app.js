@@ -502,19 +502,20 @@ function renderContextLine() {
   if (!el) return;
   const workouts = loadWorkouts();
   const today = todayISO();
-  const loggedToday = workouts.some(w => w.date === today);
+  const completedWorkouts = workouts.filter(w => (w.status ?? 'completed') === 'completed');
+  const loggedToday = completedWorkouts.some(w => w.date === today);
 
   // Reuse streak calc
-  const loggedDates = new Set(workouts.map(w => w.date));
+  const completedDates = new Set(completedWorkouts.map(w => w.date));
   let streak = 0;
-  const startFrom = loggedDates.has(today) ? 0 : 1;
+  const startFrom = completedDates.has(today) ? 0 : 1;
   for (let i = startFrom; i < 365; i++) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    if (loggedDates.has(d.toISOString().slice(0, 10))) streak++; else break;
+    if (completedDates.has(d.toISOString().slice(0, 10))) streak++; else break;
   }
 
   let line = '';
-  if (!workouts.length) {
+  if (!completedWorkouts.length) {
     line = 'Ready to start your first session?';
   } else if (loggedToday && streak >= 7) {
     line = `🔥 ${streak}-day streak — you're on fire`;
@@ -529,7 +530,7 @@ function renderContextLine() {
   } else if (streak === 1) {
     line = 'New streak started — come back tomorrow';
   } else {
-    const sorted = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+    const sorted = [...completedWorkouts].sort((a, b) => b.date.localeCompare(a.date));
     const diffMs = new Date(today + 'T00:00:00') - new Date(sorted[0].date + 'T00:00:00');
     const diffDays = Math.round(diffMs / 86400000);
     if (diffDays === 1) line = 'Last session was yesterday — time to grind';
@@ -610,15 +611,20 @@ function renderStats() {
   const workouts = loadWorkouts();
   const today = todayISO();
 
+  const completedWorkouts = workouts.filter(w => (w.status ?? 'completed') === 'completed');
+  const plannedWorkouts   = workouts.filter(w => (w.status ?? 'completed') === 'planned');
+
+  const completedDates = new Set(completedWorkouts.map(w => w.date));
+  const plannedDates   = new Set(plannedWorkouts.map(w => w.date));
+
   // Streak: consecutive days going back from today (or yesterday if today not logged)
-  const loggedDates = new Set(workouts.map(w => w.date));
   let streak = 0;
-  const startFrom = loggedDates.has(today) ? 0 : 1;
+  const startFrom = completedDates.has(today) ? 0 : 1;
   for (let i = startFrom; i < 365; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const iso = d.toISOString().slice(0, 10);
-    if (loggedDates.has(iso)) { streak++; } else { break; }
+    if (completedDates.has(iso)) { streak++; } else { break; }
   }
 
   // This week: Mon–Sun containing today
@@ -630,13 +636,13 @@ function renderStats() {
   monday.setHours(0, 0, 0, 0);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  const weekCount = workouts.filter(w => {
+  const weekCount = completedWorkouts.filter(w => {
     const d = new Date(w.date + 'T00:00:00');
     return d >= monday && d <= sunday;
   }).length;
 
-  // Last workout
-  const sorted = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+  // Last workout (completed only)
+  const sorted = [...completedWorkouts].sort((a, b) => b.date.localeCompare(a.date));
   const last = sorted[0];
   let lastName = '—', lastLabel = 'Last workout';
   if (last) {
@@ -650,10 +656,10 @@ function renderStats() {
   document.getElementById('stat-week').textContent     = weekCount;
   document.getElementById('stat-last-name').textContent = lastName;
   document.getElementById('stat-last-label').textContent = lastLabel;
-  renderWeekStrip(loggedDates, today);
+  renderWeekStrip(completedDates, plannedDates, today);
 }
 
-function renderWeekStrip(loggedDates, today) {
+function renderWeekStrip(completedDates, plannedDates, today) {
   const el = document.getElementById('week-strip');
   if (!el) return;
 
@@ -670,21 +676,26 @@ function renderWeekStrip(loggedDates, today) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     const iso = d.toISOString().slice(0, 10);
-    const isToday  = iso === today;
-    const logged   = loggedDates.has(iso);
-    const isFuture = iso > today;
+    const isToday   = iso === today;
+    const completed = completedDates.has(iso);
+    const planned   = !completed && plannedDates.has(iso);
+    const isFuture  = iso > today;
 
     const dotClass = ['week-dot',
-      logged   ? 'week-dot-logged'  : '',
-      isToday  ? 'week-dot-today'   : '',
-      isFuture ? 'week-dot-future'  : '',
+      completed ? 'week-dot-logged'  : '',
+      planned   ? 'week-dot-planned' : '',
+      isToday   ? 'week-dot-today'   : '',
+      isFuture  ? 'week-dot-future'  : '',
     ].filter(Boolean).join(' ');
 
     const labelClass = 'week-day-label' + (isToday ? ' week-day-label-today' : '');
+    const inner = completed ? '<span class="week-dot-check">✓</span>'
+                : planned   ? '<span class="week-dot-plan-dot"></span>'
+                : '';
 
     return `
-      <div class="week-day">
-        <div class="${dotClass}">${logged ? '<span class="week-dot-check">✓</span>' : ''}</div>
+      <div class="week-day" onclick="selectDay('${iso}')" style="cursor:pointer">
+        <div class="${dotClass}">${inner}</div>
         <div class="${labelClass}">${label}</div>
       </div>`;
   }).join('');
@@ -940,7 +951,7 @@ window.selectDay = function(iso) {
   state.dayWorkout = existing
     ? JSON.parse(JSON.stringify(existing))
     : { id: uid(), date: iso, name: '', exercises: [] };
-  state.dayIsReadOnly = !!existing;
+  state.dayIsReadOnly = !!(existing && (existing.status ?? 'completed') === 'completed');
 
   // If the day has no exercises, pre-load from the active plan
   if (state.dayWorkout.exercises.length === 0) {
@@ -1038,6 +1049,7 @@ function persistDay() {
   }
 
   if (!w.name) w.name = formatDate(w.date) + ' Workout';
+  if (!w.status) w.status = 'planned';
   if (exists) updateWorkout(w);
   else        addWorkout(w);
 }
@@ -1558,7 +1570,13 @@ function renderCalendar() {
   document.getElementById('cal-month-label').textContent =
     new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const workoutDates = new Set(loadWorkouts().map(w => w.date));
+  const allWorkouts       = loadWorkouts();
+  const workoutDates      = new Set(
+    allWorkouts.filter(w => (w.status ?? 'completed') === 'completed').map(w => w.date)
+  );
+  const savedPlannedDates = new Set(
+    allWorkouts.filter(w => (w.status ?? 'completed') === 'planned').map(w => w.date)
+  );
   const plannedDates = planDatesSet();
 
   const DOW         = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -1571,12 +1589,13 @@ function renderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const isToday  = iso === today;
-    const hasLog   = workoutDates.has(iso);
-    const hasPlan  = plannedDates.has(iso);
+    const hasLog       = workoutDates.has(iso);
+    const hasSavedPlan = savedPlannedDates.has(iso);
+    const hasPlan      = plannedDates.has(iso);
 
     const cls = ['cal-day', isToday ? 'today' : ''].filter(Boolean).join(' ');
     const dots = (hasLog ? `<span class="dot dot-workout"></span>` : '') +
-                 (hasPlan && !hasLog ? `<span class="dot dot-plan"></span>` : '');
+                 (!hasLog && (hasSavedPlan || hasPlan) ? `<span class="dot dot-plan"></span>` : '');
 
     html += `
       <div class="${cls}" onclick="selectDay('${iso}')">
@@ -2312,6 +2331,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-day-finish-workout').addEventListener('click', () => {
     const w = state.dayWorkout;
     if (!w) return;
+    w.status = 'completed';
     persistDay();
     state.dayWorkout = null;
     navigate('calendar');

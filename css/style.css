@@ -691,6 +691,19 @@ body {
   opacity: 0.3;
 }
 
+.week-dot-planned {
+  background: transparent;
+  border: 2px dashed var(--accent);
+}
+
+.week-dot-plan-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.75;
+}
+
 .week-dot-check {
   font-size: 12px;
   color: #fff;
