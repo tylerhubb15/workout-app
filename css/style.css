@@ -322,6 +322,16 @@ body {
   white-space: nowrap;
 }
 
+.today-plan-next-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
 .today-plan-label {
   font-size: 10px;
   font-weight: 800;

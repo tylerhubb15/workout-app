@@ -542,6 +542,7 @@ function renderTodayPlan() {
 
   el.innerHTML = `
     <div class="today-plan-card">
+      <div class="today-plan-next-label">Next Workout</div>
       <div class="today-plan-card-top">
         <div>
           <div class="today-plan-label">${label} — ${escHtml(plan.name)} ${rirBadge}</div>
