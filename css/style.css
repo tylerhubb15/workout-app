@@ -1752,6 +1752,11 @@ body.seen #splash { display: none; }
   letter-spacing: 0.04em;
   margin-top: 2px;
 }
+.set-rir-label-tap {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
 .set-rir-history {
   font-size: 10px;
   color: var(--text3);

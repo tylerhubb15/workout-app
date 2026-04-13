@@ -360,6 +360,28 @@ function showAlert(title, msg) {
   showModal({ title, msg, confirmText: 'OK' });
 }
 
+window.showTrainingMethodInfo = function(method) {
+  if (method === 'rir') {
+    showAlert('Reps in Reserve (RIR)', `
+      <p style="margin:0 0 10px">RIR measures how close you are to failure. <strong>RIR 3</strong> means you could do 3 more reps; <strong>RIR 0</strong> means you hit true failure.</p>
+      <p style="margin:0 0 10px">Each week of your mesocycle the target RIR drops by 1 — so the load progressively intensifies:</p>
+      <p style="margin:0;font-family:monospace;font-size:13px">Wk 1 → RIR 3 &nbsp;|&nbsp; Wk 2 → RIR 2<br>Wk 3 → RIR 1 &nbsp;|&nbsp; Wk 4 → RIR 0</p>
+      <p style="margin:10px 0 0;color:var(--text2);font-size:13px">Log the reps you actually completed. The app uses that to auto-calculate next week's target.</p>
+    `);
+  } else if (method === 'er') {
+    showAlert('Effective Reps (ER)', `
+      <p style="margin:0 0 10px">ER training accumulates reps close to failure using rest-pause technique.</p>
+      <p style="margin:0 0 10px"><strong>How it works:</strong></p>
+      <ol style="margin:0 0 10px;padding-left:18px">
+        <li>Do your <strong>ignition set</strong> to near-failure (e.g. 12 reps)</li>
+        <li>Rest 10–15 seconds</li>
+        <li>Keep going in short bursts until you hit the <strong>ER target</strong> total</li>
+      </ol>
+      <p style="margin:0;color:var(--text2);font-size:13px">Only the reps near failure count as "effective." This method maximises stimulus in less time.</p>
+    `);
+  }
+};
+
 function showPRToast(exerciseName, weight) {
   const toast = document.getElementById('pr-toast');
   if (!toast) return;
@@ -967,8 +989,8 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap) {
       ${planRIR ? '' : `<td><input class="set-pill" type="number" min="0" inputmode="numeric"
            value="${s.reps || ''}" placeholder="${(s.rir != null || s.erTarget != null) ? 'Log reps' : '–'}"
            onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" ${readOnly ? 'disabled' : ''}/>
-        ${(canLog && s.rir != null) ? `<span class="set-rir-label">@RIR&nbsp;${s.rir}</span>` : ''}
-        ${(canLog && s.erTarget != null) ? `<span class="set-rir-label">ER&nbsp;${s.erTarget}</span>` : ''}</td>`}
+        ${(canLog && s.rir != null) ? `<span class="set-rir-label set-rir-label-tap" onclick="showTrainingMethodInfo('rir')">@RIR&nbsp;${s.rir}</span>` : ''}
+        ${(canLog && s.erTarget != null) ? `<span class="set-rir-label set-rir-label-tap" onclick="showTrainingMethodInfo('er')">ER&nbsp;${s.erTarget}</span>` : ''}</td>`}
       ${canLog ? `<td class="set-log-cell">
         <label class="set-check-wrap">
           <input type="checkbox" ${done ? 'checked' : ''}
@@ -984,18 +1006,12 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap) {
     ? `<div class="ex-muscle-tag ex-muscle-${muscle.toLowerCase().replace(/\s+/g,'-')}">${muscle.toUpperCase()}</div>`
     : '';
 
-  const repModeTag = (ex.repMode === 'rir' || (ex.sets && ex.sets.some(s => s.rir != null)))
-    ? `<span class="ex-repmode-badge ex-repmode-rir">RIR</span>`
-    : ex.repMode === 'er'
-      ? `<span class="ex-repmode-badge ex-repmode-er">ER</span>`
-      : '';
-
   return `
     <div class="active-exercise-card${muscleClass}">
       ${muscleTag}
       <div class="active-exercise-header">
         <div class="active-exercise-info">
-          <div class="active-exercise-name">${escHtml(ex.name)}${repModeTag}</div>
+          <div class="active-exercise-name">${escHtml(ex.name)}</div>
           ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
