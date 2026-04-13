@@ -984,12 +984,18 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap) {
     ? `<div class="ex-muscle-tag ex-muscle-${muscle.toLowerCase().replace(/\s+/g,'-')}">${muscle.toUpperCase()}</div>`
     : '';
 
+  const repModeTag = (ex.repMode === 'rir' || (ex.sets && ex.sets.some(s => s.rir != null)))
+    ? `<span class="ex-repmode-badge ex-repmode-rir">RIR</span>`
+    : ex.repMode === 'er'
+      ? `<span class="ex-repmode-badge ex-repmode-er">ER</span>`
+      : '';
+
   return `
     <div class="active-exercise-card${muscleClass}">
       ${muscleTag}
       <div class="active-exercise-header">
         <div class="active-exercise-info">
-          <div class="active-exercise-name">${escHtml(ex.name)}</div>
+          <div class="active-exercise-name">${escHtml(ex.name)}${repModeTag}</div>
           ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">

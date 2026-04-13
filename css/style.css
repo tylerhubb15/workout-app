@@ -997,6 +997,30 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .active-exercise-card.muscle-core       { border-left: 3px solid #f87171; }
 .active-exercise-card.muscle-full-body  { border-left: 3px solid #fb923c; }
 
+/* ── Rep mode badge (RIR / ER) ──────────────────────────── */
+.ex-repmode-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 7px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+.ex-repmode-rir {
+  background: rgba(20, 184, 166, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(20, 184, 166, 0.35);
+}
+.ex-repmode-er {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.35);
+}
+
 /* ── Muscle group badge ─────────────────────────────────── */
 .ex-muscle-tag {
   display: inline-block;
