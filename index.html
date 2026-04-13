@@ -171,6 +171,10 @@
         <span class="bw-home-arrow">›</span>
       </div>
       <div class="week-strip" id="week-strip"></div>
+      <button class="vol-home-btn" onclick="navigate('volume')">
+        <span>Weekly Volume</span>
+        <span class="vol-home-btn-arrow">›</span>
+      </button>
     </div>
     <!-- RIR Training Guide -->
     <div class="rir-guide-card">
@@ -452,6 +456,18 @@
       </div>
     </div>
     <div id="plan-muscle-picker-body" style="padding: 0 20px 32px"></div>
+  </section>
+
+  <!-- ── Volume Tracker ───────────────────────────────── -->
+  <section class="view" id="view-volume">
+    <div class="page-header">
+      <button class="btn-back" id="btn-volume-back">‹</button>
+      <div>
+        <h1>Weekly Volume</h1>
+        <div class="page-subtitle">Sets per muscle group</div>
+      </div>
+    </div>
+    <div id="volume-content" style="padding: 0 20px 32px;"></div>
   </section>
 
   <!-- ── Modal Overlay ─────────────────────────────── -->

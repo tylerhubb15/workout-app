@@ -2486,4 +2486,121 @@ input.input-error, select.input-error {
   scrollbar-width: none;
 }
 .progress-graph-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Volume Tracker ──────────────────────────────────────── */
+
+.vol-home-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(100% - 32px);
+  margin: 8px 16px 4px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.vol-home-btn-arrow {
+  color: var(--text3);
+  font-size: 16px;
+}
+
+.vol-week-range {
+  font-size: 12px;
+  color: var(--text3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 16px 0 10px;
+}
+
+.vol-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.vol-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.vol-legend-label {
+  font-size: 11px;
+  color: var(--text3);
+  margin-right: 8px;
+}
+
+.vol-list { display: flex; flex-direction: column; gap: 14px; }
+
+.vol-row {}
+.vol-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 5px;
+}
+.vol-muscle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.vol-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.vol-count-zero { color: var(--text3); }
+
+.vol-bar-bg {
+  position: relative;
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: visible;
+}
+.vol-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  min-width: 0;
+}
+.vol-bar-empty  { background: var(--border2); }
+.vol-bar-low    { background: #f59e0b; }
+.vol-bar-ok     { background: #34d399; }
+.vol-bar-high   { background: #f87171; }
+
+/* tick marks showing the 10 and 20 set targets */
+.vol-bar-marker {
+  position: absolute;
+  top: -3px;
+  width: 1px;
+  height: 14px;
+  background: var(--text3);
+  opacity: 0.4;
+  transform: translateX(-50%);
+}
+
+.vol-note {
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+/* ── Exercise name tappable ──────────────────────────────── */
+
+.active-exercise-name-tap {
+  cursor: pointer;
+  text-decoration: underline dotted var(--text3);
+  text-underline-offset: 3px;
+}
 .progress-graph-svg text { font-family: inherit; }

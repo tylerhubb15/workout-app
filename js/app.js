@@ -473,6 +473,7 @@ function navigate(view) {
   if (view === 'plan-editor')       renderPlanEditor();
   if (view === 'plan-day-muscles')  renderPlanDayMuscles();
   if (view === 'plan-muscle-picker') renderMuscleGroupPicker();
+  if (view === 'volume')             renderVolumeTracker();
 
   window.scrollTo(0, 0);
 }
@@ -573,6 +574,81 @@ window.startNextWorkout = function(targetIso, label) {
     onCancel:  () => selectDay(today, 'home'),
   });
 };
+
+// ── Volume Tracker ────────────────────────────────────────
+
+function getWeekVolumeByMuscle() {
+  const now = new Date();
+  const dow = now.getDay();
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const workouts = loadWorkouts().filter(w => {
+    if ((w.status ?? 'completed') !== 'completed') return false;
+    const d = new Date(w.date + 'T00:00:00');
+    return d >= monday && d <= sunday;
+  });
+
+  const sets = {};
+  workouts.forEach(w => {
+    w.exercises.forEach(ex => {
+      const muscle = ex.muscleGroup || getMuscleGroup(ex.name);
+      if (!muscle || muscle === 'Full Body') return;
+      sets[muscle] = (sets[muscle] || 0) + ex.sets.length;
+    });
+  });
+  return { sets, monday, sunday };
+}
+
+function renderVolumeTracker() {
+  const MUSCLES = Object.keys(MUSCLE_MAP).filter(m => m !== 'Full Body');
+  const REC_MIN = 10;
+  const REC_MAX = 20;
+  const BAR_MAX = 24;
+
+  const { sets, monday, sunday } = getWeekVolumeByMuscle();
+
+  const weekStr = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    + ' – '
+    + sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  const rows = MUSCLES.map(muscle => {
+    const count = sets[muscle] || 0;
+    const pct   = Math.min(100, (count / BAR_MAX) * 100);
+    const barCls = count === 0       ? 'vol-bar-empty'
+                 : count < REC_MIN   ? 'vol-bar-low'
+                 : count <= REC_MAX  ? 'vol-bar-ok'
+                 : 'vol-bar-high';
+    const minPct = (REC_MIN / BAR_MAX) * 100;
+    const maxPct = (REC_MAX / BAR_MAX) * 100;
+    return `
+      <div class="vol-row">
+        <div class="vol-row-top">
+          <span class="vol-muscle">${muscle}</span>
+          <span class="vol-count${count === 0 ? ' vol-count-zero' : ''}">${count} set${count !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="vol-bar-bg">
+          <div class="vol-bar-fill ${barCls}" style="width:${pct}%"></div>
+          <div class="vol-bar-marker" style="left:${minPct}%"></div>
+          <div class="vol-bar-marker" style="left:${maxPct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('volume-content').innerHTML = `
+    <div class="vol-week-range">${weekStr}</div>
+    <div class="vol-legend">
+      <span class="vol-legend-dot vol-bar-low"></span><span class="vol-legend-label">Under 10</span>
+      <span class="vol-legend-dot vol-bar-ok"></span><span class="vol-legend-label">10–20 ✓</span>
+      <span class="vol-legend-dot vol-bar-high"></span><span class="vol-legend-label">Over 20</span>
+    </div>
+    <div class="vol-list">${rows}</div>
+    <div class="vol-note">Vertical markers show the 10–20 set target range. Aim for each muscle to land between them for hypertrophy.</div>`;
+}
 
 function renderStats() {
   const workouts = loadWorkouts();
@@ -720,6 +796,16 @@ window.deleteBwEntry = function(date) {
 window.showExerciseHistory = function(name, event) {
   event.stopPropagation();
   state.exHistoryName   = name;
+  state.exHistoryBackTo = state.view;
+  navigate('exercise-history');
+};
+
+// Called from exercise card — resolves name by index to avoid encoding issues
+window.openExerciseHistory = function(ctx, ei, event) {
+  event.stopPropagation();
+  const ex = workoutFor(ctx)?.exercises[ei];
+  if (!ex) return;
+  state.exHistoryName   = ex.name;
   state.exHistoryBackTo = state.view;
   navigate('exercise-history');
 };
@@ -1040,7 +1126,7 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap) {
       ${muscleTag}
       <div class="active-exercise-header">
         <div class="active-exercise-info">
-          <div class="active-exercise-name">${escHtml(ex.name)}</div>
+          <div class="active-exercise-name active-exercise-name-tap" onclick="openExerciseHistory('${ctx}',${ei},event)">${escHtml(ex.name)}</div>
           ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
@@ -2337,6 +2423,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Exercise history view
   document.getElementById('btn-ex-history-back').addEventListener('click', () => {
     navigate(state.exHistoryBackTo || 'history');
+  });
+
+  // Volume tracker view
+  document.getElementById('btn-volume-back').addEventListener('click', () => {
+    navigate('home');
   });
 
   navigate('home');
