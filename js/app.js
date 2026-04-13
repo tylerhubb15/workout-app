@@ -288,6 +288,17 @@ function fmtWeight(lbs) {
   return `${toDisplayWeight(lbs)} ${weightUnit()}`;
 }
 
+window.toggleWeightUnit = function(ctx) {
+  saveUnitPref(weightUnit() === 'lbs' ? 'kg' : 'lbs');
+  renderBwHomeWidget();
+  // Re-render whichever exercise view is active
+  if (ctx === 'day' || state.dayWorkout)        renderDay();
+  if (ctx === 'workout' || state.activeWorkout) renderWorkout();
+  // Update bw view toggle label if it's visible
+  const btn = document.getElementById('btn-unit-toggle');
+  if (btn) btn.textContent = weightUnit().toUpperCase();
+};
+
 // ── RIR Helpers ───────────────────────────────────────────
 function getRirContext(plan, iso) {
   if (!plan.rir) return null;
@@ -1256,7 +1267,7 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap, ssInfo = {}) {
           <div class="active-exercise-name active-exercise-name-tap" onclick="openExerciseHistory('${ctx}',${ei},event)">${escHtml(ex.name)}</div>
           ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;min-width:0">
           ${canReorder ? `<button class="reorder-btn${ei === 0 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'up')" ${ei === 0 ? 'disabled' : ''}>▲</button>
           <button class="reorder-btn${ei === totalCount - 1 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'down')" ${ei === totalCount - 1 ? 'disabled' : ''}>▼</button>` : ''}
           ${!readOnly ? `<button class="btn btn-secondary btn-sm" onclick="handleSwapExercise('${ctx}',${ei})" title="Swap exercise">⇄ Swap</button>` : ''}
@@ -1273,7 +1284,7 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap, ssInfo = {}) {
         <thead>
           <tr>
             <th class="set-num-head">#</th>
-            <th>Weight (${weightUnit()})</th>
+            <th style="cursor:pointer;user-select:none" onclick="toggleWeightUnit('${ctx}')" title="Tap to switch units">Weight (${weightUnit()}) ↕</th>
             ${planRIR ? '' : `<th>Reps</th>`}
             ${canLog ? '<th class="set-log-head">Log</th>' : ''}
             <th></th>
@@ -2673,9 +2684,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Body weight view
   document.getElementById('btn-bw-back').addEventListener('click', () => navigate('home'));
   document.getElementById('btn-unit-toggle').addEventListener('click', () => {
-    saveUnitPref(weightUnit() === 'lbs' ? 'kg' : 'lbs');
+    window.toggleWeightUnit(null);
     renderBodyWeight();
-    renderBwHomeWidget();
   });
   document.getElementById('btn-bw-save').addEventListener('click', () => {
     const rawVal = parseFloat(document.getElementById('bw-input').value);
