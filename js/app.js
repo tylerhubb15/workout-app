@@ -936,7 +936,7 @@ function renderWorkout() {
     return;
   }
   const prMap = buildPRMap();
-  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'workout', w.exercises.length, prMap)).join('');
+  container.innerHTML = buildExerciseListHtml(w.exercises, 'workout', prMap);
 }
 
 function syncWorkoutFields() {
@@ -947,6 +947,55 @@ function syncWorkoutFields() {
   w.notes = document.getElementById('workout-notes').value.trim() || undefined;
 }
 
+// ── Progressive Overload ──────────────────────────────────
+
+function getOverloadSuggestions(workout) {
+  const allWorkouts = loadWorkouts();
+  const suggestions = [];
+
+  workout.exercises.forEach(ex => {
+    const curDoneSets = ex.sets.filter(s => s.done && s.weight > 0);
+    if (curDoneSets.length === 0) return;
+
+    // Find most recent prior completed session with this exercise
+    const prev = allWorkouts
+      .filter(w => w.date < workout.date
+               && (w.status ?? 'completed') === 'completed'
+               && w.exercises.some(e => e.name === ex.name))
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+    if (!prev) return; // first time logging this exercise — no suggestion yet
+
+    const curMax   = Math.max(...curDoneSets.map(s => s.weight));
+    const allDone  = ex.sets.every(s => s.done);
+    const hitReps  = curDoneSets.every(s => (s.actualReps ?? s.reps) >= (s.reps || 1));
+    const increment = curMax >= 100 ? 5 : 2.5;
+
+    if (allDone && hitReps) {
+      suggestions.push({ name: ex.name, msg: `${curMax} → ${curMax + increment} lbs (+${increment})` });
+    } else if (allDone && !hitReps) {
+      suggestions.push({ name: ex.name, msg: `${curMax} lbs — repeat weight, hit all reps first` });
+    }
+  });
+
+  return suggestions;
+}
+
+function showOverloadModal(suggestions) {
+  if (suggestions.length === 0) return;
+  const rows = suggestions.map(s =>
+    `<div class="overload-row">
+      <span class="overload-name">${escHtml(s.name)}</span>
+      <span class="overload-msg">${escHtml(s.msg)}</span>
+    </div>`
+  ).join('');
+  showModal({
+    title: 'Next Session',
+    msg: `<div class="overload-intro">Suggested weights based on today:</div><div class="overload-list">${rows}</div>`,
+    confirmText: 'Got it',
+  });
+}
+
 function finishWorkout() {
   syncWorkoutFields();
   const w = state.activeWorkout;
@@ -955,9 +1004,11 @@ function finishWorkout() {
     showAlert('No exercises', 'Add at least one exercise before finishing.');
     return;
   }
+  const suggestions = getOverloadSuggestions(w);
   addWorkout(w);
   state.activeWorkout = null;
   navigate('home');
+  if (suggestions.length > 0) setTimeout(() => showOverloadModal(suggestions), 300);
 }
 
 // ── Day View (calendar drill-down) ────────────────────────
@@ -1049,7 +1100,7 @@ function renderDay() {
     }
     return;
   }
-  container.innerHTML = w.exercises.map((ex, ei) => exerciseCardHTML(ex, ei, 'day', w.exercises.length)).join('');
+  container.innerHTML = buildExerciseListHtml(w.exercises, 'day');
   if (!state.dayIsReadOnly) {
     const allDone = w.exercises.every(ex => ex.sets.every(s => s.done));
     document.getElementById('btn-day-finish-workout').disabled = !allDone;
@@ -1080,7 +1131,26 @@ function persistDay() {
 
 // ── Shared Exercise Card ──────────────────────────────────
 // Used by active workout, day view, and plan template
-function exerciseCardHTML(ex, ei, ctx, totalCount, prMap) {
+
+// Renders a list of exercise cards, inserting SS connector bars between supersetted pairs
+function buildExerciseListHtml(exercises, ctx, prMap) {
+  let html = '';
+  for (let ei = 0; ei < exercises.length; ei++) {
+    const prev = exercises[ei - 1];
+    const next = exercises[ei + 1];
+    const ex   = exercises[ei];
+    const connectedAbove = !!(ex.supersetId && prev && prev.supersetId === ex.supersetId);
+    const connectedBelow = !!(ex.supersetId && next && next.supersetId === ex.supersetId);
+    html += exerciseCardHTML(ex, ei, ctx, exercises.length, prMap, { connectedAbove, connectedBelow });
+    if (connectedBelow) {
+      html += `<div class="ss-connector-bar"><span class="ss-connector-label">SUPERSET</span></div>`;
+    }
+  }
+  return html;
+}
+
+function exerciseCardHTML(ex, ei, ctx, totalCount, prMap, ssInfo = {}) {
+  const { connectedAbove = false, connectedBelow = false } = ssInfo;
   const readOnly = ctx === 'day' && state.dayIsReadOnly;
   const canLog   = ctx !== 'planTemplate' && !readOnly;
   const planRIR  = ctx === 'planTemplate' && state.editingPlan && state.editingPlan.rir;
@@ -1121,17 +1191,24 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap) {
     ? `<div class="ex-muscle-tag ex-muscle-${muscle.toLowerCase().replace(/\s+/g,'-')}">${muscle.toUpperCase()}</div>`
     : '';
 
+  const ssCardClass = connectedAbove && connectedBelow ? ' ss-card-mid'
+                    : connectedAbove                  ? ' ss-card-end'
+                    : connectedBelow                  ? ' ss-card-start'
+                    : '';
+
   return `
-    <div class="active-exercise-card${muscleClass}">
+    <div class="active-exercise-card${muscleClass}${ssCardClass}">
       ${muscleTag}
       <div class="active-exercise-header">
         <div class="active-exercise-info">
           <div class="active-exercise-name active-exercise-name-tap" onclick="openExerciseHistory('${ctx}',${ei},event)">${escHtml(ex.name)}</div>
           ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
         </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
+        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
           ${canReorder ? `<button class="reorder-btn${ei === 0 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'up')" ${ei === 0 ? 'disabled' : ''}>▲</button>
           <button class="reorder-btn${ei === totalCount - 1 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'down')" ${ei === totalCount - 1 ? 'disabled' : ''}>▼</button>` : ''}
+          ${!readOnly ? `<button class="btn btn-secondary btn-sm" onclick="handleSwapExercise('${ctx}',${ei})" title="Swap exercise">⇄ Swap</button>` : ''}
+          ${canLog ? `<button class="btn btn-sm ${ex.supersetId ? 'btn-ss-active' : 'btn-secondary'}" onclick="handleLinkSuperset('${ctx}',${ei})" title="Superset">SS</button>` : ''}
           ${!readOnly ? `<button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>` : ''}
           ${!readOnly ? `<button class="btn btn-icon btn-secondary" onclick="handleRemoveExercise('${ctx}',${ei})" title="Remove">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -1227,6 +1304,102 @@ window.handleEditExercise = function(ctx, ei) {
 
 window.handleRemoveExercise = function(ctx, ei) {
   workoutFor(ctx).exercises.splice(ei, 1);
+  rerenderFor(ctx);
+};
+
+// ── Superset ──────────────────────────────────────────────
+
+window.handleLinkSuperset = function(ctx, ei) {
+  const exercises = workoutFor(ctx).exercises;
+  const ex = exercises[ei];
+
+  if (ex.supersetId) {
+    showModal({
+      title: 'Remove Superset',
+      msg: `Unlink <strong>${escHtml(ex.name)}</strong> from its superset partner?`,
+      confirmText: 'Unlink',
+      cancelText: 'Cancel',
+      confirmClass: 'btn-danger-solid',
+      onConfirm: () => {
+        const id = ex.supersetId;
+        exercises.forEach(e => { if (e.supersetId === id) delete e.supersetId; });
+        rerenderFor(ctx);
+      },
+    });
+    return;
+  }
+
+  const available = exercises
+    .map((e, i) => ({ e, i }))
+    .filter(({ e, i }) => i !== ei && !e.supersetId);
+
+  if (available.length === 0) {
+    showAlert('No available exercises', 'Add another exercise first, or unlink existing supersets.');
+    return;
+  }
+
+  state._ssCtx     = ctx;
+  state._ssEi      = ei;
+  state._ssOptions = available;
+
+  const listHtml = available.map(({ e }, idx) =>
+    `<div class="swap-option" onclick="confirmSuperset(${idx})">${escHtml(e.name)}</div>`
+  ).join('');
+
+  showModal({
+    title: 'Link as Superset',
+    msg: `<div class="swap-prompt">Alternate <strong>${escHtml(ex.name)}</strong> with:</div><div class="swap-list">${listHtml}</div>`,
+    confirmText: 'Cancel',
+    confirmClass: 'btn-secondary',
+  });
+};
+
+window.confirmSuperset = function(optionIdx) {
+  document.getElementById('modal-overlay').hidden = true;
+  const { _ssCtx: ctx, _ssEi: ei, _ssOptions: opts } = state;
+  const exercises = workoutFor(ctx).exercises;
+  const ssId = 'ss-' + uid();
+  exercises[ei].supersetId              = ssId;
+  exercises[opts[optionIdx].i].supersetId = ssId;
+  rerenderFor(ctx);
+};
+
+// ── Exercise Swap ─────────────────────────────────────────
+
+window.handleSwapExercise = function(ctx, ei) {
+  const ex     = workoutFor(ctx).exercises[ei];
+  const muscle = ex.muscleGroup || getMuscleGroup(ex.name);
+  if (!muscle) {
+    showAlert('No muscle group', 'Assign a muscle group to this exercise before swapping.');
+    return;
+  }
+  const options = (MUSCLE_MAP[muscle] || []).filter(n => n !== ex.name);
+  if (options.length === 0) {
+    showAlert('No alternatives', `No other exercises found for ${muscle}.`);
+    return;
+  }
+  state._swapCtx     = ctx;
+  state._swapEi      = ei;
+  state._swapOptions = options;
+
+  const listHtml = options.map((n, i) =>
+    `<div class="swap-option" onclick="confirmSwap(${i})">${escHtml(n)}</div>`
+  ).join('');
+
+  showModal({
+    title: `Swap — ${muscle}`,
+    msg: `<div class="swap-prompt">Replacing: <strong>${escHtml(ex.name)}</strong></div><div class="swap-list">${listHtml}</div>`,
+    confirmText: 'Cancel',
+    confirmClass: 'btn-secondary',
+  });
+};
+
+window.confirmSwap = function(optionIdx) {
+  document.getElementById('modal-overlay').hidden = true;
+  const { _swapCtx: ctx, _swapEi: ei, _swapOptions: options } = state;
+  const ex  = workoutFor(ctx).exercises[ei];
+  ex.name   = options[optionIdx];
+  ex.muscleGroup = getMuscleGroup(ex.name) || ex.muscleGroup;
   rerenderFor(ctx);
 };
 
@@ -2357,9 +2530,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const w = state.dayWorkout;
     if (!w) return;
     w.status = 'completed';
+    const suggestions = getOverloadSuggestions(w);
     persistDay();
     state.dayWorkout = null;
-    navigate('calendar');
+    navigate(state.dayReturnView || 'calendar');
+    if (suggestions.length > 0) setTimeout(() => showOverloadModal(suggestions), 300);
   });
 
   // Exercise form

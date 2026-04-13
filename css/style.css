@@ -2604,3 +2604,107 @@ input.input-error, select.input-error {
   text-underline-offset: 3px;
 }
 .progress-graph-svg text { font-family: inherit; }
+
+/* ── Superset ────────────────────────────────────────────── */
+
+.btn-ss-active {
+  background: rgba(52,211,153,0.15);
+  border: 1px solid rgba(52,211,153,0.45);
+  color: #34d399;
+  font-weight: 700;
+}
+
+/* Remove bottom radius on the first card of a pair, top radius on the second */
+.ss-card-start {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+.ss-card-end {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top-color: transparent;
+}
+.ss-card-mid {
+  border-radius: 0;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.ss-connector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  margin: 0 20px;
+  background: rgba(52,211,153,0.08);
+  border-left: 1px solid rgba(52,211,153,0.35);
+  border-right: 1px solid rgba(52,211,153,0.35);
+  position: relative;
+}
+.ss-connector-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #34d399;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* ── Exercise Swap ───────────────────────────────────────── */
+
+.swap-prompt {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 10px;
+}
+.swap-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  overscroll-behavior: contain;
+}
+.swap-option {
+  padding: 11px 14px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.swap-option:last-child { border-bottom: none; }
+.swap-option:active { background: var(--surface2); }
+
+/* ── Progressive Overload ────────────────────────────────── */
+
+.overload-intro {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.overload-list { display: flex; flex-direction: column; gap: 8px; }
+.overload-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.overload-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.overload-msg {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 700;
+  white-space: nowrap;
+}
