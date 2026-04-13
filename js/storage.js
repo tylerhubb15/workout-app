@@ -86,3 +86,14 @@ export function logBodyWeight(date, weight) {
 export function deleteBodyWeight(date) {
   saveBodyWeights(loadBodyWeights().filter(e => e.date !== date));
 }
+
+// ── Unit Preference ───────────────────────────────────────
+const UNIT_PREF_KEY = 'wt_unit_pref';
+
+export function loadUnitPref() {
+  return localStorage.getItem(UNIT_PREF_KEY) || 'lbs';
+}
+
+export function saveUnitPref(unit) {
+  localStorage.setItem(UNIT_PREF_KEY, unit);
+}

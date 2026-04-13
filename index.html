@@ -413,7 +413,10 @@
     </div>
     <div class="bw-content">
       <div class="bw-log-card">
-        <div class="field-label">Log weight</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="field-label" style="margin-bottom:0">Log weight</div>
+          <button class="btn btn-secondary btn-sm" id="btn-unit-toggle">lbs</button>
+        </div>
         <div class="bw-log-row">
           <input type="number" id="bw-input" placeholder="lbs" step="0.1" min="0" max="999" inputmode="decimal" />
           <input type="date" id="bw-date" />

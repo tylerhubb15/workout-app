@@ -1,4 +1,4 @@
-import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan, loadActivePlanId, saveActivePlanId, loadBodyWeights, logBodyWeight, deleteBodyWeight } from './storage.js';
+import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan, loadActivePlanId, saveActivePlanId, loadBodyWeights, logBodyWeight, deleteBodyWeight, loadUnitPref, saveUnitPref } from './storage.js';
 
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
@@ -263,6 +263,31 @@ const state = {
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
 };
 
+// ── Unit Helpers ──────────────────────────────────────────
+const LBS_TO_KG = 0.453592;
+const KG_TO_LBS = 2.20462;
+
+function weightUnit() { return loadUnitPref(); }
+
+// Convert stored lbs value to the user's display unit (returns a number)
+function toDisplayWeight(lbs) {
+  if (lbs == null || lbs === '') return '';
+  const v = parseFloat(lbs) || 0;
+  return weightUnit() === 'kg' ? +(v * LBS_TO_KG).toFixed(2) : v;
+}
+
+// Convert a value the user typed (in their preferred unit) back to lbs for storage
+function fromDisplayWeight(displayVal) {
+  const v = parseFloat(displayVal) || 0;
+  return weightUnit() === 'kg' ? Math.round(v * KG_TO_LBS * 100) / 100 : v;
+}
+
+// Format a stored lbs value as "X lbs" or "X kg" for display
+function fmtWeight(lbs) {
+  if (!lbs) return '';
+  return `${toDisplayWeight(lbs)} ${weightUnit()}`;
+}
+
 // ── RIR Helpers ───────────────────────────────────────────
 function getRirContext(plan, iso) {
   if (!plan.rir) return null;
@@ -389,7 +414,7 @@ function showPRToast(exerciseName, weight) {
   const toast = document.getElementById('pr-toast');
   if (!toast) return;
   toast.querySelector('.pr-toast-ex').textContent = exerciseName;
-  toast.querySelector('.pr-toast-weight').textContent = weight + ' lbs';
+  toast.querySelector('.pr-toast-weight').textContent = fmtWeight(weight);
   toast.hidden = false;
   toast.classList.remove('pr-toast-out');
   // Force reflow so the transition fires from the hidden position
@@ -754,20 +779,24 @@ function renderBwHomeWidget() {
   const valEl   = document.getElementById('bw-home-value');
   const sparkEl = document.getElementById('bw-home-sparkline');
   if (!valEl) return;
-  if (entries.length === 0) { valEl.textContent = '— lbs'; sparkEl.innerHTML = ''; return; }
-  valEl.textContent = entries[0].weight + ' lbs';
+  if (entries.length === 0) { valEl.textContent = `— ${weightUnit()}`; sparkEl.innerHTML = ''; return; }
+  valEl.textContent = `${toDisplayWeight(entries[0].weight)} ${weightUnit()}`;
   sparkEl.innerHTML = renderSparkline([...entries].slice(0, 14).reverse());
 }
 
 function renderBodyWeight() {
   const entries = loadBodyWeights();
+  const unit = weightUnit();
   document.getElementById('bw-date').value  = todayISO();
   const todayEntry = entries.find(e => e.date === todayISO());
-  document.getElementById('bw-input').value = todayEntry ? todayEntry.weight : '';
+  document.getElementById('bw-input').value       = todayEntry ? toDisplayWeight(todayEntry.weight) : '';
+  document.getElementById('bw-input').placeholder = unit;
+  const toggleBtn = document.getElementById('btn-unit-toggle');
+  if (toggleBtn) toggleBtn.textContent = unit.toUpperCase();
 
   const graphEl = document.getElementById('bw-graph-section');
   if (entries.length >= 2) {
-    const chartData = [...entries].reverse().map(e => ({ date: e.date, value: e.weight }));
+    const chartData = [...entries].reverse().map(e => ({ date: e.date, value: toDisplayWeight(e.weight) || 0 }));
     graphEl.innerHTML = `<div class="bw-graph-wrap">${makeSvgLineChart(chartData, { w: 320, h: 100 })}</div>`;
   } else {
     graphEl.innerHTML = entries.length === 0
@@ -781,7 +810,7 @@ function renderBodyWeight() {
     ${entries.map(e => `
       <div class="bw-list-row">
         <span class="bw-list-date">${formatDate(e.date)}</span>
-        <span class="bw-list-weight">${e.weight} lbs</span>
+        <span class="bw-list-weight">${toDisplayWeight(e.weight)} ${unit}</span>
         <button class="btn btn-ghost btn-sm" onclick="deleteBwEntry('${e.date}')">Remove</button>
       </div>`).join('')}`;
 }
@@ -829,7 +858,7 @@ function renderExerciseHistory() {
   const graphData = sessions.map(w => {
     const ex  = w.exercises.find(e => e.name === name);
     const max = Math.max(...ex.sets.map(s => s.weight || 0));
-    return { date: w.date, value: max };
+    return { date: w.date, value: toDisplayWeight(max) || 0 };
   });
 
   const sessionsHtml = [...sessions].reverse().map(w => {
@@ -838,7 +867,7 @@ function renderExerciseHistory() {
       const hit = s.actualReps != null ? ` · hit ${s.actualReps}` : '';
       return `<div class="ex-history-set-row">
         <span class="ex-history-set-num">Set ${i + 1}</span>
-        <span class="ex-history-set-val">${s.reps} reps × ${s.weight || 0} lbs${hit}</span>
+        <span class="ex-history-set-val">${s.reps} reps × ${s.weight ? fmtWeight(s.weight) : `0 ${weightUnit()}`}${hit}</span>
       </div>`;
     }).join('');
     return `<div class="ex-history-session">
@@ -867,15 +896,17 @@ function setRowHTML(s, i, prWeight) {
     <tr>
       <td class="set-num">${i + 1}</td>
       <td>${repsDisplay} reps ${rirDisplay}</td>
-      <td>${s.weight ? s.weight + ' lbs' : '—'}${prBadge}</td>
+      <td>${s.weight ? fmtWeight(s.weight) : '—'}${prBadge}</td>
     </tr>`;
 }
 
 function calcVolume(w) {
-  const vol = w.exercises.reduce((t, ex) =>
+  const volLbs = w.exercises.reduce((t, ex) =>
     t + ex.sets.reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0), 0);
-  if (!vol) return null;
-  return vol >= 1000 ? (vol / 1000).toFixed(1) + 'k' : String(vol);
+  if (!volLbs) return null;
+  const vol  = weightUnit() === 'kg' ? Math.round(volLbs * LBS_TO_KG) : volLbs;
+  const unit = weightUnit();
+  return vol >= 1000 ? `${(vol / 1000).toFixed(1)}k ${unit}` : `${vol} ${unit}`;
 }
 
 function workoutCardHTML(w) {
@@ -907,7 +938,7 @@ function workoutCardHTML(w) {
       <div class="workout-card-meta">
         <span class="meta-pill">${exCount} exercise${exCount !== 1 ? 's' : ''}</span>
         <span class="meta-pill">${setCount} set${setCount !== 1 ? 's' : ''}</span>
-        ${vol ? `<span class="meta-pill vol-pill">${vol} lbs</span>` : ''}
+        ${vol ? `<span class="meta-pill vol-pill">${vol}</span>` : ''}
       </div>
       <div class="workout-card-exercises">${exerciseRows}</div>
     </div>`;
@@ -969,12 +1000,17 @@ function getOverloadSuggestions(workout) {
     const curMax   = Math.max(...curDoneSets.map(s => s.weight));
     const allDone  = ex.sets.every(s => s.done);
     const hitReps  = curDoneSets.every(s => (s.actualReps ?? s.reps) >= (s.reps || 1));
-    const increment = curMax >= 100 ? 5 : 2.5;
+    // Use unit-appropriate increments; threshold in lbs (220 lbs ≈ 100 kg)
+    const isKg = weightUnit() === 'kg';
+    const niceInc    = isKg ? (curMax >= 220 ? 2.5 * KG_TO_LBS : 1.25 * KG_TO_LBS)
+                             : (curMax >= 100 ? 5 : 2.5);
+    const dispInc    = isKg ? (curMax >= 220 ? 2.5 : 1.25) : (curMax >= 100 ? 5 : 2.5);
+    const unit       = weightUnit();
 
     if (allDone && hitReps) {
-      suggestions.push({ name: ex.name, msg: `${curMax} → ${curMax + increment} lbs (+${increment})` });
+      suggestions.push({ name: ex.name, msg: `${toDisplayWeight(curMax)} → ${toDisplayWeight(curMax + niceInc)} ${unit} (+${dispInc})` });
     } else if (allDone && !hitReps) {
-      suggestions.push({ name: ex.name, msg: `${curMax} lbs — repeat weight, hit all reps first` });
+      suggestions.push({ name: ex.name, msg: `${toDisplayWeight(curMax)} ${unit} — repeat weight, hit all reps first` });
     }
   });
 
@@ -1183,8 +1219,8 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap, ssInfo = {}) {
     return `
     <tr class="set-row${done ? ' set-row-done' : ''}">
       <td class="set-num-cell">${si + 1}</td>
-      <td><input class="set-pill" type="number" min="0" step="2.5" inputmode="decimal"
-           value="${s.weight || ''}" placeholder="–"
+      <td><input class="set-pill" type="number" min="0" step="${weightUnit() === 'kg' ? '1.25' : '2.5'}" inputmode="decimal"
+           value="${s.weight ? toDisplayWeight(s.weight) : ''}" placeholder="–"
            onchange="handleSetChange('${ctx}',${ei},${si},'weight',this.value)" ${readOnly ? 'disabled' : ''}/>
         ${prBadge}</td>
       ${planRIR ? '' : `<td><input class="set-pill" type="number" min="0" inputmode="numeric"
@@ -1237,7 +1273,7 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap, ssInfo = {}) {
         <thead>
           <tr>
             <th class="set-num-head">#</th>
-            <th>Weight</th>
+            <th>Weight (${weightUnit()})</th>
             ${planRIR ? '' : `<th>Reps</th>`}
             ${canLog ? '<th class="set-log-head">Log</th>' : ''}
             <th></th>
@@ -1267,7 +1303,7 @@ function rerenderFor(ctx) {
 }
 
 window.handleSetChange = function(ctx, ei, si, field, val) {
-  workoutFor(ctx).exercises[ei].sets[si][field] = parseFloat(val) || 0;
+  workoutFor(ctx).exercises[ei].sets[si][field] = field === 'weight' ? fromDisplayWeight(val) : (parseFloat(val) || 0);
   if (ctx === 'day') persistDay();
   if (ctx === 'planTemplate') upsertPlan(state.editingPlan);
 };
@@ -1673,9 +1709,9 @@ function renderSetRows() {
       </div>
       <div class="set-block-inputs">
         <div class="set-field">
-          <span class="set-field-label">Starting Weight (lbs)</span>
-          <input class="set-input" type="number" min="0" step="2.5" inputmode="decimal"
-            value="${s.weight || ''}" placeholder="0"
+          <span class="set-field-label">Starting Weight (${weightUnit()})</span>
+          <input class="set-input" type="number" min="0" step="${weightUnit() === 'kg' ? '1.25' : '2.5'}" inputmode="decimal"
+            value="${s.weight ? toDisplayWeight(s.weight) : ''}" placeholder="0"
             onchange="formSetChange(${i},'weight',this.value)" />
         </div>
         ${repFields}
@@ -1690,7 +1726,7 @@ window.setFormRepMode = function(mode) {
 };
 
 window.formSetChange = function(i, field, val) {
-  state.formSets[i][field] = parseFloat(val) || 0;
+  state.formSets[i][field] = field === 'weight' ? fromDisplayWeight(val) : (parseFloat(val) || 0);
 };
 
 window.formRemoveSet = function(i) {
@@ -1718,7 +1754,7 @@ function saveExercise() {
   const mode = inRirTemplate ? 'planRir' : state.formRepMode;
   document.querySelectorAll('#sets-form-body .set-block').forEach((block, idx) => {
     const inputs = block.querySelectorAll('input');
-    state.formSets[idx].weight = parseFloat(inputs[0].value) || 0;
+    state.formSets[idx].weight = fromDisplayWeight(inputs[0].value);
     if (mode === 'target') {
       if (inputs[1]) state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
     } else if (mode === 'rir') {
@@ -2320,7 +2356,7 @@ function historyCardHTML(w, prMap) {
       <div class="workout-card-meta">
         <span class="meta-pill">${exCount} exercise${exCount !== 1 ? 's' : ''}</span>
         <span class="meta-pill">${setCount} set${setCount !== 1 ? 's' : ''}</span>
-        ${vol ? `<span class="meta-pill vol-pill">${vol} lbs</span>` : ''}
+        ${vol ? `<span class="meta-pill vol-pill">${vol}</span>` : ''}
       </div>
       ${notesHtml}
       <div class="workout-card-exercises">
@@ -2636,14 +2672,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Body weight view
   document.getElementById('btn-bw-back').addEventListener('click', () => navigate('home'));
+  document.getElementById('btn-unit-toggle').addEventListener('click', () => {
+    saveUnitPref(weightUnit() === 'lbs' ? 'kg' : 'lbs');
+    renderBodyWeight();
+    renderBwHomeWidget();
+  });
   document.getElementById('btn-bw-save').addEventListener('click', () => {
-    const weight = parseFloat(document.getElementById('bw-input').value);
+    const rawVal = parseFloat(document.getElementById('bw-input').value);
     const date   = document.getElementById('bw-date').value || todayISO();
-    if (!weight || weight <= 0 || weight > 999) {
-      showAlert('Invalid weight', 'Enter a weight between 1 and 999 lbs.');
+    const maxDisplay = weightUnit() === 'kg' ? 454 : 999;
+    if (!rawVal || rawVal <= 0 || rawVal > maxDisplay) {
+      showAlert('Invalid weight', `Enter a weight between 1 and ${maxDisplay} ${weightUnit()}.`);
       return;
     }
-    logBodyWeight(date, weight);
+    logBodyWeight(date, fromDisplayWeight(rawVal));
     renderBodyWeight();
     renderBwHomeWidget();
   });
