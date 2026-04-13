@@ -1004,11 +1004,28 @@ function finishWorkout() {
     showAlert('No exercises', 'Add at least one exercise before finishing.');
     return;
   }
-  const suggestions = getOverloadSuggestions(w);
-  addWorkout(w);
-  state.activeWorkout = null;
-  navigate('home');
-  if (suggestions.length > 0) setTimeout(() => showOverloadModal(suggestions), 300);
+
+  const doFinish = () => {
+    const suggestions = getOverloadSuggestions(w);
+    addWorkout(w);
+    state.activeWorkout = null;
+    navigate('home');
+    if (suggestions.length > 0) setTimeout(() => showOverloadModal(suggestions), 300);
+  };
+
+  const allDone = w.exercises.every(ex => ex.sets.every(s => s.done));
+  if (allDone) {
+    doFinish();
+  } else {
+    showModal({
+      title: 'Not all sets checked',
+      msg: 'Some sets haven\'t been marked done. Finish the workout anyway?',
+      confirmText: 'Finish Workout',
+      confirmClass: 'btn-danger-solid',
+      cancelText: 'Keep Going',
+      onConfirm: doFinish,
+    });
+  }
 }
 
 // ── Day View (calendar drill-down) ────────────────────────
@@ -2220,9 +2237,11 @@ window.confirmDeletePlan = function(id) {
     confirmClass: 'btn-danger-solid',
     cancelText: 'Cancel',
     onConfirm: () => {
+      const wasActive = loadActivePlanId() === id;
       deletePlan(id);
-      if (loadActivePlanId() === id) saveActivePlanId(null);
+      if (wasActive) saveActivePlanId(null);
       renderPlan();
+      if (wasActive) renderTodayPlan();
     },
   });
 };
@@ -2344,9 +2363,11 @@ window.copyWorkoutToDay = function(id, event) {
       const existing = workouts.find(w => w.date === dateStr);
       const exercises = JSON.parse(JSON.stringify(source.exercises));
       if (existing) {
+        const exCount = existing.exercises.length;
+        const existingLabel = `${escHtml(existing.name || formatDate(dateStr) + ' Workout')} (${exCount} exercise${exCount !== 1 ? 's' : ''})`;
         showModal({
           title: 'Replace Workout?',
-          msg: `A workout already exists on ${formatDate(dateStr)}. Replace its exercises?`,
+          msg: `This will replace <strong>${existingLabel}</strong> on ${formatDate(dateStr)} with <strong>${escHtml(source.name)}</strong>. This cannot be undone.`,
           confirmText: 'Replace',
           confirmClass: 'btn-danger-solid',
           cancelText: 'Cancel',
@@ -2555,9 +2576,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Exercise form
   document.getElementById('btn-exercise-back').addEventListener('click', () => {
-    state.editingExIndex = null;
     const dest = state.exerciseContext === 'planTemplate' ? 'plan-editor' : state.exerciseContext;
-    navigate(dest);
+    const isNew = state.editingExIndex === null;
+    const hasName = document.getElementById('exercise-name').value.trim() !== '';
+    if (isNew && hasName) {
+      showModal({
+        title: 'Discard exercise?',
+        msg: 'You have an unsaved exercise. Go back without saving it?',
+        confirmText: 'Discard',
+        confirmClass: 'btn-danger-solid',
+        cancelText: 'Keep Editing',
+        onConfirm: () => { state.editingExIndex = null; navigate(dest); },
+      });
+    } else {
+      state.editingExIndex = null;
+      navigate(dest);
+    }
   });
   document.getElementById('btn-add-set').addEventListener('click', addFormSet);
   document.getElementById('btn-save-exercise').addEventListener('click', saveExercise);
@@ -2605,7 +2639,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-bw-save').addEventListener('click', () => {
     const weight = parseFloat(document.getElementById('bw-input').value);
     const date   = document.getElementById('bw-date').value || todayISO();
-    if (!weight || weight <= 0 || weight > 999) return;
+    if (!weight || weight <= 0 || weight > 999) {
+      showAlert('Invalid weight', 'Enter a weight between 1 and 999 lbs.');
+      return;
+    }
     logBodyWeight(date, weight);
     renderBodyWeight();
     renderBwHomeWidget();
