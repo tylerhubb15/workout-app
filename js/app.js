@@ -576,7 +576,7 @@ function renderWeekStrip(completedDates, plannedDates, today) {
     const isPastMissed = !completed && !planned && !isToday && !isFuture;
     const inner = completed    ? '<span class="week-dot-check">✓</span>'
                 : planned      ? '<span class="week-dot-plan-dot"></span>'
-                : isPastMissed ? '<span class="week-dot-frown">☹</span>'
+                : isPastMissed ? '<span class="week-dot-miss">✕</span>'
                 : '';
 
     return `

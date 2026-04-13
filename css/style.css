@@ -688,10 +688,11 @@ body {
   opacity: 0.3;
 }
 
-.week-dot-frown {
-  font-size: 13px;
+.week-dot-miss {
+  font-size: 11px;
   line-height: 1;
-  opacity: 0.5;
+  opacity: 0.3;
+  color: var(--text2);
 }
 
 .week-dot-planned {
