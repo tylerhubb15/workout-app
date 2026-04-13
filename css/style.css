@@ -369,6 +369,23 @@ body {
   vertical-align: middle;
 }
 
+.today-plan-rir-deload {
+  background: rgba(251,191,36,0.12);
+  border-color: rgba(251,191,36,0.35);
+  color: var(--gold);
+}
+
+.day-deload-banner {
+  margin: 0 20px 8px;
+  padding: 10px 14px;
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 8px;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* RIR Guide collapsible */
 .rir-guide-card {
   margin: 0 20px 24px;

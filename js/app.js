@@ -267,13 +267,16 @@ const state = {
 function getRirContext(plan, iso) {
   if (!plan.rir) return null;
   const msLen      = plan.mesocycleLength || 4;
+  const cycleLen   = msLen + 1; // mesocycle weeks + 1 deload week
   const start      = new Date(plan.start + 'T00:00:00');
   const date       = new Date(iso + 'T00:00:00');
   const weekNum    = Math.floor(Math.round((date - start) / 86400000) / 7); // 0-indexed
-  const weekInCycle = weekNum % msLen;
-  const targetRIR  = Math.min(3, Math.max(0, (msLen - 1) - weekNum)); // always 3→0, never exceeds 3
-  const blockNum   = Math.floor(weekNum / msLen);
-  return { weekNum, weekInCycle, targetRIR, blockNum, msLen };
+  const weekInCycle = weekNum % cycleLen;
+  const isDeloadWeek = weekInCycle === msLen;
+  const blockNum   = Math.floor(weekNum / cycleLen);
+  // RIR resets each block (3→0), deload week gets RIR 3 (light)
+  const targetRIR  = isDeloadWeek ? 3 : Math.min(3, Math.max(0, (msLen - 1) - weekInCycle));
+  return { weekNum, weekInCycle, targetRIR, blockNum, msLen, isDeloadWeek };
 }
 
 function findLastLoggedSet(workouts, planName, exName, dow, beforeIso) {
@@ -537,7 +540,9 @@ function renderTodayPlan() {
 
   const rirCtx = getRirContext(plan, targetIso);
   const rirBadge = rirCtx
-    ? `<span class="today-plan-rir">Wk&nbsp;${rirCtx.weekInCycle + 1}/${rirCtx.msLen} · RIR&nbsp;${rirCtx.targetRIR}</span>`
+    ? rirCtx.isDeloadWeek
+      ? `<span class="today-plan-rir today-plan-rir-deload">Deload Week</span>`
+      : `<span class="today-plan-rir">Wk&nbsp;${rirCtx.weekInCycle + 1}/${rirCtx.msLen} · RIR&nbsp;${rirCtx.targetRIR}</span>`
     : '';
 
   el.innerHTML = `
@@ -921,10 +926,17 @@ function renderDay() {
     ? `${w.exercises.length} exercise${w.exercises.length !== 1 ? 's' : ''}`
     : 'No exercises yet';
   if (w._rirCtx) {
-    const { weekInCycle, targetRIR, msLen } = w._rirCtx;
-    daySubtitle += ` · Wk ${weekInCycle + 1}/${msLen} · RIR ${targetRIR}`;
+    const { weekInCycle, targetRIR, msLen, isDeloadWeek } = w._rirCtx;
+    daySubtitle += isDeloadWeek
+      ? ` · Deload Week`
+      : ` · Wk ${weekInCycle + 1}/${msLen} · RIR ${targetRIR}`;
   }
   document.getElementById('day-view-subtitle').textContent = daySubtitle;
+
+  const deloadBanner = document.getElementById('day-deload-banner');
+  if (deloadBanner) {
+    deloadBanner.hidden = !(w._rirCtx && w._rirCtx.isDeloadWeek);
+  }
 
   const readOnlyBanner = document.getElementById('day-readonly-banner');
   const addBtn = document.getElementById('btn-day-add-exercise');
