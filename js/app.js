@@ -1102,8 +1102,7 @@ function renderDay() {
   }
   container.innerHTML = buildExerciseListHtml(w.exercises, 'day');
   if (!state.dayIsReadOnly) {
-    const allDone = w.exercises.every(ex => ex.sets.every(s => s.done));
-    document.getElementById('btn-day-finish-workout').disabled = !allDone;
+    document.getElementById('btn-day-finish-workout').disabled = false;
   }
 }
 
@@ -2529,12 +2528,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-day-finish-workout').addEventListener('click', () => {
     const w = state.dayWorkout;
     if (!w) return;
-    w.status = 'completed';
-    const suggestions = getOverloadSuggestions(w);
-    persistDay();
-    state.dayWorkout = null;
-    navigate(state.dayReturnView || 'calendar');
-    if (suggestions.length > 0) setTimeout(() => showOverloadModal(suggestions), 300);
+
+    const doFinish = () => {
+      w.status = 'completed';
+      const suggestions = getOverloadSuggestions(w);
+      persistDay();
+      state.dayWorkout = null;
+      navigate(state.dayReturnView || 'calendar');
+      if (suggestions.length > 0) setTimeout(() => showOverloadModal(suggestions), 300);
+    };
+
+    const allDone = w.exercises.length > 0 && w.exercises.every(ex => ex.sets.every(s => s.done));
+    if (allDone) {
+      doFinish();
+    } else {
+      showModal({
+        title: 'Not all sets checked',
+        msg: 'Some sets haven\'t been marked done. Complete the workout anyway?',
+        confirmText: 'Complete Workout',
+        confirmClass: 'btn-danger-solid',
+        cancelText: 'Keep Going',
+        onConfirm: doFinish,
+      });
+    }
   });
 
   // Exercise form
