@@ -1,6 +1,6 @@
 {
-  "name": "Workout Tracker",
-  "short_name": "WorkoutLog",
+  "name": "Tensile",
+  "short_name": "Tensile",
   "description": "Log exercises, sets, reps, and weight. Track your progress.",
   "start_url": "./",
   "scope": "./",
