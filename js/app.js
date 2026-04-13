@@ -548,10 +548,26 @@ function renderTodayPlan() {
           <div class="today-plan-label">${label} — ${escHtml(plan.name)} ${rirBadge}</div>
           <div class="today-plan-exercises">${exList}</div>
         </div>
-        <button class="today-plan-start-btn" onclick="selectDay('${targetIso}','home')">Start ›</button>
+        <button class="today-plan-start-btn" onclick="startNextWorkout('${targetIso}','${label}')">Start ›</button>
       </div>
     </div>`;
 }
+
+window.startNextWorkout = function(targetIso, label) {
+  const today = todayISO();
+  if (targetIso === today) {
+    selectDay(targetIso, 'home');
+    return;
+  }
+  showModal({
+    title: 'Start early?',
+    msg: `This workout is scheduled for ${label}. Start it now, or open today to log a different workout?`,
+    confirmText: 'Start scheduled',
+    cancelText: 'Open today',
+    onConfirm: () => selectDay(targetIso, 'home'),
+    onCancel:  () => selectDay(today, 'home'),
+  });
+};
 
 function renderStats() {
   const workouts = loadWorkouts();
