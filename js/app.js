@@ -2542,35 +2542,39 @@ window.exportToCSV = function() {
 };
 
 function renderProgressGraph(workouts) {
-  const weeklyVol = {};
+  const weeklyCount = {};
   for (const w of workouts) {
     const d = new Date(w.date + 'T00:00:00');
-    const ws = new Date(d); ws.setDate(d.getDate() - d.getDay());
+    const ws = new Date(d); ws.setDate(d.getDate() - d.getDay() + 1); // Monday
     const key = localISO(ws);
-    const vol = w.exercises.reduce((t, ex) =>
-      t + ex.sets.reduce((s, set) => s + (set.weight || 0) * ((set.actualReps || set.reps) || 0), 0), 0);
-    weeklyVol[key] = (weeklyVol[key] || 0) + vol;
+    weeklyCount[key] = (weeklyCount[key] || 0) + 1;
   }
-  const keys = Object.keys(weeklyVol).sort().slice(-8);
-  if (keys.length < 2) return ''; // Not enough data yet
+  const keys = Object.keys(weeklyCount).sort().slice(-10);
+  if (keys.length === 0) return '';
 
-  const maxV = Math.max(...keys.map(k => weeklyVol[k]));
-  const bw = 28, gap = 10, h = 64, pad = 20;
+  const maxV = Math.max(...keys.map(k => weeklyCount[k]));
+  const bw = 32, gap = 10, h = 64, pad = 16, labelH = 28;
   const svgW = keys.length * (bw + gap) - gap + pad * 2;
+  const svgH = h + labelH;
 
   const bars = keys.map((k, i) => {
-    const vol  = weeklyVol[k];
-    const barH = maxV > 0 ? Math.max(4, Math.round((vol / maxV) * h)) : 4;
-    const x    = pad + i * (bw + gap);
-    const lbl  = new Date(k + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `<rect x="${x}" y="${h - barH}" width="${bw}" height="${barH}" rx="4" fill="var(--accent)" opacity="0.75"/>
-            <text x="${x + bw / 2}" y="${h + 13}" text-anchor="middle" font-size="8" fill="var(--text3)">${lbl}</text>`;
+    const count = weeklyCount[k];
+    const barH  = maxV > 0 ? Math.max(6, Math.round((count / maxV) * h)) : 6;
+    const x     = pad + i * (bw + gap);
+    const barY  = h - barH;
+    const lbl   = new Date(k + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `
+      <rect x="${x}" y="${barY}" width="${bw}" height="${barH}" rx="4" fill="var(--accent)" opacity="0.8"/>
+      <text x="${x + bw / 2}" y="${barY - 4}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--accent)">${count}</text>
+      <text x="${x + bw / 2}" y="${h + 14}" text-anchor="middle" font-size="8" fill="var(--text3)">${lbl}</text>`;
   }).join('');
 
   return `<div class="progress-graph">
-    <div class="section-title" style="padding-top:16px;padding-bottom:8px">Weekly Volume</div>
+    <div class="progress-graph-header">
+      <span class="progress-graph-title">Workouts per week</span>
+    </div>
     <div class="progress-graph-scroll">
-      <svg class="progress-graph-svg" viewBox="0 0 ${svgW} ${h + 18}" width="${svgW}" height="${h + 18}" style="display:block">${bars}</svg>
+      <svg viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" style="display:block;overflow:visible">${bars}</svg>
     </div>
   </div>`;
 }

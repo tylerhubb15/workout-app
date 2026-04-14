@@ -2583,11 +2583,24 @@ input.input-error, select.input-error {
 
 /* ── Progress Graph ────────────────────────────────────── */
 .progress-graph {
-  padding: 0 0 4px;
+  padding: 0 0 8px;
+}
+.progress-graph-header {
+  padding: 16px 20px 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.progress-graph-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
 }
 .progress-graph-scroll {
   overflow-x: auto;
-  padding: 4px 20px 8px;
+  padding: 8px 20px 12px;
   scrollbar-width: none;
 }
 .progress-graph-scroll::-webkit-scrollbar { display: none; }
