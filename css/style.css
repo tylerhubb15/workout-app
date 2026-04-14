@@ -1087,9 +1087,15 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
 
 .active-exercise-header {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.active-exercise-name-row {
+  display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin-bottom: 14px;
 }
 
 .reorder-btns {
@@ -1105,8 +1111,6 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  flex-shrink: 0;
 }
 
 .active-exercise-name {
@@ -2580,20 +2584,23 @@ input.input-error, select.input-error {
   align-items: center;
   justify-content: space-between;
   width: calc(100% - 32px);
-  margin: 8px 16px 4px;
-  padding: 10px 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: 10px;
-  color: var(--text2);
-  font-size: 13px;
-  font-weight: 600;
+  margin: 10px 16px 4px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   text-align: left;
+  transition: background 0.12s;
 }
+.vol-home-btn:active { background: var(--surface2); }
 .vol-home-btn-arrow {
   color: var(--text3);
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 400;
 }
 
 .vol-week-range {
