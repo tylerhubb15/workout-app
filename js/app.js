@@ -337,8 +337,11 @@ function computeAdjustedReps(templateReps, lastSet, targetRIR) {
 }
 
 // ── Helpers ───────────────────────────────────────────────
+function localISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return localISO(new Date());
 }
 
 function formatDate(iso) {
@@ -559,7 +562,7 @@ function renderTodayPlan() {
     for (let i = 1; i <= 14; i++) {
       const d = new Date();
       d.setDate(d.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso = localISO(d);
       const dow = d.getDay();
       if (iso > plan.end) break;
       if (iso < plan.start) continue;
@@ -718,7 +721,7 @@ function renderWeekStrip(completedDates, plannedDates, today) {
   el.innerHTML = DAY_LABELS.map((label, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const iso = d.toISOString().slice(0, 10);
+    const iso = localISO(d);
     const isToday   = iso === today;
     const completed = completedDates.has(iso);
     const planned   = !completed && plannedDates.has(iso);
@@ -1844,7 +1847,7 @@ function planDatesSet() {
     const end = new Date(plan.end + 'T00:00:00');
     while (cur <= end) {
       if (plan.workoutDays.includes(cur.getDay()))
-        dates.add(cur.toISOString().slice(0, 10));
+        dates.add(localISO(cur));
       cur.setDate(cur.getDate() + 1);
     }
   } catch (e) { /* don't let a bad plan kill the calendar */ }
@@ -2325,9 +2328,11 @@ window.confirmDeletePlan = function(id) {
 window.copyPlan = function(id) {
   const plan = loadPlans().find(p => p.id === id);
   if (!plan) return;
-  const dur = new Date(plan.end) - new Date(plan.start);
+  const planDays = Math.round((new Date(plan.end + 'T00:00:00') - new Date(plan.start + 'T00:00:00')) / 86400000);
   const todayStr = todayISO();
-  const endStr = new Date(new Date(todayStr).getTime() + dur).toISOString().slice(0, 10);
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + planDays);
+  const endStr = localISO(endDate);
   upsertPlan({
     id: uid(),
     name: plan.name + ' (Copy)',
@@ -2489,7 +2494,7 @@ function renderProgressGraph(workouts) {
   for (const w of workouts) {
     const d = new Date(w.date + 'T00:00:00');
     const ws = new Date(d); ws.setDate(d.getDate() - d.getDay());
-    const key = ws.toISOString().slice(0, 10);
+    const key = localISO(ws);
     const vol = w.exercises.reduce((t, ex) =>
       t + ex.sets.reduce((s, set) => s + (set.weight || 0) * ((set.actualReps || set.reps) || 0), 0), 0);
     weeklyVol[key] = (weeklyVol[key] || 0) + vol;
