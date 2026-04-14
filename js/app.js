@@ -256,8 +256,9 @@ const state = {
   editingPlanDow: null,// day-of-week being edited in plan template
   editingPlanMuscleCounts: {}, // { 'Chest': 2, 'Back': 3 } — stepper values for current day
   editingPlanMuscleGroup: null,// which muscle group picker is open
-  exMuscleFilter: null,  // active muscle group string or null
-  exEquipFilter:  null,  // active equipment group string or null
+  exMuscleFilter: null,     // active muscle group string or null
+  exEquipFilter:  null,     // active equipment group string or null
+  exMusclePickerFrom: null, // 'exercise-muscle' when entering via picker; null in edit mode
   exHistoryName:   null, // exercise name for exercise-history view
   exHistoryBackTo: 'history',
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
@@ -510,10 +511,10 @@ function navigate(view) {
   if (view === 'plan-day-muscles')  renderPlanDayMuscles();
   if (view === 'plan-muscle-picker') renderMuscleGroupPicker();
   if (view === 'volume')             renderVolumeTracker();
+  if (view === 'exercise-muscle')    renderExMusclePickerView();
 
   window.scrollTo(0, 0);
 }
-window.navigate = navigate;
 
 // ── Home ──────────────────────────────────────────────────
 
@@ -641,28 +642,6 @@ function getWeekVolumeByMuscle() {
   return { sets, monday, sunday };
 }
 
-function getPlanWeekVolume(monday) {
-  const plan = getActivePlan();
-  if (!plan || !plan.dayTemplates) return null;
-
-  const planSets = {};
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const iso = d.toISOString().slice(0, 10);
-    if (iso < plan.start || iso > plan.end) continue;
-    const dow = d.getDay();
-    if (!plan.workoutDays.includes(dow)) continue;
-    const exercises = plan.dayTemplates[dow] || [];
-    exercises.forEach(ex => {
-      const muscle = ex.muscleGroup || getMuscleGroup(ex.name);
-      if (!muscle || muscle === 'Full Body') return;
-      planSets[muscle] = (planSets[muscle] || 0) + (ex.sets ? ex.sets.length : 0);
-    });
-  }
-  return Object.keys(planSets).length > 0 ? planSets : null;
-}
-
 function renderVolumeTracker() {
   const MUSCLES = Object.keys(MUSCLE_MAP).filter(m => m !== 'Full Body');
   const REC_MIN = 10;
@@ -675,10 +654,8 @@ function renderVolumeTracker() {
     + ' – '
     + sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  const hasLogged = Object.keys(sets).length > 0;
-  const planSets  = getPlanWeekVolume(monday);
-
-  const makeRow = (muscle, count, dimmed) => {
+  const rows = MUSCLES.map(muscle => {
+    const count = sets[muscle] || 0;
     const pct   = Math.min(100, (count / BAR_MAX) * 100);
     const barCls = count === 0       ? 'vol-bar-empty'
                  : count < REC_MIN   ? 'vol-bar-low'
@@ -687,7 +664,7 @@ function renderVolumeTracker() {
     const minPct = (REC_MIN / BAR_MAX) * 100;
     const maxPct = (REC_MAX / BAR_MAX) * 100;
     return `
-      <div class="vol-row${dimmed ? ' vol-row-dimmed' : ''}">
+      <div class="vol-row">
         <div class="vol-row-top">
           <span class="vol-muscle">${muscle}</span>
           <span class="vol-count${count === 0 ? ' vol-count-zero' : ''}">${count} set${count !== 1 ? 's' : ''}</span>
@@ -698,29 +675,7 @@ function renderVolumeTracker() {
           <div class="vol-bar-marker" style="left:${maxPct}%"></div>
         </div>
       </div>`;
-  };
-
-  let planSection = '';
-  if (planSets) {
-    const planRows = MUSCLES
-      .filter(m => (planSets[m] || 0) > 0)
-      .map(m => makeRow(m, planSets[m], false))
-      .join('');
-    planSection = `
-      <div class="vol-section-label">Scheduled this week</div>
-      <div class="vol-list">${planRows}</div>`;
-  }
-
-  let loggedSection = '';
-  if (!hasLogged) {
-    loggedSection = `<div class="vol-empty">No workouts completed this week yet.</div>`;
-  } else {
-    const rows = MUSCLES.map(m => makeRow(m, sets[m] || 0, false)).join('');
-    loggedSection = `
-      <div class="vol-section-label">Completed this week</div>
-      <div class="vol-list">${rows}</div>
-      <div class="vol-note">Vertical markers show the 10–20 set target range. Aim for each muscle to land between them for hypertrophy.</div>`;
-  }
+  }).join('');
 
   document.getElementById('volume-content').innerHTML = `
     <div class="vol-week-range">${weekStr}</div>
@@ -729,8 +684,8 @@ function renderVolumeTracker() {
       <span class="vol-legend-dot vol-bar-ok"></span><span class="vol-legend-label">10–20 ✓</span>
       <span class="vol-legend-dot vol-bar-high"></span><span class="vol-legend-label">Over 20</span>
     </div>
-    ${planSection}
-    ${loggedSection}`;
+    <div class="vol-list">${rows}</div>
+    <div class="vol-note">Vertical markers show the 10–20 set target range. Aim for each muscle to land between them for hypertrophy.</div>`;
 }
 
 function renderStats() {
@@ -1407,8 +1362,9 @@ window.handleSetDone = function(ctx, ei, si, checked) {
 };
 
 window.handleEditExercise = function(ctx, ei) {
-  state.exerciseContext  = ctx;
-  state.editingExIndex   = ei;
+  state.exerciseContext    = ctx;
+  state.editingExIndex     = ei;
+  state.exMusclePickerFrom = null;
   navigate('exercise');
 };
 
@@ -1529,10 +1485,39 @@ function emptyExerciseState() {
     </div>`;
 }
 
+// ── Exercise Muscle Picker ────────────────────────────────
+function renderExMusclePickerView() {
+  const muscles = Object.keys(MUSCLE_MAP);
+  document.getElementById('ex-muscle-picker-grid').innerHTML =
+    [...muscles, 'All'].map(m => {
+      const cssKey = m.toLowerCase().replace(/\s+/g, '-');
+      return `<button class="ex-muscle-card ex-muscle-${cssKey}" onclick="selectExMuscle('${m}')">
+        <span class="ex-muscle-card-name">${m}</span>
+      </button>`;
+    }).join('');
+}
+
+window.selectExMuscle = function(muscle) {
+  state.exMuscleFilter     = muscle === 'All' ? null : muscle;
+  state.exEquipFilter      = null;
+  state.exMusclePickerFrom = 'exercise-muscle';
+  state.editingExIndex     = null;
+  navigate('exercise');
+};
+
 // ── Exercise Form ─────────────────────────────────────────
 function renderExerciseForm() {
   const editing = state.editingExIndex !== null;
   document.getElementById('exercise-view-title').textContent = editing ? 'Edit Exercise' : 'Add Exercise';
+
+  // Show selected muscle in subtitle when arriving from the muscle picker
+  const subtitleEl = document.getElementById('exercise-view-subtitle');
+  if (!editing && state.exMusclePickerFrom === 'exercise-muscle') {
+    subtitleEl.textContent = state.exMuscleFilter || 'All Muscles';
+    subtitleEl.hidden = false;
+  } else {
+    subtitleEl.hidden = true;
+  }
 
   if (editing) {
     const ex = workoutFor(state.exerciseContext).exercises[state.editingExIndex];
@@ -1541,17 +1526,19 @@ function renderExerciseForm() {
     state.formRepMode = ex.repMode || 'target';
     state.customExMuscleGroup = ex.muscleGroup || null;
     updateSelectedExerciseName(ex.name);
+    state.exMuscleFilter = null; // edit mode: show all
+    state.exEquipFilter  = null;
   } else {
     document.getElementById('exercise-name').value = '';
     state.formSets = [{ reps: 0, weight: 0 }];
     state.formRepMode = 'target';
     state.customExMuscleGroup = null;
     updateSelectedExerciseName('');
+    // exMuscleFilter was set by selectExMuscle — preserve it
+    state.exEquipFilter = null;
   }
 
   // Populate chips and filter
-  state.exMuscleFilter = null;
-  state.exEquipFilter  = null;
   const filterInput = document.getElementById('ex-filter');
   filterInput.value = '';
   document.getElementById('ex-search-clear').hidden = true;
@@ -1566,15 +1553,8 @@ function renderExerciseForm() {
 }
 
 function renderExFilterTabs() {
-  const muscles = Object.keys(MUSCLE_MAP);
-  const equips  = Object.keys(EXERCISES);
-  const mf = state.exMuscleFilter;
+  const equips = Object.keys(EXERCISES);
   const ef = state.exEquipFilter;
-
-  const muscleBtns = muscles.map(m => {
-    const active = mf === m ? ' active' : '';
-    return `<button class="ex-filter-btn${active}" onclick="setMuscleFilter('${m}')">${m}</button>`;
-  }).join('');
 
   const equipBtns = equips.map(e => {
     const active = ef === e ? ' active' : '';
@@ -1583,9 +1563,6 @@ function renderExFilterTabs() {
 
   document.getElementById('ex-filter-tabs').innerHTML = `
     <div class="ex-filter-section">
-      <div class="ex-filter-label">Muscle Group</div>
-      <div class="ex-filter-row">${muscleBtns}</div>
-      <div class="ex-filter-divider"></div>
       <div class="ex-filter-label">Equipment</div>
       <div class="ex-filter-row">${equipBtns}</div>
     </div>`;
@@ -1955,16 +1932,18 @@ function renderPlanEditor() {
 
 window.planTemplateAddEx = function(dow) {
   state.editingPlan.dayTemplates[dow] = state.editingPlan.dayTemplates[dow] || [];
-  state.editingPlanDow  = dow;
-  state.exerciseContext = 'planTemplate';
-  state.editingExIndex  = null;
-  navigate('exercise');
+  state.editingPlanDow     = dow;
+  state.exerciseContext    = 'planTemplate';
+  state.editingExIndex     = null;
+  state.exMusclePickerFrom = null;
+  navigate('exercise-muscle');
 };
 
 window.planTemplateEditEx = function(dow, ei) {
-  state.editingPlanDow  = dow;
-  state.exerciseContext = 'planTemplate';
-  state.editingExIndex  = ei;
+  state.editingPlanDow     = dow;
+  state.exerciseContext    = 'planTemplate';
+  state.editingExIndex     = ei;
+  state.exMusclePickerFrom = null;
   navigate('exercise');
 };
 
@@ -2624,9 +2603,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   document.getElementById('btn-add-exercise').addEventListener('click', () => {
-    state.exerciseContext = 'workout';
-    state.editingExIndex  = null;
-    navigate('exercise');
+    state.exerciseContext    = 'workout';
+    state.editingExIndex     = null;
+    state.exMusclePickerFrom = null;
+    navigate('exercise-muscle');
   });
   document.getElementById('btn-finish-workout').addEventListener('click', finishWorkout);
   document.getElementById('workout-name').addEventListener('input', syncWorkoutFields);
@@ -2636,9 +2616,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Day view
   document.getElementById('btn-day-back').addEventListener('click', () => navigate(state.dayReturnView || 'calendar'));
   document.getElementById('btn-day-add-exercise').addEventListener('click', () => {
-    state.exerciseContext = 'day';
-    state.editingExIndex  = null;
-    navigate('exercise');
+    state.exerciseContext    = 'day';
+    state.editingExIndex     = null;
+    state.exMusclePickerFrom = null;
+    navigate('exercise-muscle');
   });
   document.getElementById('btn-day-finish-workout').addEventListener('click', () => {
     const w = state.dayWorkout;
@@ -2668,23 +2649,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Muscle picker (exercise flow)
+  document.getElementById('btn-ex-muscle-back').addEventListener('click', () => {
+    const dest = state.exerciseContext === 'planTemplate' ? 'plan-editor' : state.exerciseContext;
+    navigate(dest);
+  });
+
   // Exercise form
   document.getElementById('btn-exercise-back').addEventListener('click', () => {
-    const dest = state.exerciseContext === 'planTemplate' ? 'plan-editor' : state.exerciseContext;
-    const isNew = state.editingExIndex === null;
+    const editing = state.editingExIndex !== null;
+    const fromMuscle = state.exMusclePickerFrom === 'exercise-muscle';
+    const contextDest = state.exerciseContext === 'planTemplate' ? 'plan-editor' : state.exerciseContext;
+    const backDest = editing || !fromMuscle ? contextDest : 'exercise-muscle';
     const hasName = document.getElementById('exercise-name').value.trim() !== '';
-    if (isNew && hasName) {
+    if (!editing && hasName) {
       showModal({
         title: 'Discard exercise?',
         msg: 'You have an unsaved exercise. Go back without saving it?',
         confirmText: 'Discard',
         confirmClass: 'btn-danger-solid',
         cancelText: 'Keep Editing',
-        onConfirm: () => { state.editingExIndex = null; navigate(dest); },
+        onConfirm: () => { state.editingExIndex = null; navigate(backDest); },
       });
     } else {
       state.editingExIndex = null;
-      navigate(dest);
+      navigate(backDest);
     }
   });
   document.getElementById('btn-add-set').addEventListener('click', addFormSet);

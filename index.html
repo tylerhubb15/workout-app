@@ -270,11 +270,23 @@
     </div>
   </section>
 
+  <!-- ── Exercise Muscle Group Picker ───────────────── -->
+  <section class="view" id="view-exercise-muscle">
+    <div class="page-header">
+      <button class="btn-back" id="btn-ex-muscle-back">‹</button>
+      <h1>Choose Muscle</h1>
+    </div>
+    <div class="ex-muscle-picker-grid" id="ex-muscle-picker-grid"></div>
+  </section>
+
   <!-- ── Exercise Form View ────────────────────────── -->
   <section class="view" id="view-exercise">
     <div class="page-header">
       <button class="btn-back" id="btn-exercise-back">‹</button>
-      <h1 id="exercise-view-title">Add Exercise</h1>
+      <div>
+        <h1 id="exercise-view-title">Add Exercise</h1>
+        <div class="page-subtitle" id="exercise-view-subtitle" hidden></div>
+      </div>
     </div>
     <div class="exercise-form">
       <input type="hidden" id="exercise-name" />
