@@ -1088,12 +1088,26 @@ body.light .ex-muscle-full-body  { color: #c2410c; }
 .active-exercise-header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
+.reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
 .active-exercise-info { flex: 1; min-width: 0; }
+
+.active-exercise-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
 
 .active-exercise-name {
   font-size: 16px;

@@ -515,6 +515,7 @@ function navigate(view) {
 
   window.scrollTo(0, 0);
 }
+window.navigate = navigate;
 
 // ── Home ──────────────────────────────────────────────────
 
@@ -1265,13 +1266,15 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap, ssInfo = {}) {
     <div class="active-exercise-card${muscleClass}${ssCardClass}">
       ${muscleTag}
       <div class="active-exercise-header">
+        ${canReorder ? `<div class="reorder-btns">
+          <button class="reorder-btn${ei === 0 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'up')" ${ei === 0 ? 'disabled' : ''}>▲</button>
+          <button class="reorder-btn${ei === totalCount - 1 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'down')" ${ei === totalCount - 1 ? 'disabled' : ''}>▼</button>
+        </div>` : ''}
         <div class="active-exercise-info">
           <div class="active-exercise-name active-exercise-name-tap" onclick="openExerciseHistory('${ctx}',${ei},event)">${escHtml(ex.name)}</div>
           ${equip ? `<div class="active-exercise-equip">${equip}</div>` : ''}
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;min-width:0">
-          ${canReorder ? `<button class="reorder-btn${ei === 0 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'up')" ${ei === 0 ? 'disabled' : ''}>▲</button>
-          <button class="reorder-btn${ei === totalCount - 1 ? ' disabled' : ''}" onclick="handleMoveExercise('${ctx}',${ei},'down')" ${ei === totalCount - 1 ? 'disabled' : ''}>▼</button>` : ''}
+        <div class="active-exercise-actions">
           ${!readOnly ? `<button class="btn btn-secondary btn-sm" onclick="handleSwapExercise('${ctx}',${ei})" title="Swap exercise">⇄ Swap</button>` : ''}
           ${canLog ? `<button class="btn btn-sm ${ex.supersetId ? 'btn-ss-active' : 'btn-secondary'}" onclick="handleLinkSuperset('${ctx}',${ei})" title="Superset">SS</button>` : ''}
           ${!readOnly ? `<button class="btn btn-secondary btn-sm" onclick="handleEditExercise('${ctx}',${ei})">Edit</button>` : ''}
