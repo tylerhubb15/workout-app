@@ -2190,9 +2190,9 @@ window.savePlanDay = function() {
 };
 
 // ── Plan ──────────────────────────────────────────────────
-function renderPlan() {
-  // Reset form
+function resetPlanForm() {
   document.getElementById('plan-name').value  = '';
+  delete document.getElementById('plan-name').dataset.editId;
   document.getElementById('plan-start').value = '';
   document.getElementById('plan-end').value   = '';
   document.getElementById('plan-rir-toggle').checked = false;
@@ -2200,6 +2200,18 @@ function renderPlan() {
   document.getElementById('plan-mesocycle-length').value = '4';
   state.planDays = new Set();
   document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
+}
+
+function setPlanFormOpen(open) {
+  document.getElementById('plan-form-wrap').hidden = !open;
+  const btn = document.getElementById('btn-new-plan');
+  if (btn) btn.textContent = open ? '✕ Cancel' : '+ New Plan';
+}
+
+function renderPlan() {
+  // Close and reset the form
+  resetPlanForm();
+  setPlanFormOpen(false);
 
   // Render saved plans
   const plans = loadPlans();
@@ -2226,11 +2238,16 @@ function renderPlan() {
         <div class="plan-card-meta">${formatDate(p.start)} — ${formatDate(p.end)}</div>
         <div class="plan-card-days">${pips}</div>
         <div class="plan-card-actions">
-          ${activeBtn}
-          <button class="btn btn-primary btn-sm" onclick="openPlanEditor('${p.id}')">Edit Days</button>
-          <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit</button>
-          <button class="btn btn-secondary btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
-          <button class="btn btn-danger" onclick="confirmDeletePlan('${p.id}')">Delete</button>
+          <div class="plan-card-primary-actions">
+            ${activeBtn}
+            <button class="btn btn-primary btn-sm" onclick="openPlanEditor('${p.id}')">Edit Days</button>
+            <button class="btn btn-secondary btn-sm plan-card-more-btn" onclick="togglePlanMenu('${p.id}')" title="More options">···</button>
+          </div>
+          <div class="plan-card-secondary-actions" id="plan-menu-${p.id}" hidden>
+            <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit Details</button>
+            <button class="btn btn-secondary btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeletePlan('${p.id}')">Delete</button>
+          </div>
         </div>
       </div>`;
   }).join('');
@@ -2286,6 +2303,11 @@ function savePlan() {
   renderPlan();
 }
 
+window.togglePlanMenu = function(id) {
+  const el = document.getElementById(`plan-menu-${id}`);
+  if (el) el.hidden = !el.hidden;
+};
+
 window.loadPlanIntoForm = function(id) {
   const plan = loadPlans().find(p => p.id === id);
   if (!plan) return;
@@ -2300,6 +2322,7 @@ window.loadPlanIntoForm = function(id) {
   document.querySelectorAll('.day-btn').forEach(btn => {
     btn.classList.toggle('active', state.planDays.has(Number(btn.dataset.dow)));
   });
+  setPlanFormOpen(true);
   window.scrollTo(0, 0);
 };
 
@@ -2703,6 +2726,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Plan
   document.getElementById('btn-plan-back').addEventListener('click', () => navigate('home'));
+  document.getElementById('btn-new-plan').addEventListener('click', () => {
+    const wrap = document.getElementById('plan-form-wrap');
+    const opening = wrap.hidden;
+    if (opening) resetPlanForm();
+    setPlanFormOpen(opening);
+    if (opening) window.scrollTo(0, 0);
+  });
 
   // Plan editor
   document.getElementById('btn-plan-editor-back').addEventListener('click', () => navigate('plan'));

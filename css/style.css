@@ -1883,6 +1883,13 @@ body.seen #splash { display: none; }
   margin-top: 8px;
 }
 
+.plan-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 20px 12px;
+}
+
 .plan-list {
   display: flex;
   flex-direction: column;
@@ -1945,10 +1952,31 @@ body.seen #splash { display: none; }
 .plan-day-pip.off { background: var(--surface2); color: var(--text3); }
 
 .plan-card-actions {
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-card-primary-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+.plan-card-more-btn {
+  margin-left: auto;
+  letter-spacing: 2px;
   padding-left: 10px;
+  padding-right: 10px;
+}
+
+.plan-card-secondary-actions {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
+  border-top: 1px solid var(--border2);
+  padding-top: 8px;
 }
 
 .plan-card-active {
