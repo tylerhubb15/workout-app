@@ -262,6 +262,7 @@ const state = {
   exHistoryName:   null, // exercise name for exercise-history view
   exHistoryBackTo: 'history',
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
+  _pendingTemplateDayTemplates: null, // day templates from a pre-made plan, applied on first save
 };
 
 // ── Unit Helpers ──────────────────────────────────────────
@@ -390,7 +391,14 @@ function showModal({ title, msg, onConfirm, confirmText = 'OK', confirmClass = '
   const confirmBtn = document.createElement('button');
   confirmBtn.className = `btn ${confirmClass}`;
   confirmBtn.textContent = confirmText;
-  confirmBtn.onclick = () => { overlay.hidden = true; if (onConfirm) onConfirm(); };
+  confirmBtn.onclick = () => {
+    if (onConfirm) {
+      const result = onConfirm();
+      if (result !== false) overlay.hidden = true;
+    } else {
+      overlay.hidden = true;
+    }
+  };
   actions.appendChild(confirmBtn);
 
   overlay.hidden = false;
@@ -1665,21 +1673,30 @@ window.openCustomExModal = function() {
   showModal({
     title: 'Custom Exercise',
     msg: `
-      <div class="field-label" style="margin-top:4px">Exercise Name</div>
+      <div class="field-label" style="margin-top:4px;margin-bottom:8px">1. Select Muscle Group</div>
+      <div class="custom-ex-muscle-grid" id="custom-ex-muscle-grid">
+        ${muscles.map(m => `<button class="custom-ex-muscle-btn${state._pendingCustomMuscle === m ? ' active' : ''}" data-muscle="${escHtml(m)}" onclick="selectCustomExMuscle('${escHtml(m)}')">${escHtml(m)}</button>`).join('')}
+      </div>
+      <div class="field-label" style="margin-top:14px">2. Exercise Name</div>
       <input type="text" id="modal-custom-ex-name" autocomplete="off"
         style="margin-top:6px;width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;color:var(--text);font-size:15px;outline:none"
         placeholder="e.g. Banded Pull-Apart" />
-      <div class="field-label" style="margin-top:14px;margin-bottom:8px">Muscle Group</div>
-      <div class="custom-ex-muscle-grid" id="custom-ex-muscle-grid">
-        ${muscles.map(m => `<button class="custom-ex-muscle-btn${state._pendingCustomMuscle === m ? ' active' : ''}" data-muscle="${escHtml(m)}" onclick="selectCustomExMuscle('${escHtml(m)}')">${escHtml(m)}</button>`).join('')}
-      </div>`,
+      <div id="modal-custom-ex-error" style="color:var(--red);font-size:13px;font-weight:600;margin-top:8px;min-height:18px"></div>`,
     confirmText: 'Add',
     cancelText: 'Cancel',
     onConfirm: () => {
-      const nameEl = document.getElementById('modal-custom-ex-name');
-      const name = nameEl ? nameEl.value.trim() : '';
-      if (!name) { showAlert('Name required', 'Enter a name for the exercise.'); return; }
-      if (!state._pendingCustomMuscle) { showAlert('Muscle group required', 'Select a muscle group before adding.'); return; }
+      const nameEl  = document.getElementById('modal-custom-ex-name');
+      const errEl   = document.getElementById('modal-custom-ex-error');
+      const name    = nameEl ? nameEl.value.trim() : '';
+      if (!state._pendingCustomMuscle) {
+        if (errEl) errEl.textContent = 'Please select a muscle group first.';
+        return false; // keep modal open
+      }
+      if (!name) {
+        if (errEl) errEl.textContent = 'Please enter a name for the exercise.';
+        if (nameEl) nameEl.focus();
+        return false; // keep modal open
+      }
       state.customExMuscleGroup = state._pendingCustomMuscle;
       state._pendingCustomMuscle = null;
       document.getElementById('exercise-name').value = name;
@@ -1688,8 +1705,7 @@ window.openCustomExModal = function() {
     onCancel: () => { state._pendingCustomMuscle = null; },
   });
   setTimeout(() => {
-    const inp = document.getElementById('modal-custom-ex-name');
-    if (inp) inp.focus();
+    // Don't auto-focus name — user should select muscle first
   }, 80);
 };
 
@@ -1704,14 +1720,22 @@ function renderSetRows() {
   const inRirTemplate = state.exerciseContext === 'planTemplate'
     && state.editingPlan && state.editingPlan.rir;
 
-  const mode = inRirTemplate ? 'planRir' : state.formRepMode;
+  // In an RIR plan template, default mode is planRir UNLESS user toggled this exercise to ER
+  const mode = inRirTemplate
+    ? (state.formRepMode === 'er' ? 'er' : 'planRir')
+    : state.formRepMode;
 
-  const modeToggle = inRirTemplate ? '' : `
-    <div class="rep-mode-toggle">
-      <button class="rep-mode-btn${mode === 'target' ? ' active' : ''}" onclick="setFormRepMode('target')">Target Reps</button>
-      <button class="rep-mode-btn${mode === 'rir' ? ' active' : ''}" onclick="setFormRepMode('rir')">RIR</button>
-      <button class="rep-mode-btn${mode === 'er' ? ' active' : ''}" onclick="setFormRepMode('er')">ER</button>
-    </div>`;
+  // In an RIR template: show a compact ER toggle so individual exercises can opt into ER
+  const modeToggle = inRirTemplate
+    ? `<div class="rep-mode-toggle" style="margin-bottom:4px">
+        <button class="rep-mode-btn${mode !== 'er' ? ' active' : ''}" onclick="setFormRepMode('planRir')">RIR (auto)</button>
+        <button class="rep-mode-btn${mode === 'er' ? ' active' : ''}" onclick="setFormRepMode('er')">ER (explosive)</button>
+      </div>`
+    : `<div class="rep-mode-toggle">
+        <button class="rep-mode-btn${mode === 'target' ? ' active' : ''}" onclick="setFormRepMode('target')">Target Reps</button>
+        <button class="rep-mode-btn${mode === 'rir' ? ' active' : ''}" onclick="setFormRepMode('rir')">RIR</button>
+        <button class="rep-mode-btn${mode === 'er' ? ' active' : ''}" onclick="setFormRepMode('er')">ER</button>
+      </div>`;
 
   document.getElementById('sets-form-body').innerHTML = modeToggle + state.formSets.map((s, i) => {
     let repFields = '';
@@ -1808,11 +1832,18 @@ function saveExercise() {
     }
   });
 
-  // For RIR templates only weight matters; keep all sets regardless of reps
+  // Strip fields that don't belong to the current mode (prevents stale RIR/ER badges)
+  state.formSets.forEach(s => {
+    if (mode === 'target' || mode === 'planRir') { delete s.rir; delete s.erTarget; }
+    else if (mode === 'rir')                     { delete s.erTarget; }
+    else if (mode === 'er')                      { delete s.rir; }
+  });
+
+  // For RIR templates: store repMode only when exercise is ER (marks it as ad-hoc ER)
   const resolvedMuscle = state.customExMuscleGroup || getMuscleGroup(name) || undefined;
   const exercise = {
     name,
-    repMode: inRirTemplate ? undefined : state.formRepMode,
+    repMode: inRirTemplate ? (mode === 'er' ? 'er' : undefined) : state.formRepMode,
     muscleGroup: resolvedMuscle,
     sets: inRirTemplate
       ? state.formSets
@@ -1930,10 +1961,14 @@ function renderPlanEditor() {
     // Exercise rows with edit + remove buttons
     const exRows = exercises.length === 0
       ? `<div class="plan-day-empty">No exercises yet — add one below.</div>`
-      : exercises.map((ex, ei) => `
+      : exercises.map((ex, ei) => {
+          const modeBadge = ex.repMode === 'er'
+            ? `<span class="er-badge">ER</span>`
+            : (plan.rir ? `<span class="rir-badge">RIR</span>` : '');
+          return `
           <div class="plan-day-ex-row">
             <div class="plan-day-ex-info">
-              <div class="plan-day-ex-name">${escHtml(ex.name)}</div>
+              <div class="plan-day-ex-name">${escHtml(ex.name)}${modeBadge}</div>
               <div class="plan-day-ex-meta">${ex.sets.length} set${ex.sets.length !== 1 ? 's' : ''}</div>
             </div>
             <div class="plan-day-ex-actions">
@@ -1942,7 +1977,8 @@ function renderPlanEditor() {
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
 
     return `
       <div class="plan-day-card">
@@ -2213,12 +2249,281 @@ window.savePlanDay = function() {
   navigate('plan-editor');
 };
 
+// ── Plan Templates Library ────────────────────────────────
+const PLAN_TEMPLATES = [
+  {
+    id: 'tpl-ppl',
+    name: 'Push / Pull / Legs',
+    description: '6-day split. Chest, shoulders & triceps → Back & biceps → Legs & glutes, repeated twice per week.',
+    tags: ['Intermediate', 'Hypertrophy'],
+    workoutDays: [1, 2, 3, 5, 6, 0], // Mon–Sat + Sun
+    defaultWeeks: 8,
+    dayLabels: { 1: 'Push A', 2: 'Pull A', 3: 'Legs A', 5: 'Push B', 6: 'Pull B', 0: 'Legs B' },
+    dayTemplates: {
+      1: [ // Push A
+        { name: 'Barbell Bench Press',     muscleGroup: 'Chest',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Incline Bench Press', muscleGroup: 'Chest', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Chest Fly',          muscleGroup: 'Chest',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Overhead Press',   muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Lateral Raise',   muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Tricep Pushdown',          muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Skull Crusher',            muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      2: [ // Pull A
+        { name: 'Barbell Bent-Over Row',    muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Lat Pulldown',             muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Cable Row',         muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Face Pull',                muscleGroup: 'Shoulders',sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Curl',             muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hammer Curl',              muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      3: [ // Legs A
+        { name: 'Barbell Back Squat',       muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Leg Press',                muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Romanian Deadlift',        muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Lying Leg Curl',           muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hip Thrust',               muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Standing Calf Raise',      muscleGroup: 'Calves',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      5: [ // Push B — same muscles, different exercises
+        { name: 'Dumbbell Bench Press',     muscleGroup: 'Chest',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Chest Press',        muscleGroup: 'Chest',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Machine Chest Press',      muscleGroup: 'Chest',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Arnold Press',             muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Lateral Raise',      muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Rope Pushdown',            muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Overhead Tricep Extension',muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      6: [ // Pull B
+        { name: 'Pull-Up',                  muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Single-Arm Row',  muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Straight-Arm Pulldown',    muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Rear Delt Fly',      muscleGroup: 'Shoulders',sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'EZ-Bar Curl',              muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Concentration Curl',       muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      0: [ // Legs B
+        { name: 'Hack Squat',               muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Bulgarian Split Squat',    muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Leg Curl',          muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Good Morning',             muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Kickback',           muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Calf Raise',        muscleGroup: 'Calves',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+    },
+  },
+  {
+    id: 'tpl-ul',
+    name: 'Upper / Lower',
+    description: '4-day split. Upper body strength & hypertrophy alternating with lower body. Great for beginners and intermediates.',
+    tags: ['Beginner', 'Intermediate', 'Hypertrophy'],
+    workoutDays: [1, 2, 4, 5], // Mon, Tue, Thu, Fri
+    defaultWeeks: 8,
+    dayTemplates: {
+      1: [ // Upper A
+        { name: 'Barbell Bench Press',     muscleGroup: 'Chest',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Bent-Over Row',   muscleGroup: 'Back',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Overhead Press',  muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Lat Pulldown',            muscleGroup: 'Back',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Curl',            muscleGroup: 'Biceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Skull Crusher',           muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      2: [ // Lower A
+        { name: 'Barbell Back Squat',      muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Romanian Deadlift',       muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Leg Press',               muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Lying Leg Curl',          muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hip Thrust',              muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Standing Calf Raise',     muscleGroup: 'Calves',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      4: [ // Upper B
+        { name: 'Dumbbell Incline Bench Press', muscleGroup: 'Chest', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Pull-Up',                 muscleGroup: 'Back',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Lateral Raise',  muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Cable Row',        muscleGroup: 'Back',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hammer Curl',             muscleGroup: 'Biceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Tricep Pushdown',         muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      5: [ // Lower B
+        { name: 'Barbell Deadlift',        muscleGroup: 'Back',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hack Squat',              muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Bulgarian Split Squat',   muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Leg Curl',         muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Hip Abduction',     muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Calf Raise',       muscleGroup: 'Calves',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+    },
+  },
+  {
+    id: 'tpl-fb',
+    name: 'Full Body (3×/wk)',
+    description: '3-day full body. Every session trains all major muscle groups. Great for beginners or time-crunched athletes.',
+    tags: ['Beginner', 'Strength', 'Time-Efficient'],
+    workoutDays: [1, 3, 5], // Mon, Wed, Fri
+    defaultWeeks: 6,
+    dayTemplates: {
+      1: [ // Day A
+        { name: 'Barbell Back Squat',      muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Bench Press',     muscleGroup: 'Chest',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Bent-Over Row',   muscleGroup: 'Back',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Overhead Press',  muscleGroup: 'Shoulders',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Curl',            muscleGroup: 'Biceps',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Tricep Pushdown',         muscleGroup: 'Triceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      3: [ // Day B
+        { name: 'Romanian Deadlift',       muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Incline Bench Press', muscleGroup: 'Chest', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Pull-Up',                 muscleGroup: 'Back',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Arnold Press',            muscleGroup: 'Shoulders',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hammer Curl',             muscleGroup: 'Biceps',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Skull Crusher',           muscleGroup: 'Triceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      5: [ // Day C
+        { name: 'Leg Press',               muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Chest Fly',         muscleGroup: 'Chest',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Cable Row',        muscleGroup: 'Back',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Lateral Raise',  muscleGroup: 'Shoulders',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hip Thrust',              muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Plank',                   muscleGroup: 'Core',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+    },
+  },
+  {
+    id: 'tpl-glutes',
+    name: 'Glutes & Legs Focus',
+    description: '4-day lower-body priority. Two dedicated glute/leg days plus upper body maintenance. Perfect for glute and leg development.',
+    tags: ['Intermediate', 'Hypertrophy', 'Glutes'],
+    workoutDays: [1, 2, 4, 5],
+    defaultWeeks: 8,
+    dayTemplates: {
+      1: [ // Glutes & Hamstrings
+        { name: 'Hip Thrust',              muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Romanian Deadlift',       muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Kickback',          muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Lying Leg Curl',          muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Abductor Machine',        muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Calf Raise',       muscleGroup: 'Calves',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      2: [ // Upper
+        { name: 'Barbell Bench Press',     muscleGroup: 'Chest',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Lat Pulldown',            muscleGroup: 'Back',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Overhead Press',  muscleGroup: 'Shoulders',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Cable Row',        muscleGroup: 'Back',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Curl',           muscleGroup: 'Biceps',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Tricep Pushdown',         muscleGroup: 'Triceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      4: [ // Quads & Glutes
+        { name: 'Barbell Back Squat',      muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Bulgarian Split Squat',   muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Leg Extension',           muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Hip Abduction',     muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Hip Extension',     muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Standing Calf Raise',     muscleGroup: 'Calves',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      5: [ // Upper B
+        { name: 'Dumbbell Incline Bench Press', muscleGroup: 'Chest', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Pull-Up',                 muscleGroup: 'Back',       sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Face Pull',               muscleGroup: 'Shoulders',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Lateral Raise',  muscleGroup: 'Shoulders',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hammer Curl',             muscleGroup: 'Biceps',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Rope Pushdown',           muscleGroup: 'Triceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+    },
+  },
+  {
+    id: 'tpl-arms',
+    name: 'Arms & Chest Specialization',
+    description: '4-day plan with extra arm and chest volume. Great for building a bigger upper body when arms and chest are your priority.',
+    tags: ['Intermediate', 'Hypertrophy', 'Arms'],
+    workoutDays: [1, 2, 4, 5],
+    defaultWeeks: 6,
+    dayTemplates: {
+      1: [ // Chest & Triceps
+        { name: 'Barbell Bench Press',     muscleGroup: 'Chest',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Incline Bench Press', muscleGroup: 'Chest', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Chest Fly',         muscleGroup: 'Chest',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Pec Deck Fly',            muscleGroup: 'Chest',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Skull Crusher',           muscleGroup: 'Triceps', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Rope Pushdown',           muscleGroup: 'Triceps', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Overhead Tricep Extension',muscleGroup: 'Triceps', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      2: [ // Back & Biceps
+        { name: 'Barbell Deadlift',        muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Pull-Up',                 muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Seated Cable Row',        muscleGroup: 'Back',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Barbell Curl',            muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Incline Dumbbell Curl',   muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hammer Curl',             muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Curl',              muscleGroup: 'Biceps',  sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      4: [ // Shoulders & Arms
+        { name: 'Barbell Overhead Press',  muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Dumbbell Lateral Raise',  muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Face Pull',               muscleGroup: 'Shoulders', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'EZ-Bar Curl',             muscleGroup: 'Biceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Tricep Pushdown',         muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Cable Reverse Curl',      muscleGroup: 'Biceps',    sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Single-Arm Pushdown',     muscleGroup: 'Triceps',   sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+      5: [ // Legs
+        { name: 'Barbell Back Squat',      muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Romanian Deadlift',       muscleGroup: 'Hamstrings', sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Leg Press',               muscleGroup: 'Quads',      sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Hip Thrust',              muscleGroup: 'Glutes',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+        { name: 'Standing Calf Raise',     muscleGroup: 'Calves',     sets: [{ weight: 0, reps: 0 }, { weight: 0, reps: 0 }] },
+      ],
+    },
+  },
+];
+
+function renderPlanTemplates() {
+  const container = document.getElementById('plan-templates-list');
+  if (!container) return;
+  container.innerHTML = PLAN_TEMPLATES.map(tpl => {
+    const dayLabels = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    const pips = dayLabels.map((lbl, i) =>
+      `<div class="plan-day-pip ${tpl.workoutDays.includes(i) ? 'on' : 'off'}">${lbl}</div>`
+    ).join('');
+    const tags = tpl.tags.map(t => `<span class="tpl-tag">${t}</span>`).join('');
+    return `
+      <div class="plan-template-card">
+        <div class="plan-template-name">${escHtml(tpl.name)}</div>
+        <div class="plan-template-tags">${tags}</div>
+        <div class="plan-template-desc">${escHtml(tpl.description)}</div>
+        <div class="plan-card-days" style="margin:10px 0 6px">${pips}</div>
+        <button class="btn btn-primary btn-sm" onclick="usePlanTemplate('${tpl.id}')">Use This Plan</button>
+      </div>`;
+  }).join('');
+}
+
+window.usePlanTemplate = function(tplId) {
+  const tpl = PLAN_TEMPLATES.find(t => t.id === tplId);
+  if (!tpl) return;
+  // Pre-fill the plan form with this template's defaults and open it
+  resetPlanForm();
+  document.getElementById('plan-name').value  = tpl.name;
+  document.getElementById('plan-weeks').value = tpl.defaultWeeks;
+  document.getElementById('plan-start').value = todayISO();
+  tpl.workoutDays.forEach(dow => state.planDays.add(dow));
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.classList.toggle('active', state.planDays.has(Number(btn.dataset.dow)));
+  });
+  // Store template day templates for after save
+  state._pendingTemplateDayTemplates = JSON.parse(JSON.stringify(tpl.dayTemplates));
+  updatePlanDatePreview();
+  setPlanFormOpen(true);
+  // Scroll to form
+  document.getElementById('plan-form-wrap').scrollIntoView({ behavior: 'smooth' });
+};
+
 // ── Plan ──────────────────────────────────────────────────
 function resetPlanForm() {
   document.getElementById('plan-name').value  = '';
   delete document.getElementById('plan-name').dataset.editId;
   document.getElementById('plan-start').value = '';
+  document.getElementById('plan-weeks').value = '8';
   document.getElementById('plan-end').value   = '';
+  document.getElementById('plan-date-preview').hidden = true;
   document.getElementById('plan-rir-toggle').checked = false;
   document.getElementById('plan-rir-options').style.display = 'none';
   document.getElementById('plan-mesocycle-length').value = '4';
@@ -2226,6 +2531,7 @@ function resetPlanForm() {
   document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
   document.getElementById('btn-save-plan').textContent = 'Save Plan';
   document.getElementById('plan-form-edit-banner').hidden = true;
+  state._pendingTemplateDayTemplates = null;
 }
 
 function setPlanFormOpen(open) {
@@ -2244,8 +2550,10 @@ function renderPlan() {
   const list  = document.getElementById('plan-list');
   const DOW_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+  renderPlanTemplates();
+
   if (plans.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-label">No plans yet.</div><p>Fill in the form above and tap Save Plan.</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-label">No plans yet.</div><p>Use a template above or create one with the + New Plan button.</p></div>`;
     return;
   }
 
@@ -2296,32 +2604,65 @@ function clearPlanErrors() {
   if (errEl) errEl.remove();
 }
 
+function computePlanEnd(start, weeks) {
+  // end = last day of the final week (start + weeks*7 - 1 day)
+  const d = new Date(start + 'T00:00:00');
+  d.setDate(d.getDate() + weeks * 7 - 1);
+  return localISO(d);
+}
+
+function updatePlanDatePreview() {
+  const start    = document.getElementById('plan-start').value;
+  const weeksVal = parseInt(document.getElementById('plan-weeks').value, 10);
+  const preview  = document.getElementById('plan-date-preview');
+  const endEl    = document.getElementById('plan-end');
+  if (!start || !weeksVal || weeksVal < 1) {
+    preview.hidden = true;
+    endEl.value = '';
+    return;
+  }
+  const isRir  = document.getElementById('plan-rir-toggle').checked;
+  const msLen  = parseInt(document.getElementById('plan-mesocycle-length').value, 10) || 4;
+  const end    = computePlanEnd(start, weeksVal);
+  endEl.value  = end;
+  const deloadNote = isRir ? ` · deload every ${msLen} wks` : '';
+  preview.textContent = `${weeksVal} weeks${deloadNote} → ends ${formatDate(end)}`;
+  preview.hidden = false;
+}
+
 function savePlan() {
   clearPlanErrors();
   const nameEl  = document.getElementById('plan-name');
   const startEl = document.getElementById('plan-start');
-  const endEl   = document.getElementById('plan-end');
+  const weeksEl = document.getElementById('plan-weeks');
   const name  = nameEl.value.trim();
   const start = startEl.value;
-  const end   = endEl.value;
+  const weeks = parseInt(weeksEl.value, 10);
 
-  if (!name)  { nameEl.classList.add('input-error'); setPlanError('Enter a plan name.'); nameEl.focus(); return; }
-  if (!start) { startEl.classList.add('input-error'); setPlanError('Set a start date.'); return; }
-  if (!end)   { endEl.classList.add('input-error'); setPlanError('Set an end date.'); return; }
-  if (end < start) { endEl.classList.add('input-error'); setPlanError('End date must be after start date.'); return; }
+  if (!name)        { nameEl.classList.add('input-error'); setPlanError('Enter a plan name.'); nameEl.focus(); return; }
+  if (!start)       { startEl.classList.add('input-error'); setPlanError('Set a start date.'); return; }
+  if (!weeks || weeks < 1) { weeksEl.classList.add('input-error'); setPlanError('Enter the number of training weeks (at least 1).'); return; }
   if (state.planDays.size === 0) { setPlanError('Select at least one workout day.'); return; }
+
+  const isRir = document.getElementById('plan-rir-toggle').checked;
+  const msLen = parseInt(document.getElementById('plan-mesocycle-length').value, 10) || 4;
+  const end = computePlanEnd(start, weeks);
 
   const editId = nameEl.dataset.editId;
   const existing = editId ? loadPlans().find(p => p.id === editId) : null;
+  // Apply pre-made template day templates on first save (not on edit)
+  const pendingTemplates = state._pendingTemplateDayTemplates;
+  state._pendingTemplateDayTemplates = null;
   const plan = {
     id: editId || uid(),
     name,
     start,
     end,
+    weeks,
     workoutDays: [...state.planDays].sort(),
-    dayTemplates: existing ? (existing.dayTemplates || {}) : {},
-    rir: document.getElementById('plan-rir-toggle').checked,
-    mesocycleLength: parseInt(document.getElementById('plan-mesocycle-length').value, 10),
+    dayTemplates: existing ? (existing.dayTemplates || {}) : (pendingTemplates || {}),
+    rir: isRir,
+    mesocycleLength: msLen,
   };
   delete nameEl.dataset.editId;
   clearPlanErrors();
@@ -2340,6 +2681,13 @@ window.loadPlanIntoForm = function(id) {
   document.getElementById('plan-name').value  = plan.name;
   document.getElementById('plan-name').dataset.editId = plan.id;
   document.getElementById('plan-start').value = plan.start;
+  // Derive weeks from stored value or from start/end dates for older plans
+  let weeks = plan.weeks || 0;
+  if (!weeks && plan.start && plan.end) {
+    const ms = new Date(plan.end + 'T00:00:00') - new Date(plan.start + 'T00:00:00');
+    weeks = Math.max(1, Math.round(ms / (7 * 86400000)));
+  }
+  document.getElementById('plan-weeks').value = weeks || 8;
   document.getElementById('plan-end').value   = plan.end;
   document.getElementById('plan-rir-toggle').checked = !!plan.rir;
   document.getElementById('plan-rir-options').style.display = plan.rir ? '' : 'none';
@@ -2348,6 +2696,7 @@ window.loadPlanIntoForm = function(id) {
   document.querySelectorAll('.day-btn').forEach(btn => {
     btn.classList.toggle('active', state.planDays.has(Number(btn.dataset.dow)));
   });
+  updatePlanDatePreview();
   document.getElementById('btn-save-plan').textContent = 'Update Plan';
   document.getElementById('plan-form-edit-label').textContent = `Editing: ${plan.name}`;
   document.getElementById('plan-form-edit-banner').hidden = false;
@@ -2769,6 +3118,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Plan editor
   document.getElementById('btn-plan-editor-back').addEventListener('click', () => navigate('plan'));
+  document.getElementById('btn-plan-editor-done').addEventListener('click', () => navigate('plan'));
 
   // Plan day muscle count + picker
   document.getElementById('btn-plan-day-muscles-back').addEventListener('click', () => navigate('plan-editor'));
@@ -2786,7 +3136,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-save-plan').addEventListener('click', savePlan);
   document.getElementById('plan-rir-toggle').addEventListener('change', e => {
     document.getElementById('plan-rir-options').style.display = e.target.checked ? '' : 'none';
+    updatePlanDatePreview();
   });
+  document.getElementById('plan-mesocycle-length').addEventListener('change', updatePlanDatePreview);
+  document.getElementById('plan-start').addEventListener('change', updatePlanDatePreview);
+  document.getElementById('plan-weeks').addEventListener('input', updatePlanDatePreview);
 
   // Body weight view
   document.getElementById('btn-bw-back').addEventListener('click', () => navigate('home'));

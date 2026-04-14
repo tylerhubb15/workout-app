@@ -370,10 +370,14 @@
             <input type="date" id="plan-start" />
           </div>
           <div style="flex:1">
-            <div class="field-label">End Date</div>
-            <input type="date" id="plan-end" />
+            <div class="field-label">Training Weeks</div>
+            <input type="number" id="plan-weeks" min="1" max="52" value="8" inputmode="numeric"
+              style="width:100%" placeholder="e.g. 8" />
           </div>
         </div>
+        <div id="plan-date-preview" class="plan-date-preview" hidden></div>
+        <!-- hidden end date kept for storage compatibility -->
+        <input type="date" id="plan-end" hidden />
         <div>
           <div class="field-label">Workout Days</div>
           <div class="day-picker" id="day-picker">
@@ -407,6 +411,10 @@
       </div>
     </div>
     <div class="plan-list" id="plan-list"></div>
+    <div class="plan-templates-section">
+      <div class="plan-templates-label">Ready-Made Plans</div>
+      <div id="plan-templates-list"></div>
+    </div>
   </section>
 
   <!-- ── Plan Day Editor View ─────────────────────── -->
@@ -415,7 +423,10 @@
       <button class="btn-back" id="btn-plan-editor-back">‹</button>
       <h1 id="plan-editor-title">Edit Days</h1>
     </div>
-    <div id="plan-editor-body" style="padding: 0 20px 32px"></div>
+    <div id="plan-editor-body" style="padding: 0 20px 16px"></div>
+    <div style="padding: 0 20px 32px">
+      <button class="btn btn-primary btn-full" id="btn-plan-editor-done">✓ Done — Plan Saved</button>
+    </div>
   </section>
 
   <!-- ── History View ──────────────────────────────── -->
