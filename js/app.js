@@ -1917,21 +1917,43 @@ function renderPlanEditor() {
   const body = document.getElementById('plan-editor-body');
   body.innerHTML = plan.workoutDays.map(dow => {
     const exercises = (plan.dayTemplates[dow] || []);
+
+    // Summary line for the header
+    let summary = '';
+    if (exercises.length > 0) {
+      const muscles = [...new Set(exercises.map(e => e.muscleGroup || getMuscleGroup(e.name)).filter(Boolean))];
+      summary = `<div class="plan-day-card-summary">${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}${muscles.length ? ' · ' + muscles.join(', ') : ''}</div>`;
+    }
+
+    // Exercise rows with edit + remove buttons
     const exRows = exercises.length === 0
-      ? `<div class="empty-state" style="padding:12px 0 4px"><div class="empty-label">No exercises set.</div></div>`
-      : exercises.map(ex => `
-            <div class="plan-day-ex-row">
+      ? `<div class="plan-day-empty">No exercises yet — add one below.</div>`
+      : exercises.map((ex, ei) => `
+          <div class="plan-day-ex-row">
+            <div class="plan-day-ex-info">
               <div class="plan-day-ex-name">${escHtml(ex.name)}</div>
               <div class="plan-day-ex-meta">${ex.sets.length} set${ex.sets.length !== 1 ? 's' : ''}</div>
-            </div>`).join('');
+            </div>
+            <div class="plan-day-ex-actions">
+              <button class="btn btn-secondary btn-sm" onclick="planTemplateEditEx(${dow},${ei})">Edit</button>
+              <button class="btn btn-icon btn-secondary" onclick="planTemplateRemoveEx(${dow},${ei})" title="Remove">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>`).join('');
 
     return `
       <div class="plan-day-card">
         <div class="plan-day-card-header">
-          <span class="plan-day-card-title">${DOW_NAMES[dow]}</span>
-          <button class="btn btn-primary btn-sm" onclick="openPlanDayMuscles(${dow})">Configure Day</button>
+          <div>
+            <div class="plan-day-card-title">${DOW_NAMES[dow]}</div>
+            ${summary}
+          </div>
         </div>
-        <div class="plan-day-card-body">${exRows}</div>
+        <div class="plan-day-card-body">
+          ${exRows}
+          <button class="btn btn-ghost btn-sm plan-day-add-btn" onclick="planTemplateAddEx(${dow})">+ Add Exercise</button>
+        </div>
       </div>`;
   }).join('');
 }
@@ -2200,6 +2222,8 @@ function resetPlanForm() {
   document.getElementById('plan-mesocycle-length').value = '4';
   state.planDays = new Set();
   document.querySelectorAll('.day-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('btn-save-plan').textContent = 'Save Plan';
+  document.getElementById('plan-form-edit-banner').hidden = true;
 }
 
 function setPlanFormOpen(open) {
@@ -2322,6 +2346,9 @@ window.loadPlanIntoForm = function(id) {
   document.querySelectorAll('.day-btn').forEach(btn => {
     btn.classList.toggle('active', state.planDays.has(Number(btn.dataset.dow)));
   });
+  document.getElementById('btn-save-plan').textContent = 'Update Plan';
+  document.getElementById('plan-form-edit-label').textContent = `Editing: ${plan.name}`;
+  document.getElementById('plan-form-edit-banner').hidden = false;
   setPlanFormOpen(true);
   window.scrollTo(0, 0);
 };
