@@ -318,7 +318,10 @@
   <section class="view" id="view-calendar">
     <div class="page-header">
       <h1>Calendar</h1>
+      <button class="btn btn-secondary btn-sm" id="cal-jump-today" hidden onclick="jumpCalendarToToday()">Today</button>
     </div>
+    <div id="cal-week-banner" class="cal-week-banner" hidden></div>
+    <div id="cal-month-stats" class="cal-month-stats" hidden></div>
     <div class="cal-month-nav">
       <button class="btn-cal-nav" id="cal-prev">‹</button>
       <div class="cal-month-label" id="cal-month-label"></div>
@@ -328,6 +331,17 @@
     <div class="cal-legend">
       <span class="legend-item"><span class="dot dot-workout"></span> Logged</span>
       <span class="legend-item"><span class="dot dot-plan"></span> Planned</span>
+      <span class="legend-item"><span class="dot dot-missed"></span> Missed</span>
+      <span class="legend-item"><span class="cal-deload-swatch"></span> Deload</span>
+    </div>
+    <!-- Day quick-preview popup (long-press) -->
+    <div id="cal-day-popup" class="cal-day-popup" hidden>
+      <div class="cal-day-popup-header">
+        <div class="cal-day-popup-date" id="cal-popup-date"></div>
+        <button class="cal-day-popup-close" onclick="closeCalDayPopup()">×</button>
+      </div>
+      <div id="cal-popup-body" class="cal-day-popup-body"></div>
+      <button class="btn btn-primary btn-sm" id="cal-popup-open" style="margin-top:10px;width:100%">Open Day</button>
     </div>
   </section>
 

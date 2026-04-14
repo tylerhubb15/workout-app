@@ -1887,49 +1887,246 @@ function planDatesSet() {
   return dates;
 }
 
+function calcStreak(workouts) {
+  const dates = new Set(
+    workouts.filter(w => (w.status ?? 'completed') === 'completed').map(w => w.date)
+  );
+  let streak = 0;
+  const d = new Date();
+  if (!dates.has(localISO(d))) d.setDate(d.getDate() - 1); // allow today not yet logged
+  while (dates.has(localISO(d))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function advanceMonth(delta) {
+  const c = state.calendar;
+  c.month += delta;
+  if (c.month > 11) { c.year++; c.month = 0; }
+  if (c.month < 0)  { c.year--; c.month = 11; }
+  renderCalendar();
+}
+
+window.jumpCalendarToToday = function() {
+  const now = new Date();
+  state.calendar.year  = now.getFullYear();
+  state.calendar.month = now.getMonth();
+  renderCalendar();
+};
+
 function renderCalendar() {
   const { year, month } = state.calendar;
-  const today    = todayISO();
+  const today = todayISO();
+  const now   = new Date();
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+
+  // Jump-to-today button
+  const jumpBtn = document.getElementById('cal-jump-today');
+  if (jumpBtn) jumpBtn.hidden = isCurrentMonth;
 
   document.getElementById('cal-month-label').textContent =
     new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const allWorkouts       = loadWorkouts();
-  const workoutDates      = new Set(
+  const allWorkouts = loadWorkouts();
+  const workoutDates = new Set(
     allWorkouts.filter(w => (w.status ?? 'completed') === 'completed').map(w => w.date)
   );
   const savedPlannedDates = new Set(
     allWorkouts.filter(w => (w.status ?? 'completed') === 'planned').map(w => w.date)
   );
+  const plan         = getActivePlan();
   const plannedDates = planDatesSet();
 
-  const DOW         = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-  const firstDow    = new Date(year, month, 1).getDay();
+  // ── Mesocycle week banner ──
+  const weekBannerEl = document.getElementById('cal-week-banner');
+  if (weekBannerEl) {
+    const rir = plan ? getRirContext(plan, today) : null;
+    if (rir) {
+      const label = rir.isDeloadWeek
+        ? `Deload Week  ·  RIR 3 (easy)`
+        : `Block ${rir.blockNum + 1}  ·  Week ${rir.weekInCycle + 1} / ${rir.msLen}  ·  RIR ${rir.targetRIR}`;
+      weekBannerEl.textContent = label;
+      weekBannerEl.className = `cal-week-banner${rir.isDeloadWeek ? ' cal-week-banner-deload' : ''}`;
+      weekBannerEl.hidden = false;
+    } else {
+      weekBannerEl.hidden = true;
+    }
+  }
+
+  // ── Month stats (streak + completion) ──
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthStr    = `${year}-${String(month + 1).padStart(2, '0')}`;
+  let plannedInMonth = 0, loggedInMonth = 0;
+  for (const iso of plannedDates) {
+    if (!iso.startsWith(monthStr) || iso > today) continue;
+    plannedInMonth++;
+    if (workoutDates.has(iso)) loggedInMonth++;
+  }
+  const streak     = calcStreak(allWorkouts);
+  const statsEl    = document.getElementById('cal-month-stats');
+  if (statsEl) {
+    const parts = [];
+    if (streak > 0) parts.push(`🔥 ${streak}-day streak`);
+    if (plannedInMonth > 0) parts.push(`${loggedInMonth} / ${plannedInMonth} workouts logged`);
+    statsEl.innerHTML = parts.map(p => `<span class="cal-stat-chip">${p}</span>`).join('');
+    statsEl.hidden = parts.length === 0;
+  }
 
-  let html = DOW.map(d => `<div class="cal-header-cell">${d}</div>`).join('');
-  for (let i = 0; i < firstDow; i++) html += `<div class="cal-day cal-empty"></div>`;
+  // ── Build grid cells ──
+  const DOW      = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const firstDow = new Date(year, month, 1).getDay();
 
+  // Pad to full weeks
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
-    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const isToday  = iso === today;
-    const hasLog       = workoutDates.has(iso);
-    const hasSavedPlan = savedPlannedDates.has(iso);
-    const hasPlan      = plannedDates.has(iso);
+    cells.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
 
-    const cls = ['cal-day', isToday ? 'today' : ''].filter(Boolean).join(' ');
-    const dots = (hasLog ? `<span class="dot dot-workout"></span>` : '') +
-                 (!hasLog && (hasSavedPlan || hasPlan) ? `<span class="dot dot-plan"></span>` : '');
+  let html = `<div class="cal-header-row">${DOW.map(d => `<div class="cal-header-cell">${d}</div>`).join('')}</div>`;
 
-    html += `
-      <div class="${cls}" onclick="selectDay('${iso}')">
-        <span class="cal-day-num">${d}</span>
-        ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
-      </div>`;
+  for (let w = 0; w < cells.length / 7; w++) {
+    const week      = cells.slice(w * 7, w * 7 + 7);
+    const firstIso  = week.find(c => c !== null);
+    let   weekClass = 'cal-week-row';
+    if (plan && firstIso) {
+      const rir = getRirContext(plan, firstIso);
+      if (rir && rir.isDeloadWeek) weekClass += ' deload-week';
+    }
+
+    html += `<div class="${weekClass}">`;
+    for (const iso of week) {
+      if (!iso) { html += `<div class="cal-day cal-empty"></div>`; continue; }
+
+      const d          = parseInt(iso.split('-')[2], 10);
+      const isToday    = iso === today;
+      const isPast     = iso < today;
+      const hasLog     = workoutDates.has(iso);
+      const hasSvdPlan = savedPlannedDates.has(iso);
+      const hasPlan    = plannedDates.has(iso);
+      const isPlanned  = hasPlan || hasSvdPlan;
+      const isMissed   = isPast && isPlanned && !hasLog;
+
+      // Muscle group label from plan template
+      let dayLabel = '';
+      if (plan && hasPlan && plan.dayTemplates) {
+        const dow = new Date(iso + 'T00:00:00').getDay();
+        const exs = plan.dayTemplates[dow] || [];
+        if (exs.length > 0) {
+          const muscles = [...new Set(exs.map(e => e.muscleGroup || getMuscleGroup(e.name)).filter(Boolean))];
+          dayLabel = muscles.slice(0, 2).map(m => m.slice(0, 4)).join('/');
+        }
+      }
+
+      const cls = ['cal-day', isToday ? 'today' : '', isMissed ? 'missed' : '', hasLog ? 'logged' : '']
+        .filter(Boolean).join(' ');
+
+      const dots = (hasLog     ? `<span class="dot dot-workout"></span>` : '') +
+                   (!hasLog && isPlanned && !isMissed ? `<span class="dot dot-plan"></span>` : '') +
+                   (isMissed   ? `<span class="dot dot-missed"></span>` : '');
+
+      html += `
+        <div class="${cls}" onclick="selectDay('${iso}')"
+             ontouchstart="calDayTouchStart(event,'${iso}')"
+             ontouchend="calDayTouchEnd(event)"
+             ontouchmove="calDayTouchMove(event)">
+          <span class="cal-day-num">${d}</span>
+          ${dayLabel ? `<span class="cal-day-label">${dayLabel}</span>` : ''}
+          ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
+        </div>`;
+    }
+    html += `</div>`;
   }
 
   document.getElementById('cal-grid').innerHTML = html;
+  setupCalendarSwipe();
 }
+
+// ── Calendar swipe & long-press ───────────────────────────
+let _calSwipeX = 0;
+let _calSwipeMoved = false;
+let _calLongPressTimer = null;
+let _calLongPressIso   = null;
+
+function setupCalendarSwipe() {
+  const section = document.getElementById('view-calendar');
+  if (!section || section._swipeReady) return;
+  section._swipeReady = true;
+  let sx = 0, moved = false;
+  section.addEventListener('touchstart', e => {
+    // only track swipes that start outside the popup
+    if (document.getElementById('cal-day-popup') && !document.getElementById('cal-day-popup').hidden) return;
+    sx = e.touches[0].clientX; moved = false;
+  }, { passive: true });
+  section.addEventListener('touchmove', () => { moved = true; }, { passive: true });
+  section.addEventListener('touchend', e => {
+    if (moved) {
+      const dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 55) advanceMonth(dx < 0 ? 1 : -1);
+    }
+  }, { passive: true });
+}
+
+window.calDayTouchStart = function(e, iso) {
+  _calLongPressIso = iso;
+  _calSwipeX = e.touches[0].clientX;
+  _calSwipeMoved = false;
+  clearTimeout(_calLongPressTimer);
+  _calLongPressTimer = setTimeout(() => {
+    if (!_calSwipeMoved) openCalDayPopup(_calLongPressIso);
+  }, 450);
+};
+window.calDayTouchMove = function() {
+  _calSwipeMoved = true;
+  clearTimeout(_calLongPressTimer);
+};
+window.calDayTouchEnd = function() {
+  clearTimeout(_calLongPressTimer);
+};
+
+window.openCalDayPopup = function(iso) {
+  const popup   = document.getElementById('cal-day-popup');
+  const dateEl  = document.getElementById('cal-popup-date');
+  const bodyEl  = document.getElementById('cal-popup-body');
+  const openBtn = document.getElementById('cal-popup-open');
+  if (!popup) return;
+
+  dateEl.textContent = formatDateLong(iso);
+
+  const allWorkouts = loadWorkouts();
+  const logged = allWorkouts.find(w => w.date === iso && (w.status ?? 'completed') === 'completed');
+  const plan   = getActivePlan();
+  const dow    = new Date(iso + 'T00:00:00').getDay();
+  const tplExs = plan && plan.dayTemplates ? (plan.dayTemplates[dow] || []) : [];
+
+  let html = '';
+  if (logged && logged.exercises.length > 0) {
+    html = `<div class="popup-section-label">Logged</div>` +
+      logged.exercises.map(ex =>
+        `<div class="popup-ex-row"><span class="popup-ex-name">${escHtml(ex.name)}</span>
+         <span class="popup-ex-meta">${ex.sets.length} set${ex.sets.length !== 1 ? 's' : ''}</span></div>`
+      ).join('');
+  } else if (tplExs.length > 0) {
+    html = `<div class="popup-section-label">Planned</div>` +
+      tplExs.map(ex =>
+        `<div class="popup-ex-row"><span class="popup-ex-name">${escHtml(ex.name)}</span>
+         <span class="popup-ex-meta">${ex.sets.length} set${ex.sets.length !== 1 ? 's' : ''}</span></div>`
+      ).join('');
+  } else {
+    html = `<div class="popup-empty">No exercises planned.</div>`;
+  }
+  bodyEl.innerHTML = html;
+  openBtn.onclick = () => { closeCalDayPopup(); selectDay(iso); };
+  popup.hidden = false;
+};
+
+window.closeCalDayPopup = function() {
+  const popup = document.getElementById('cal-day-popup');
+  if (popup) popup.hidden = true;
+};
 
 // ── Plan Day Editor ───────────────────────────────────────
 const DOW_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -3093,18 +3290,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-save-exercise').addEventListener('click', saveExercise);
 
   // Calendar month navigation
-  document.getElementById('cal-prev').addEventListener('click', () => {
-    const c = state.calendar;
-    if (c.month === 0) { c.year--; c.month = 11; }
-    else               { c.month--; }
-    renderCalendar();
-  });
-  document.getElementById('cal-next').addEventListener('click', () => {
-    const c = state.calendar;
-    if (c.month === 11) { c.year++; c.month = 0; }
-    else                { c.month++; }
-    renderCalendar();
-  });
+  document.getElementById('cal-prev').addEventListener('click', () => advanceMonth(-1));
+  document.getElementById('cal-next').addEventListener('click', () => advanceMonth(1));
 
   // Plan
   document.getElementById('btn-plan-back').addEventListener('click', () => navigate('home'));
