@@ -513,6 +513,7 @@ function navigate(view) {
 
   window.scrollTo(0, 0);
 }
+window.navigate = navigate;
 
 // ── Home ──────────────────────────────────────────────────
 
@@ -640,6 +641,28 @@ function getWeekVolumeByMuscle() {
   return { sets, monday, sunday };
 }
 
+function getPlanWeekVolume(monday) {
+  const plan = getActivePlan();
+  if (!plan || !plan.dayTemplates) return null;
+
+  const planSets = {};
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const iso = d.toISOString().slice(0, 10);
+    if (iso < plan.start || iso > plan.end) continue;
+    const dow = d.getDay();
+    if (!plan.workoutDays.includes(dow)) continue;
+    const exercises = plan.dayTemplates[dow] || [];
+    exercises.forEach(ex => {
+      const muscle = ex.muscleGroup || getMuscleGroup(ex.name);
+      if (!muscle || muscle === 'Full Body') return;
+      planSets[muscle] = (planSets[muscle] || 0) + (ex.sets ? ex.sets.length : 0);
+    });
+  }
+  return Object.keys(planSets).length > 0 ? planSets : null;
+}
+
 function renderVolumeTracker() {
   const MUSCLES = Object.keys(MUSCLE_MAP).filter(m => m !== 'Full Body');
   const REC_MIN = 10;
@@ -652,8 +675,10 @@ function renderVolumeTracker() {
     + ' – '
     + sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  const rows = MUSCLES.map(muscle => {
-    const count = sets[muscle] || 0;
+  const hasLogged = Object.keys(sets).length > 0;
+  const planSets  = getPlanWeekVolume(monday);
+
+  const makeRow = (muscle, count, dimmed) => {
     const pct   = Math.min(100, (count / BAR_MAX) * 100);
     const barCls = count === 0       ? 'vol-bar-empty'
                  : count < REC_MIN   ? 'vol-bar-low'
@@ -662,7 +687,7 @@ function renderVolumeTracker() {
     const minPct = (REC_MIN / BAR_MAX) * 100;
     const maxPct = (REC_MAX / BAR_MAX) * 100;
     return `
-      <div class="vol-row">
+      <div class="vol-row${dimmed ? ' vol-row-dimmed' : ''}">
         <div class="vol-row-top">
           <span class="vol-muscle">${muscle}</span>
           <span class="vol-count${count === 0 ? ' vol-count-zero' : ''}">${count} set${count !== 1 ? 's' : ''}</span>
@@ -673,7 +698,29 @@ function renderVolumeTracker() {
           <div class="vol-bar-marker" style="left:${maxPct}%"></div>
         </div>
       </div>`;
-  }).join('');
+  };
+
+  let planSection = '';
+  if (planSets) {
+    const planRows = MUSCLES
+      .filter(m => (planSets[m] || 0) > 0)
+      .map(m => makeRow(m, planSets[m], false))
+      .join('');
+    planSection = `
+      <div class="vol-section-label">Scheduled this week</div>
+      <div class="vol-list">${planRows}</div>`;
+  }
+
+  let loggedSection = '';
+  if (!hasLogged) {
+    loggedSection = `<div class="vol-empty">No workouts completed this week yet.</div>`;
+  } else {
+    const rows = MUSCLES.map(m => makeRow(m, sets[m] || 0, false)).join('');
+    loggedSection = `
+      <div class="vol-section-label">Completed this week</div>
+      <div class="vol-list">${rows}</div>
+      <div class="vol-note">Vertical markers show the 10–20 set target range. Aim for each muscle to land between them for hypertrophy.</div>`;
+  }
 
   document.getElementById('volume-content').innerHTML = `
     <div class="vol-week-range">${weekStr}</div>
@@ -682,8 +729,8 @@ function renderVolumeTracker() {
       <span class="vol-legend-dot vol-bar-ok"></span><span class="vol-legend-label">10–20 ✓</span>
       <span class="vol-legend-dot vol-bar-high"></span><span class="vol-legend-label">Over 20</span>
     </div>
-    <div class="vol-list">${rows}</div>
-    <div class="vol-note">Vertical markers show the 10–20 set target range. Aim for each muscle to land between them for hypertrophy.</div>`;
+    ${planSection}
+    ${loggedSection}`;
 }
 
 function renderStats() {

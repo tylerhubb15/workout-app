@@ -2596,6 +2596,25 @@ input.input-error, select.input-error {
   line-height: 1.5;
 }
 
+.vol-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+  margin: 20px 0 10px;
+}
+
+.vol-empty {
+  font-size: 13px;
+  color: var(--text3);
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.vol-row-dimmed .vol-muscle { color: var(--text2); }
+.vol-row-dimmed .vol-bar-fill { opacity: 0.55; }
+
 /* ── Exercise name tappable ──────────────────────────────── */
 
 .active-exercise-name-tap {
