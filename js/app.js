@@ -1302,7 +1302,7 @@ function exerciseCardHTML(ex, ei, ctx, totalCount, prMap, ssInfo = {}) {
            value="${s.reps || ''}" placeholder="${(s.rir != null || s.erTarget != null) ? 'Log reps' : '–'}"
            onchange="handleSetChange('${ctx}',${ei},${si},'reps',this.value)" ${readOnly ? 'disabled' : ''}/>
         ${(canLog && s.rir != null) ? `<span class="set-rir-label set-rir-label-tap" onclick="showTrainingMethodInfo('rir')">@RIR&nbsp;${s.rir}</span>` : ''}
-        ${(canLog && s.erTarget != null) ? `<span class="set-rir-label set-rir-label-tap" onclick="showTrainingMethodInfo('er')">ER&nbsp;${s.erTarget}</span>` : ''}</td>`}
+        ${(canLog && s.erTarget != null) ? `<span class="set-rir-label set-rir-label-tap" onclick="showTrainingMethodInfo('er')">ER&nbsp;${s.erTarget}</span><button class="er-rest-btn" onclick="setRestTimer(15)" title="Start 15s ER rest">⏱ 15s</button>` : ''}</td>`}
       ${canLog ? `<td class="set-log-cell">
         <label class="set-check-wrap">
           <input type="checkbox" ${done ? 'checked' : ''}
