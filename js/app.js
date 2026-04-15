@@ -1642,138 +1642,177 @@ function renderExerciseForm() {
   const editing = state.editingExIndex !== null;
   document.getElementById('exercise-view-title').textContent = editing ? 'Edit Exercise' : 'Add Exercise';
 
-  // Show selected muscle in subtitle when arriving from the muscle picker
-  const subtitleEl = document.getElementById('exercise-view-subtitle');
-  if (!editing && state.exMusclePickerFrom === 'exercise-muscle') {
-    subtitleEl.textContent = state.exMuscleFilter || 'All Muscles';
-    subtitleEl.hidden = false;
-  } else {
-    subtitleEl.hidden = true;
-  }
-
   if (editing) {
     const ex = workoutFor(state.exerciseContext).exercises[state.editingExIndex];
     document.getElementById('exercise-name').value = ex.name;
     state.formSets = ex.sets.map(s => ({ ...s }));
     state.formRepMode = ex.repMode || 'target';
     state.customExMuscleGroup = ex.muscleGroup || null;
-    updateSelectedExerciseName(ex.name);
-    state.exMuscleFilter = null; // edit mode: show all
-    state.exEquipFilter  = null;
+    showExConfigPanel(ex.name);
   } else {
     document.getElementById('exercise-name').value = '';
     state.formSets = [{ reps: 0, weight: 0 }];
     state.formRepMode = 'target';
     state.customExMuscleGroup = null;
-    updateSelectedExerciseName('');
-    // exMuscleFilter was set by selectExMuscle — preserve it
     state.exEquipFilter = null;
+    showExPickerPanel();
   }
+}
 
-  // Populate chips and filter
+function showExPickerPanel() {
+  document.getElementById('ex-picker-panel').hidden = false;
+  document.getElementById('ex-config-panel').hidden = true;
+
   const filterInput = document.getElementById('ex-filter');
   filterInput.value = '';
   document.getElementById('ex-search-clear').hidden = true;
-  renderExFilterTabs();
-  renderExChips('');
   filterInput.oninput = () => {
     document.getElementById('ex-search-clear').hidden = !filterInput.value;
-    refreshChips();
+    renderExPickerList(filterInput.value.trim().toLowerCase());
   };
 
+  renderExPickerMuscleFilters();
+  renderExPickerList('');
+}
+
+function renderExPickerMuscleFilters() {
+  const muscles = Object.keys(MUSCLE_MAP);
+  const selected = state.exMuscleFilter;
+  const pillsHtml = ['All', ...muscles].map(m => {
+    const active = (m === 'All' && !selected) || m === selected;
+    const cssKey = m.toLowerCase().replace(/\s+/g, '-');
+    return `<button class="ex-lib-pill${active ? ' active' : ''} ex-lib-pill-${cssKey}"
+      onclick="setExPickerMuscle(${m === 'All' ? 'null' : `'${m}'`})">${m}</button>`;
+  }).join('');
+  document.getElementById('ex-picker-muscle-pills').innerHTML = pillsHtml;
+}
+
+function renderExPickerList(filter) {
+  const builtInAll = Object.values(EXERCISES).flat();
+  const used = [...new Set(loadWorkouts().flatMap(w => w.exercises.map(e => e.name)))];
+  const custom = used.filter(n => !builtInAll.includes(n));
+  const selectedMuscle = state.exMuscleFilter;
+  let html = '';
+
+  if (!selectedMuscle) {
+    // All muscles: group by muscle → equipment
+    for (const muscle of Object.keys(MUSCLE_MAP)) {
+      const cssKey = muscle.toLowerCase().replace(/\s+/g, '-');
+      const byEquip = {};
+      for (const name of MUSCLE_MAP[muscle]) {
+        if (filter && !name.toLowerCase().includes(filter)) continue;
+        const equip = getEquipment(name) || 'Other';
+        (byEquip[equip] = byEquip[equip] || []).push(name);
+      }
+      const equipKeys = [...EQUIP_ORDER, 'Other'].filter(e => byEquip[e]);
+      if (!equipKeys.length) continue;
+      html += `<div class="ex-lib-muscle-section">
+        <div class="ex-lib-muscle-header ex-lib-muscle-${cssKey}">${muscle}</div>
+        ${equipKeys.map(equip => `<div class="ex-lib-equip-group">
+          <div class="ex-lib-equip-label">${equip}</div>
+          <div class="ex-lib-equip-rows">
+            ${byEquip[equip].map(n => `<button class="ex-lib-row" onclick="selectExFromPicker('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
+          </div></div>`).join('')}
+      </div>`;
+    }
+    // Custom exercises block
+    if (custom.length) {
+      const fc = filter ? custom.filter(n => n.toLowerCase().includes(filter)) : custom;
+      if (fc.length) html += `<div class="ex-lib-muscle-section">
+        <div class="ex-lib-muscle-header" style="background:var(--surface3);color:var(--text2)">Custom</div>
+        <div class="ex-lib-equip-rows" style="margin-top:2px">
+          ${fc.map(n => `<button class="ex-lib-row" onclick="selectExFromPicker('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
+        </div></div>`;
+    }
+  } else {
+    // Single muscle: group by equipment
+    const names = (MUSCLE_MAP[selectedMuscle] || []).filter(n => !filter || n.toLowerCase().includes(filter));
+    const byEquip = {};
+    for (const name of names) {
+      const equip = getEquipment(name) || 'Other';
+      (byEquip[equip] = byEquip[equip] || []).push(name);
+    }
+    [...EQUIP_ORDER, 'Other'].filter(e => byEquip[e]).forEach(equip => {
+      html += `<div class="ex-lib-equip-group">
+        <div class="ex-lib-equip-label">${equip}</div>
+        <div class="ex-lib-equip-rows">
+          ${byEquip[equip].map(n => `<button class="ex-lib-row" onclick="selectExFromPicker('${escHtml(n)}')">${escHtml(n)}</button>`).join('')}
+        </div></div>`;
+    });
+  }
+
+  document.getElementById('ex-picker-list').innerHTML = html || `<div class="ex-filter-empty">No exercises match</div>`;
+}
+
+window.setExPickerMuscle = function(muscle) {
+  state.exMuscleFilter = muscle;
+  renderExPickerMuscleFilters();
+  renderExPickerList(document.getElementById('ex-filter').value.trim().toLowerCase());
+};
+
+window.selectExFromPicker = function(name) {
+  state.customExMuscleGroup = null;
+  document.getElementById('exercise-name').value = name;
+  showExConfigPanel(name);
+};
+
+function showExConfigPanel(name) {
+  document.getElementById('ex-picker-panel').hidden = true;
+  document.getElementById('ex-config-panel').hidden = false;
+
+  const editing = state.editingExIndex !== null;
+  const muscle = getMuscleGroup(name) || state.customExMuscleGroup || '';
+  const cssKey = muscle ? muscle.toLowerCase().replace(/\s+/g, '-') : '';
+  const muscleTag = muscle
+    ? `<span class="ex-muscle-tag ex-muscle-${cssKey}" style="font-size:10px;padding:2px 8px">${muscle.toUpperCase()}</span>`
+    : '';
+  const changeBtn = editing ? '' : `<button class="ex-config-change-btn" onclick="showExPickerPanel()">‹ Change</button>`;
+
+  document.getElementById('ex-config-header').innerHTML = `
+    <div class="ex-config-name-row">
+      <div class="ex-config-name">${escHtml(name)}</div>
+      ${changeBtn}
+    </div>
+    ${muscleTag ? `<div style="margin-top:6px">${muscleTag}</div>` : ''}`;
+
+  renderExTrainingTypeChips();
   renderSetRows();
 }
 
-function renderExFilterTabs() {
-  const equips = Object.keys(EXERCISES);
-  const ef = state.exEquipFilter;
+function renderExTrainingTypeChips() {
+  const inRirTemplate = state.exerciseContext === 'planTemplate'
+    && state.editingPlan && state.editingPlan.rir;
+  const mode = inRirTemplate
+    ? (state.formRepMode === 'er' ? 'er' : 'planRir')
+    : state.formRepMode;
 
-  const equipBtns = equips.map(e => {
-    const active = ef === e ? ' active' : '';
-    return `<button class="ex-filter-btn${active}" onclick="setEquipFilter('${e}')">${e}</button>`;
-  }).join('');
+  const types = inRirTemplate
+    ? [
+        { key: 'planRir', label: 'RIR',  desc: 'Auto-managed by plan' },
+        { key: 'er',      label: 'ER',   desc: 'Explosive Reps' },
+      ]
+    : [
+        { key: 'target', label: 'Target Reps', desc: 'Fixed reps per set' },
+        { key: 'rir',    label: 'RIR',         desc: 'Reps in Reserve' },
+        { key: 'er',     label: 'ER',          desc: 'Explosive Reps' },
+      ];
 
-  document.getElementById('ex-filter-tabs').innerHTML = `
-    <div class="ex-filter-section">
-      <div class="ex-filter-label">Equipment</div>
-      <div class="ex-filter-row">${equipBtns}</div>
-    </div>`;
+  document.getElementById('ex-training-type-chips').innerHTML = types.map(({ key, label, desc }) =>
+    `<button class="ex-type-chip${mode === key ? ' active' : ''}" onclick="setFormRepMode('${key}')">
+      <span class="ex-type-chip-label">${label}</span>
+      <span class="ex-type-chip-desc">${desc}</span>
+    </button>`
+  ).join('');
 }
 
-function refreshChips() {
-  renderExChips(document.getElementById('ex-filter').value.trim().toLowerCase());
-}
-
-window.setMuscleFilter = function(muscle) {
-  state.exMuscleFilter = state.exMuscleFilter === muscle ? null : muscle;
-  renderExFilterTabs();
-  refreshChips();
+window.clearExSearch = function() {
+  const input = document.getElementById('ex-filter');
+  input.value = '';
+  document.getElementById('ex-search-clear').hidden = true;
+  input.focus();
+  renderExPickerList('');
 };
 
-window.setEquipFilter = function(equip) {
-  state.exEquipFilter = state.exEquipFilter === equip ? null : equip;
-  renderExFilterTabs();
-  refreshChips();
-};
-
-function renderExChips(filter) {
-  const builtInAll = Object.values(EXERCISES).flat();
-  const used   = [...new Set(loadWorkouts().flatMap(w => w.exercises.map(e => e.name)))];
-  const custom = used.filter(n => !builtInAll.includes(n));
-
-  const groups = { ...EXERCISES };
-  if (custom.length) groups['Custom'] = custom.sort();
-
-  const mf = state.exMuscleFilter;
-  const ef = state.exEquipFilter;
-  const muscleAllowed = mf ? new Set(MUSCLE_MAP[mf] || []) : null;
-
-  let html = '';
-  for (const [group, names] of Object.entries(groups)) {
-    // Equipment filter: skip groups that don't match
-    if (ef && group !== ef && group !== 'Custom') continue;
-
-    let filtered = names;
-    // Muscle filter: only keep exercises in that muscle group
-    if (muscleAllowed) filtered = filtered.filter(n => muscleAllowed.has(n));
-    // Text filter
-    if (filter) filtered = filtered.filter(n => n.toLowerCase().includes(filter));
-    if (!filtered.length) continue;
-
-    // Show group label only when multiple equipment groups could be visible
-    if (!ef) html += `<div class="ex-group-label">${group}</div>`;
-    html += `<div class="ex-chips-row">`;
-    html += filtered.map(n =>
-      `<button class="ex-chip" data-name="${escHtml(n)}" onclick="selectExChip(this.dataset.name)">${escHtml(n)}</button>`
-    ).join('');
-    html += `</div>`;
-  }
-
-  if (!html) html = `<div class="ex-filter-empty">No exercises match these filters</div>`;
-  document.getElementById('ex-chips').innerHTML = html;
-}
-
-window.selectExChip = function(name) {
-  state.customExMuscleGroup = null;
-  document.getElementById('exercise-name').value = name;
-  updateSelectedExerciseName(name);
-};
-
-function updateSelectedExerciseName(name) {
-  const el = document.getElementById('selected-exercise-name');
-  if (!el) return;
-  if (name) {
-    const muscle = getMuscleGroup(name) || state.customExMuscleGroup || '';
-    const muscleClass = muscle ? ` ex-muscle-${muscle.toLowerCase().replace(/\s+/g, '-')}` : '';
-    const muscleTag = muscle
-      ? ` <span class="ex-muscle-tag${muscleClass}" style="font-size:10px;padding:2px 8px;vertical-align:middle;margin-left:6px">${muscle.toUpperCase()}</span>`
-      : '';
-    el.innerHTML = `<span class="selected-ex-label">Selected:</span> <span class="selected-ex-name">${escHtml(name)}</span>${muscleTag}`;
-    el.hidden = false;
-  } else {
-    el.hidden = true;
-  }
-}
 
 window.clearExSearch = function() {
   const input = document.getElementById('ex-filter');
@@ -1816,7 +1855,7 @@ window.openCustomExModal = function() {
       state.customExMuscleGroup = state._pendingCustomMuscle;
       state._pendingCustomMuscle = null;
       document.getElementById('exercise-name').value = name;
-      updateSelectedExerciseName(name);
+      showExConfigPanel(name);
     },
     onCancel: () => { state._pendingCustomMuscle = null; },
   });
@@ -1836,24 +1875,11 @@ function renderSetRows() {
   const inRirTemplate = state.exerciseContext === 'planTemplate'
     && state.editingPlan && state.editingPlan.rir;
 
-  // In an RIR plan template, default mode is planRir UNLESS user toggled this exercise to ER
   const mode = inRirTemplate
     ? (state.formRepMode === 'er' ? 'er' : 'planRir')
     : state.formRepMode;
 
-  // In an RIR template: show a compact ER toggle so individual exercises can opt into ER
-  const modeToggle = inRirTemplate
-    ? `<div class="rep-mode-toggle" style="margin-bottom:4px">
-        <button class="rep-mode-btn${mode !== 'er' ? ' active' : ''}" onclick="setFormRepMode('planRir')">RIR (auto)</button>
-        <button class="rep-mode-btn${mode === 'er' ? ' active' : ''}" onclick="setFormRepMode('er')">ER (explosive)</button>
-      </div>`
-    : `<div class="rep-mode-toggle">
-        <button class="rep-mode-btn${mode === 'target' ? ' active' : ''}" onclick="setFormRepMode('target')">Target Reps</button>
-        <button class="rep-mode-btn${mode === 'rir' ? ' active' : ''}" onclick="setFormRepMode('rir')">RIR</button>
-        <button class="rep-mode-btn${mode === 'er' ? ' active' : ''}" onclick="setFormRepMode('er')">ER</button>
-      </div>`;
-
-  document.getElementById('sets-form-body').innerHTML = modeToggle + state.formSets.map((s, i) => {
+  document.getElementById('sets-form-body').innerHTML = state.formSets.map((s, i) => {
     let repFields = '';
     if (mode === 'target') {
       repFields = `<div class="set-field">
@@ -1905,6 +1931,7 @@ function renderSetRows() {
 
 window.setFormRepMode = function(mode) {
   state.formRepMode = mode;
+  renderExTrainingTypeChips();
   renderSetRows();
 };
 
@@ -2314,8 +2341,8 @@ window.planTemplateAddEx = function(dow) {
   state.editingPlanDow     = dow;
   state.exerciseContext    = 'planTemplate';
   state.editingExIndex     = null;
-  state.exMusclePickerFrom = null;
-  navigate('exercise-muscle');
+  state.exMuscleFilter     = null;
+  navigate('exercise');
 };
 
 window.planTemplateEditEx = function(dow, ei) {
@@ -3331,8 +3358,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-add-exercise').addEventListener('click', () => {
     state.exerciseContext    = 'workout';
     state.editingExIndex     = null;
-    state.exMusclePickerFrom = null;
-    navigate('exercise-muscle');
+    state.exMuscleFilter     = null;
+    navigate('exercise');
   });
   document.getElementById('btn-finish-workout').addEventListener('click', finishWorkout);
   document.getElementById('workout-name').addEventListener('input', syncWorkoutFields);
@@ -3344,8 +3371,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-day-add-exercise').addEventListener('click', () => {
     state.exerciseContext    = 'day';
     state.editingExIndex     = null;
-    state.exMusclePickerFrom = null;
-    navigate('exercise-muscle');
+    state.exMuscleFilter     = null;
+    navigate('exercise');
   });
   document.getElementById('btn-day-finish-workout').addEventListener('click', () => {
     const w = state.dayWorkout;
@@ -3384,22 +3411,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Exercise form
   document.getElementById('btn-exercise-back').addEventListener('click', () => {
     const editing = state.editingExIndex !== null;
-    const fromMuscle = state.exMusclePickerFrom === 'exercise-muscle';
+    const configVisible = !document.getElementById('ex-config-panel').hidden;
     const contextDest = state.exerciseContext === 'planTemplate' ? 'plan-editor' : state.exerciseContext;
-    const backDest = editing || !fromMuscle ? contextDest : 'exercise-muscle';
-    const hasName = document.getElementById('exercise-name').value.trim() !== '';
-    if (!editing && hasName) {
+
+    // Add mode on config panel → back to picker (no data loss)
+    if (configVisible && !editing) {
+      showExPickerPanel();
+      return;
+    }
+    // Edit mode → confirm discard; picker panel → just go back
+    if (editing) {
       showModal({
-        title: 'Discard exercise?',
-        msg: 'You have an unsaved exercise. Go back without saving it?',
+        title: 'Discard changes?',
+        msg: 'Go back without saving your changes?',
         confirmText: 'Discard',
         confirmClass: 'btn-danger-solid',
         cancelText: 'Keep Editing',
-        onConfirm: () => { state.editingExIndex = null; navigate(backDest); },
+        onConfirm: () => { state.editingExIndex = null; navigate(contextDest); },
       });
     } else {
       state.editingExIndex = null;
-      navigate(backDest);
+      navigate(contextDest);
     }
   });
   document.getElementById('btn-add-set').addEventListener('click', addFormSet);

@@ -286,26 +286,32 @@
   <section class="view" id="view-exercise">
     <div class="page-header">
       <button class="btn-back" id="btn-exercise-back">‹</button>
-      <div>
-        <h1 id="exercise-view-title">Add Exercise</h1>
-        <div class="page-subtitle" id="exercise-view-subtitle" hidden></div>
+      <h1 id="exercise-view-title">Add Exercise</h1>
+    </div>
+    <input type="hidden" id="exercise-name" />
+
+    <!-- Picker Panel -->
+    <div id="ex-picker-panel">
+      <div class="ex-search-wrap ex-picker-search">
+        <svg class="ex-search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="ex-filter" placeholder="Search exercises..." autocomplete="off" />
+        <button class="ex-search-clear" id="ex-search-clear" hidden onclick="clearExSearch()" aria-label="Clear search">×</button>
+      </div>
+      <div class="ex-lib-muscle-pills" id="ex-picker-muscle-pills"></div>
+      <div class="ex-lib-list" id="ex-picker-list"></div>
+      <div class="ex-picker-custom-wrap">
+        <button class="btn btn-ghost btn-sm" id="btn-add-custom-ex" onclick="openCustomExModal()">+ Add Custom Exercise</button>
       </div>
     </div>
-    <div class="exercise-form">
-      <input type="hidden" id="exercise-name" />
-      <div>
-        <div class="field-label">Quick Select</div>
-        <div class="ex-search-wrap">
-          <svg class="ex-search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="ex-filter" placeholder="Search exercises..." autocomplete="off" />
-          <button class="ex-search-clear" id="ex-search-clear" hidden onclick="clearExSearch()" aria-label="Clear search">×</button>
-        </div>
-        <div id="ex-filter-tabs"></div>
-        <div class="ex-chips" id="ex-chips"></div>
-        <button class="btn btn-ghost btn-sm custom-ex-open-btn" id="btn-add-custom-ex" onclick="openCustomExModal()">+ Add Custom Exercise</button>
+
+    <!-- Config Panel -->
+    <div id="ex-config-panel" hidden class="ex-config-form">
+      <div id="ex-config-header" class="ex-config-header"></div>
+      <div class="ex-training-type-section">
+        <div class="field-label">Training Type</div>
+        <div class="ex-training-type-chips" id="ex-training-type-chips"></div>
       </div>
       <div class="sets-form-section">
-        <div id="selected-exercise-name" class="selected-exercise-name" hidden></div>
         <div class="field-label">Sets</div>
         <div id="sets-form-body"></div>
         <button class="btn btn-secondary btn-sm" id="btn-add-set">+ Add Set</button>
