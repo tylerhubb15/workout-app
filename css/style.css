@@ -1988,19 +1988,26 @@ body.light .er-badge { background: rgba(234,88,12,0.1); color: #ea580c; }
   font-weight: 600;
   margin-left: 4px;
 }
+.er-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
 .er-rest-btn {
-  display: block;
-  margin-top: 7px;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
   border-radius: 20px;
   border: 1px solid rgba(251,191,36,0.35);
   background: rgba(251,191,36,0.1);
   color: #fbbf24;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.03em;
   cursor: pointer;
-  line-height: 1;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 .er-rest-btn:active {
   background: rgba(251,191,36,0.25);
