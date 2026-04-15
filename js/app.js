@@ -310,6 +310,7 @@ const state = {
   exMusclePickerFrom: null, // 'exercise-muscle' when entering via picker; null in edit mode
   exHistoryName:   null, // exercise name for exercise-history view
   exHistoryBackTo: 'home',
+  exLibMuscle: null,    // selected muscle filter in exercise library (null = All)
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
   _pendingTemplateDayTemplates: null, // day templates from a pre-made plan, applied on first save
 };
@@ -573,6 +574,7 @@ function navigate(view) {
   if (view === 'plan-muscle-picker') renderMuscleGroupPicker();
   if (view === 'volume')             renderVolumeTracker();
   if (view === 'exercise-muscle')    renderExMusclePickerView();
+  if (view === 'exercises')          renderExerciseLibrary();
 
   window.scrollTo(0, 0);
 }
@@ -1569,6 +1571,70 @@ window.selectExMuscle = function(muscle) {
   state.exMusclePickerFrom = 'exercise-muscle';
   state.editingExIndex     = null;
   navigate('exercise');
+};
+
+// ── Exercise Library ──────────────────────────────────────
+
+const EQUIP_ORDER = ['Barbell','Dumbbell','Cable','Machine','Bodyweight','Kettlebell'];
+
+function renderExerciseLibrary() {
+  const muscles = Object.keys(MUSCLE_MAP);
+  const selected = state.exLibMuscle;
+
+  // Muscle filter pills
+  const pillsHtml = ['All', ...muscles].map(m => {
+    const active = (m === 'All' && !selected) || m === selected;
+    const cssKey = m.toLowerCase().replace(/\s+/g, '-');
+    return `<button class="ex-lib-pill${active ? ' active' : ''} ex-lib-pill-${cssKey}"
+      onclick="setExLibMuscle(${m === 'All' ? 'null' : `'${m}'`})">${m}</button>`;
+  }).join('');
+  document.getElementById('ex-lib-muscle-pills').innerHTML = pillsHtml;
+
+  // Build list
+  const visibleMuscles = selected ? [selected] : muscles;
+  let html = '';
+
+  for (const muscle of visibleMuscles) {
+    const names = MUSCLE_MAP[muscle];
+    const cssKey = muscle.toLowerCase().replace(/\s+/g, '-');
+
+    // Group names by equipment in canonical order
+    const byEquip = {};
+    for (const name of names) {
+      const equip = getEquipment(name) || 'Other';
+      (byEquip[equip] = byEquip[equip] || []).push(name);
+    }
+    const equipKeys = [...EQUIP_ORDER, 'Other'].filter(e => byEquip[e]);
+
+    const groupsHtml = equipKeys.map(equip =>
+      `<div class="ex-lib-equip-group">
+        <div class="ex-lib-equip-label">${equip}</div>
+        <div class="ex-lib-equip-rows">
+          ${byEquip[equip].map(name =>
+            `<button class="ex-lib-row" onclick="openExLibExercise('${escHtml(name)}')">${escHtml(name)}</button>`
+          ).join('')}
+        </div>
+      </div>`
+    ).join('');
+
+    html += `<div class="ex-lib-muscle-section">
+      <div class="ex-lib-muscle-header ex-lib-muscle-${cssKey}">${muscle}</div>
+      ${groupsHtml}
+    </div>`;
+  }
+
+  document.getElementById('ex-lib-list').innerHTML = html;
+}
+
+window.setExLibMuscle = function(muscle) {
+  state.exLibMuscle = muscle;
+  renderExerciseLibrary();
+};
+
+window.openExLibExercise = function(name) {
+  state.exHistoryName   = name;
+  state.exHistoryBackTo = 'exercises';
+  navigate('exercise-history');
 };
 
 // ── Exercise Form ─────────────────────────────────────────

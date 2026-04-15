@@ -3128,3 +3128,132 @@ input.input-error, select.input-error {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* ── Exercise Library ─────────────────────────────────────── */
+.ex-lib-muscle-pills {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 0 16px 12px;
+  scrollbar-width: none;
+}
+.ex-lib-muscle-pills::-webkit-scrollbar { display: none; }
+
+.ex-lib-pill {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ex-lib-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Per-muscle pill colors when active */
+.ex-lib-pill-chest.active      { background: rgba(129,140,248,0.85); border-color: rgba(129,140,248,0.85); }
+.ex-lib-pill-back.active       { background: rgba(52,211,153,0.85);  border-color: rgba(52,211,153,0.85); }
+.ex-lib-pill-shoulders.active  { background: rgba(196,181,253,0.85); border-color: rgba(196,181,253,0.85); }
+.ex-lib-pill-biceps.active     { background: rgba(34,211,238,0.85);  border-color: rgba(34,211,238,0.85); }
+.ex-lib-pill-triceps.active    { background: rgba(251,191,36,0.85);  border-color: rgba(251,191,36,0.85); }
+.ex-lib-pill-quads.active      { background: rgba(129,140,248,0.85); border-color: rgba(129,140,248,0.85); }
+.ex-lib-pill-hamstrings.active { background: rgba(52,211,153,0.85);  border-color: rgba(52,211,153,0.85); }
+.ex-lib-pill-glutes.active     { background: rgba(244,114,182,0.85); border-color: rgba(244,114,182,0.85); }
+.ex-lib-pill-calves.active     { background: rgba(45,212,191,0.85);  border-color: rgba(45,212,191,0.85); }
+.ex-lib-pill-core.active       { background: rgba(248,113,113,0.85); border-color: rgba(248,113,113,0.85); }
+.ex-lib-pill-full-body.active  { background: rgba(251,146,60,0.85);  border-color: rgba(251,146,60,0.85); }
+
+.ex-lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0 16px calc(var(--nav-h) + 24px);
+}
+
+.ex-lib-muscle-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ex-lib-muscle-header {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  align-self: flex-start;
+}
+/* Muscle header colors matching existing tag palette */
+.ex-lib-muscle-chest      { background: rgba(129,140,248,0.15); color: #818cf8; }
+.ex-lib-muscle-back       { background: rgba(52,211,153,0.15);  color: #34d399; }
+.ex-lib-muscle-shoulders  { background: rgba(196,181,253,0.15); color: #c4b5fd; }
+.ex-lib-muscle-biceps     { background: rgba(34,211,238,0.15);  color: #22d3ee; }
+.ex-lib-muscle-triceps    { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+.ex-lib-muscle-quads      { background: rgba(129,140,248,0.15); color: #818cf8; }
+.ex-lib-muscle-hamstrings { background: rgba(52,211,153,0.15);  color: #34d399; }
+.ex-lib-muscle-glutes     { background: rgba(244,114,182,0.15); color: #f472b6; }
+.ex-lib-muscle-calves     { background: rgba(45,212,191,0.15);  color: #2dd4bf; }
+.ex-lib-muscle-core       { background: rgba(248,113,113,0.15); color: #f87171; }
+.ex-lib-muscle-full-body  { background: rgba(251,146,60,0.15);  color: #fb923c; }
+
+body.light .ex-lib-muscle-chest      { color: #4f46e5; }
+body.light .ex-lib-muscle-back       { color: #059669; }
+body.light .ex-lib-muscle-shoulders  { color: #7c3aed; }
+body.light .ex-lib-muscle-biceps     { color: #0891b2; }
+body.light .ex-lib-muscle-triceps    { color: #d97706; }
+body.light .ex-lib-muscle-quads      { color: #4f46e5; }
+body.light .ex-lib-muscle-hamstrings { color: #059669; }
+body.light .ex-lib-muscle-glutes     { color: #be185d; }
+body.light .ex-lib-muscle-calves     { color: #0f766e; }
+body.light .ex-lib-muscle-core       { color: #dc2626; }
+body.light .ex-lib-muscle-full-body  { color: #c2410c; }
+
+.ex-lib-equip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ex-lib-equip-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 0 4px 4px;
+}
+.ex-lib-equip-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ex-lib-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ex-lib-row:active { background: var(--surface3); }
+@media (hover: hover) {
+  .ex-lib-row:hover { background: var(--surface3); }
+}
