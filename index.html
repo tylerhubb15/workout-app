@@ -546,6 +546,7 @@
       <div class="rest-timer-label">Rest</div>
       <div class="rest-timer-count" id="rest-timer-count">90</div>
       <div class="rest-timer-presets">
+        <button onclick="setRestTimer(15)">15s</button>
         <button onclick="setRestTimer(60)">60s</button>
         <button onclick="setRestTimer(90)">90s</button>
         <button onclick="setRestTimer(120)">2m</button>
@@ -570,14 +571,7 @@
       </svg>
       Calendar
     </button>
-    <button class="nav-btn" data-view="history">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M12 7v5l3 3"/>
-      </svg>
-      History
-    </button>
-    <button class="nav-btn" data-view="plan">
+<button class="nav-btn" data-view="plan">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <path d="M8 12h8M8 8h5M8 16h6"/>
