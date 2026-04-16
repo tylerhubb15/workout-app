@@ -26,6 +26,28 @@
       document.body.dataset.accentPalette =
         localStorage.getItem("wt_theme_palette") || "classic";
     </script>
+    <!-- ── Startup Brand Overlay ─────────────────────────── -->
+    <div id="startup-brand-overlay" class="startup-brand-overlay">
+      <div class="startup-brand-box">
+        <div class="startup-brand-logo">
+          <svg
+            viewBox="0 0 24 24"
+            width="38"
+            height="38"
+            fill="none"
+            stroke="#fff"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"
+            />
+          </svg>
+        </div>
+        <div class="startup-brand-title">Tensile</div>
+      </div>
+    </div>
     <!-- ── Hydration Loading Overlay ───────────────────────── -->
     <div id="hydration-overlay" class="hydration-overlay" hidden>
       <div class="hydration-box">
@@ -414,7 +436,7 @@
       </section>
 
       <!-- ── Home View ─────────────────────────────────── -->
-      <section class="view active" id="view-home">
+      <section class="view" id="view-home">
         <div class="home-hero">
           <div class="home-hero-topbar">
             <div class="home-date" id="home-date"></div>

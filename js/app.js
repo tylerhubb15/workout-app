@@ -1257,6 +1257,18 @@ function watchInstallingWorker(registration) {
 // ── Hydration loading overlay ──────────────────────────
 const HYDRATION_CIRCUMFERENCE = 2 * Math.PI * 52; // matches r="52" in SVG
 
+function showStartupBrandOverlay() {
+  const overlay = document.getElementById("startup-brand-overlay");
+  if (!overlay) return;
+  overlay.hidden = false;
+}
+
+function hideStartupBrandOverlay() {
+  const overlay = document.getElementById("startup-brand-overlay");
+  if (!overlay) return;
+  overlay.hidden = true;
+}
+
 function showHydrationOverlay() {
   const overlay = document.getElementById("hydration-overlay");
   if (!overlay) return;
@@ -6751,7 +6763,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const reloadedForUpdate = await ensureLatestAppBuild();
         if (reloadedForUpdate) return;
 
+        showStartupBrandOverlay();
+        await nextPaint();
+        await new Promise((r) => setTimeout(r, 180));
         showHydrationOverlay();
+        await nextPaint();
+        hideStartupBrandOverlay();
         setHydrationProgress(10, "Checking for migrations\u2026");
         await nextPaint();
 
@@ -6777,11 +6794,13 @@ document.addEventListener("DOMContentLoaded", () => {
         console.warn("Hydration error:", e);
       } finally {
         hideHydrationOverlay();
+        hideStartupBrandOverlay();
       }
       navigate("home");
       setTimeout(showReleaseNotesIfNeeded, 180);
     } else {
       hideHydrationOverlay();
+      hideStartupBrandOverlay();
       clearLocalUserState();
       navigate("auth");
     }
