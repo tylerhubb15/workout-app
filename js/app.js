@@ -3559,6 +3559,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  document.getElementById('btn-forgot-password').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const errEl = document.getElementById('auth-error');
+    if (!email) {
+      errEl.textContent = 'Enter your email address above first.';
+      errEl.hidden = false;
+      return;
+    }
+    try {
+      await window._resetPassword(window._auth, email);
+      errEl.style.cssText = 'background:rgba(52,211,153,0.1);border-color:rgba(52,211,153,0.25);color:var(--green)';
+      errEl.textContent = `Reset email sent to ${email}. Check your inbox.`;
+      errEl.hidden = false;
+    } catch (e) {
+      errEl.style.cssText = '';
+      errEl.textContent = e.message.replace('Firebase: ', '').replace(/ \(auth\/.*\)/, '');
+      errEl.hidden = false;
+    }
+  });
+
   // Allow Enter key to submit auth form
   ['auth-email', 'auth-password'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => {
