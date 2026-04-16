@@ -1,99 +1,168 @@
-const STORAGE_KEY = 'wt_workouts';
+import {
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-export function loadWorkouts() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch {
-    return [];
+// ── Auth helper ───────────────────────────────────────────
+function uid() {
+  const user = window._auth && window._auth.currentUser;
+  if (!user) throw new Error('Not signed in');
+  return user.uid;
+}
+
+// ── In-memory caches (populated on login, kept in sync on writes) ──
+let _workouts    = null;
+let _plans       = null;
+let _bodyWeights = null;
+
+// ── Hydrate: load all data from Firestore into caches ─────
+// Call this once after login before navigating to the app.
+export async function hydrateFromFirestore() {
+  const u  = uid();
+  const db = window._db;
+
+  const [workSnap, planSnap, bwSnap, profileSnap] = await Promise.all([
+    getDocs(collection(db, `users/${u}/workouts`)),
+    getDocs(collection(db, `users/${u}/plans`)),
+    getDocs(collection(db, `users/${u}/bodyweights`)),
+    getDoc(doc(db, `users/${u}/profile`)),
+  ]);
+
+  _workouts    = workSnap.docs.map(d => d.data()).sort((a, b) => b.date.localeCompare(a.date));
+  _plans       = planSnap.docs.map(d => d.data());
+  _bodyWeights = bwSnap.docs.map(d => d.data()).sort((a, b) => b.date.localeCompare(a.date));
+
+  // Sync preferences and plan id from cloud profile to localStorage
+  if (profileSnap.exists()) {
+    const data = profileSnap.data();
+    if (data.activePlanId !== undefined) {
+      if (data.activePlanId) localStorage.setItem('wt_active_plan', data.activePlanId);
+      else localStorage.removeItem('wt_active_plan');
+    }
+    if (data.unitPref)  localStorage.setItem('wt_unit_pref', data.unitPref);
+    if (data.theme)     localStorage.setItem('wt_theme', data.theme);
   }
 }
 
-export function saveWorkouts(workouts) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
+// Clear caches on logout
+export function clearCaches() {
+  _workouts    = null;
+  _plans       = null;
+  _bodyWeights = null;
+}
+
+// ── Workouts ──────────────────────────────────────────────
+export function loadWorkouts() {
+  return _workouts || [];
 }
 
 export function addWorkout(workout) {
-  const workouts = loadWorkouts();
-  workouts.unshift(workout);
-  saveWorkouts(workouts);
+  if (_workouts) _workouts.unshift(workout);
+  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), workout);
 }
 
 export function updateWorkout(workout) {
-  const workouts = loadWorkouts();
-  const i = workouts.findIndex(w => w.id === workout.id);
-  if (i !== -1) workouts[i] = workout;
-  saveWorkouts(workouts);
+  if (_workouts) {
+    const i = _workouts.findIndex(w => w.id === workout.id);
+    if (i !== -1) _workouts[i] = workout;
+  }
+  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), workout);
 }
 
 export function deleteWorkout(id) {
-  saveWorkouts(loadWorkouts().filter(w => w.id !== id));
+  if (_workouts) _workouts = _workouts.filter(w => w.id !== id);
+  deleteDoc(doc(window._db, `users/${uid()}/workouts/${id}`));
 }
 
 // ── Plans ─────────────────────────────────────────────────
-const PLANS_KEY = 'wt_plans';
-
 export function loadPlans() {
-  try { return JSON.parse(localStorage.getItem(PLANS_KEY)) || []; } catch { return []; }
-}
-
-export function savePlans(plans) {
-  localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+  return _plans || [];
 }
 
 export function upsertPlan(plan) {
-  const plans = loadPlans();
-  const i = plans.findIndex(p => p.id === plan.id);
-  if (i !== -1) plans[i] = plan; else plans.unshift(plan);
-  savePlans(plans);
+  if (_plans) {
+    const i = _plans.findIndex(p => p.id === plan.id);
+    if (i !== -1) _plans[i] = plan; else _plans.unshift(plan);
+  }
+  setDoc(doc(window._db, `users/${uid()}/plans/${plan.id}`), plan);
 }
 
 export function deletePlan(id) {
-  savePlans(loadPlans().filter(p => p.id !== id));
+  if (_plans) _plans = _plans.filter(p => p.id !== id);
+  deleteDoc(doc(window._db, `users/${uid()}/plans/${id}`));
 }
 
 // ── Active Plan ───────────────────────────────────────────
-const ACTIVE_PLAN_KEY = 'wt_active_plan';
-
+// Kept in localStorage for synchronous access; synced to Firestore on each write.
 export function loadActivePlanId() {
-  return localStorage.getItem(ACTIVE_PLAN_KEY) || null;
+  return localStorage.getItem('wt_active_plan') || null;
 }
 
 export function saveActivePlanId(id) {
-  if (id) localStorage.setItem(ACTIVE_PLAN_KEY, id);
-  else localStorage.removeItem(ACTIVE_PLAN_KEY);
+  if (id) localStorage.setItem('wt_active_plan', id);
+  else localStorage.removeItem('wt_active_plan');
+  setDoc(doc(window._db, `users/${uid()}/profile`), { activePlanId: id || null }, { merge: true });
 }
 
 // ── Body Weight Log ───────────────────────────────────────
-const BW_KEY = 'wt_bodyweights';
-
 export function loadBodyWeights() {
-  try { return JSON.parse(localStorage.getItem(BW_KEY)) || []; } catch { return []; }
-}
-
-export function saveBodyWeights(entries) {
-  localStorage.setItem(BW_KEY, JSON.stringify(entries));
+  return _bodyWeights || [];
 }
 
 export function logBodyWeight(date, weight) {
-  const entries = loadBodyWeights();
-  const i = entries.findIndex(e => e.date === date);
-  if (i !== -1) entries[i].weight = weight;
-  else entries.push({ date, weight });
-  entries.sort((a, b) => b.date.localeCompare(a.date));
-  saveBodyWeights(entries);
+  if (_bodyWeights) {
+    const i = _bodyWeights.findIndex(e => e.date === date);
+    if (i !== -1) _bodyWeights[i].weight = weight;
+    else {
+      _bodyWeights.push({ date, weight });
+      _bodyWeights.sort((a, b) => b.date.localeCompare(a.date));
+    }
+  }
+  setDoc(doc(window._db, `users/${uid()}/bodyweights/${date}`), { date, weight });
 }
 
 export function deleteBodyWeight(date) {
-  saveBodyWeights(loadBodyWeights().filter(e => e.date !== date));
+  if (_bodyWeights) _bodyWeights = _bodyWeights.filter(e => e.date !== date);
+  deleteDoc(doc(window._db, `users/${uid()}/bodyweights/${date}`));
 }
 
 // ── Unit Preference ───────────────────────────────────────
-const UNIT_PREF_KEY = 'wt_unit_pref';
-
+// Read from localStorage (sync); writes also sync to Firestore profile.
 export function loadUnitPref() {
-  return localStorage.getItem(UNIT_PREF_KEY) || 'lbs';
+  return localStorage.getItem('wt_unit_pref') || 'lbs';
 }
 
 export function saveUnitPref(unit) {
-  localStorage.setItem(UNIT_PREF_KEY, unit);
+  localStorage.setItem('wt_unit_pref', unit);
+  setDoc(doc(window._db, `users/${uid()}/profile`), { unitPref: unit }, { merge: true });
+}
+
+// ── One-time localStorage → Firestore migration ───────────
+// Runs after first login. Copies existing local data to Firestore,
+// then sets migrated:true on the profile doc so it never runs again.
+export async function migrateLocalStorageIfNeeded() {
+  const u  = uid();
+  const db = window._db;
+
+  const profileSnap = await getDoc(doc(db, `users/${u}/profile`));
+  if (profileSnap.exists() && profileSnap.data().migrated) return;
+
+  const rawWorkouts    = JSON.parse(localStorage.getItem('wt_workouts')    || '[]');
+  const rawPlans       = JSON.parse(localStorage.getItem('wt_plans')       || '[]');
+  const rawBodyWeights = JSON.parse(localStorage.getItem('wt_bodyweights') || '[]');
+
+  await Promise.all([
+    ...rawWorkouts.map(w =>
+      setDoc(doc(db, `users/${u}/workouts/${w.id}`), w)),
+    ...rawPlans.map(p =>
+      setDoc(doc(db, `users/${u}/plans/${p.id}`), p)),
+    ...rawBodyWeights.map(e =>
+      setDoc(doc(db, `users/${u}/bodyweights/${e.date}`), e)),
+  ]);
+
+  await setDoc(doc(db, `users/${u}/profile`), {
+    activePlanId: localStorage.getItem('wt_active_plan') || null,
+    unitPref:     localStorage.getItem('wt_unit_pref')   || 'lbs',
+    theme:        localStorage.getItem('wt_theme')       || 'dark',
+    migrated:     true,
+  }, { merge: true });
 }

@@ -125,6 +125,32 @@
 
 <div id="app">
 
+  <!-- ── Auth View ─────────────────────────────────── -->
+  <section class="view" id="view-auth">
+    <div class="auth-container">
+      <div class="auth-brand">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"/>
+        </svg>
+        <span class="auth-brand-name">Tensile</span>
+      </div>
+      <div class="auth-tagline">Your personal training tracker</div>
+
+      <div class="auth-card">
+        <div class="auth-tabs" id="auth-tabs">
+          <button class="auth-tab active" id="auth-tab-signin" onclick="switchAuthTab('signin')">Sign In</button>
+          <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">Create Account</button>
+        </div>
+        <div class="field-label" style="margin-top:16px">Email</div>
+        <input type="email" id="auth-email" placeholder="you@email.com" autocomplete="email" />
+        <div class="field-label" style="margin-top:12px">Password</div>
+        <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" />
+        <div id="auth-error" class="auth-error" hidden></div>
+        <button class="btn btn-primary btn-full" id="btn-auth-submit" style="margin-top:20px">Sign In</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ── Home View ─────────────────────────────────── -->
   <section class="view active" id="view-home">
     <div class="home-hero">
@@ -536,6 +562,46 @@
     <div id="volume-content" style="padding: 0 20px 32px;"></div>
   </section>
 
+  <!-- ── Settings / Profile View ─────────────────────── -->
+  <section class="view" id="view-settings">
+    <div class="page-header">
+      <h1>Profile</h1>
+    </div>
+    <div class="settings-body">
+
+      <div class="settings-card">
+        <div class="field-label">Display Name</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+          <input type="text" id="settings-name" placeholder="Your name" style="flex:1" />
+          <button class="btn btn-secondary btn-sm" id="btn-settings-save-name">Save</button>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="field-label">Weight Unit</div>
+        <div id="settings-unit-chips" style="display:flex;gap:8px;margin-top:10px">
+          <button class="ex-chip" data-unit="lbs">lbs</button>
+          <button class="ex-chip" data-unit="kg">kg</button>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="field-label">Theme</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="ex-chip" id="settings-theme-dark">Dark</button>
+          <button class="ex-chip" id="settings-theme-light">Light</button>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="field-label" style="color:var(--text3);font-size:12px">Signed in as</div>
+        <div id="settings-email" style="font-size:14px;color:var(--text2);margin-top:4px"></div>
+      </div>
+
+      <button class="btn btn-full" id="btn-logout" style="margin:8px 0 0;background:rgba(248,113,113,0.12);color:var(--red);border:1px solid rgba(248,113,113,0.25);">Sign Out</button>
+    </div>
+  </section>
+
   <!-- ── Modal Overlay ─────────────────────────────── -->
   <div class="modal-overlay" id="modal-overlay" hidden>
     <div class="modal-box">
@@ -602,9 +668,45 @@
       </svg>
       Plans
     </button>
+    <button class="nav-btn" data-view="settings">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="3.5"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+      Profile
+    </button>
   </nav>
 
 </div>
+<!-- ── Firebase SDK ──────────────────────────────────────── -->
+<script type="module">
+  import { initializeApp }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, onAuthStateChanged,
+           signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, enableIndexedDbPersistence }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyB669HiBIqt0k0gr2KFjffmADqj3RTjSso",
+    authDomain:        "tensile-3f6a7.firebaseapp.com",
+    projectId:         "tensile-3f6a7",
+    storageBucket:     "tensile-3f6a7.firebasestorage.app",
+    messagingSenderId: "1054925466839",
+    appId:             "1:1054925466839:web:f65fcf02fa41c3d3835492"
+  };
+
+  const app          = initializeApp(firebaseConfig);
+  window._db         = getFirestore(app);
+  window._auth       = getAuth(app);
+  window._onAuthStateChanged    = onAuthStateChanged;
+  window._signIn     = signInWithEmailAndPassword;
+  window._signUp     = createUserWithEmailAndPassword;
+  window._signOut    = signOut;
+
+  enableIndexedDbPersistence(window._db).catch(() => {});
+</script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

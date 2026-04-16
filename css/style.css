@@ -3368,3 +3368,101 @@ body.light .ex-lib-muscle-full-body  { color: #c2410c; }
 @media (hover: hover) {
   .ex-lib-row:hover { background: var(--surface3); }
 }
+
+/* ── Auth View ──────────────────────────────────────────── */
+#view-auth {
+  padding-bottom: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+}
+#view-auth.active { display: flex; }
+
+.auth-container {
+  padding: 40px 24px 48px;
+  max-width: 380px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.auth-brand-name {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.auth-tagline {
+  text-align: center;
+  color: var(--text2);
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 20px 20px 24px;
+}
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 4px;
+}
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.auth-tab.active {
+  background: var(--surface3);
+  color: var(--text);
+}
+.auth-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 8px;
+  color: var(--red);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* ── Settings View ──────────────────────────────────────── */
+.settings-body {
+  padding: 8px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+/* Active state for settings toggle chips */
+.ex-chip.chip-active,
+.ex-chip.chip-active:active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

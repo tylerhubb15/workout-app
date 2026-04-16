@@ -1,4 +1,4 @@
-import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan, loadActivePlanId, saveActivePlanId, loadBodyWeights, logBodyWeight, deleteBodyWeight, loadUnitPref, saveUnitPref } from './storage.js';
+import { loadWorkouts, addWorkout, updateWorkout, deleteWorkout, loadPlans, upsertPlan, deletePlan, loadActivePlanId, saveActivePlanId, loadBodyWeights, logBodyWeight, deleteBodyWeight, loadUnitPref, saveUnitPref, hydrateFromFirestore, clearCaches, migrateLocalStorageIfNeeded } from './storage.js';
 
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
@@ -554,7 +554,8 @@ function navigate(view) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
 
-  document.getElementById('bottom-nav').style.display = '';
+  // Hide bottom nav on the auth screen
+  document.getElementById('bottom-nav').style.display = (view === 'auth') ? 'none' : '';
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
@@ -575,10 +576,39 @@ function navigate(view) {
   if (view === 'volume')             renderVolumeTracker();
   if (view === 'exercise-muscle')    renderExMusclePickerView();
   if (view === 'exercises')          renderExerciseLibrary();
+  if (view === 'settings')           renderSettings();
 
   window.scrollTo(0, 0);
 }
 window.navigate = navigate;
+
+// ── Settings / Profile ─────────────────────────────────────
+function renderSettings() {
+  const user = window._auth && window._auth.currentUser;
+  document.getElementById('settings-email').textContent = user ? user.email : '';
+
+  // Highlight active unit chip
+  const unit = loadUnitPref();
+  document.querySelectorAll('#settings-unit-chips .ex-chip').forEach(btn => {
+    btn.classList.toggle('chip-active', btn.dataset.unit === unit);
+  });
+
+  // Highlight active theme chip
+  const isLight = document.body.classList.contains('light');
+  document.getElementById('settings-theme-dark').classList.toggle('chip-active', !isLight);
+  document.getElementById('settings-theme-light').classList.toggle('chip-active', isLight);
+}
+
+// Auth tab switcher (called from inline onclick)
+window.switchAuthTab = function(tab) {
+  const isSignIn = tab === 'signin';
+  document.getElementById('auth-tab-signin').classList.toggle('active', isSignIn);
+  document.getElementById('auth-tab-signup').classList.toggle('active', !isSignIn);
+  document.getElementById('btn-auth-submit').textContent = isSignIn ? 'Sign In' : 'Create Account';
+  document.getElementById('auth-password').autocomplete = isSignIn ? 'current-password' : 'new-password';
+  document.getElementById('auth-error').hidden = true;
+  document.getElementById('btn-auth-submit').dataset.mode = tab;
+};
 
 // ── Home ──────────────────────────────────────────────────
 
@@ -3506,5 +3536,112 @@ document.addEventListener('DOMContentLoaded', () => {
     navigate('home');
   });
 
-  navigate('home');
+  // ── Auth ───────────────────────────────────────────────
+  // Set initial button mode
+  document.getElementById('btn-auth-submit').dataset.mode = 'signin';
+
+  document.getElementById('btn-auth-submit').addEventListener('click', async () => {
+    const email  = document.getElementById('auth-email').value.trim();
+    const pass   = document.getElementById('auth-password').value;
+    const errEl  = document.getElementById('auth-error');
+    const mode   = document.getElementById('btn-auth-submit').dataset.mode;
+    errEl.hidden = true;
+    try {
+      if (mode === 'signup') {
+        await window._signUp(window._auth, email, pass);
+      } else {
+        await window._signIn(window._auth, email, pass);
+      }
+      // onAuthStateChanged handles the rest
+    } catch (e) {
+      errEl.textContent = e.message.replace('Firebase: ', '').replace(/ \(auth\/.*\)/, '');
+      errEl.hidden = false;
+    }
+  });
+
+  // Allow Enter key to submit auth form
+  ['auth-email', 'auth-password'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-auth-submit').click();
+    });
+  });
+
+  // ── Auth state observer ────────────────────────────────
+  window._onAuthStateChanged(window._auth, async user => {
+    if (user) {
+      try {
+        await migrateLocalStorageIfNeeded();
+        await hydrateFromFirestore();
+
+        // Sync theme from cloud on login
+        const savedTheme = localStorage.getItem('wt_theme');
+        if (savedTheme === 'light') document.body.classList.add('light');
+        else document.body.classList.remove('light');
+      } catch (e) {
+        console.warn('Hydration error:', e);
+      }
+      navigate('home');
+    } else {
+      clearCaches();
+      navigate('auth');
+    }
+  });
+
+  // ── Settings ───────────────────────────────────────────
+  document.getElementById('btn-settings-save-name').addEventListener('click', async () => {
+    const name = document.getElementById('settings-name').value.trim();
+    if (!name) return;
+    try {
+      const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      const u = window._auth.currentUser.uid;
+      await setDoc(doc(window._db, `users/${u}/profile`), { displayName: name }, { merge: true });
+      showAlert('Saved', `Display name updated to "${name}".`);
+    } catch (e) {
+      showAlert('Error', e.message);
+    }
+  });
+
+  document.querySelectorAll('#settings-unit-chips .ex-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      saveUnitPref(btn.dataset.unit);
+      renderSettings();
+    });
+  });
+
+  document.getElementById('settings-theme-dark').addEventListener('click', () => {
+    document.body.classList.remove('light');
+    localStorage.setItem('wt_theme', 'dark');
+    if (window._auth.currentUser) {
+      const u = window._auth.currentUser.uid;
+      import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ doc, setDoc }) => {
+        setDoc(doc(window._db, `users/${u}/profile`), { theme: 'dark' }, { merge: true });
+      });
+    }
+    renderSettings();
+  });
+
+  document.getElementById('settings-theme-light').addEventListener('click', () => {
+    document.body.classList.add('light');
+    localStorage.setItem('wt_theme', 'light');
+    if (window._auth.currentUser) {
+      const u = window._auth.currentUser.uid;
+      import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ doc, setDoc }) => {
+        setDoc(doc(window._db, `users/${u}/profile`), { theme: 'light' }, { merge: true });
+      });
+    }
+    renderSettings();
+  });
+
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    showModal({
+      title: 'Sign Out?',
+      msg: 'You will need to sign back in to access your data.',
+      confirmText: 'Sign Out',
+      confirmClass: 'btn-danger-solid',
+      cancelText: 'Cancel',
+      onConfirm: () => window._signOut(window._auth),
+    });
+  });
+
+  // Don't navigate to home here — onAuthStateChanged handles initial navigation.
 });
