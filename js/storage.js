@@ -24,7 +24,7 @@ export async function hydrateFromFirestore() {
     getDocs(collection(db, `users/${u}/workouts`)),
     getDocs(collection(db, `users/${u}/plans`)),
     getDocs(collection(db, `users/${u}/bodyweights`)),
-    getDoc(doc(db, `users/${u}/profile`)),
+    getDoc(doc(db, `users/${u}`)),
   ]);
 
   _workouts    = workSnap.docs.map(d => d.data()).sort((a, b) => b.date.localeCompare(a.date));
@@ -143,7 +143,7 @@ export async function migrateLocalStorageIfNeeded() {
   const u  = uid();
   const db = window._db;
 
-  const profileSnap = await getDoc(doc(db, `users/${u}/profile`));
+  const profileSnap = await getDoc(doc(db, `users/${u}`));
   if (profileSnap.exists() && profileSnap.data().migrated) return;
 
   const rawWorkouts    = JSON.parse(localStorage.getItem('wt_workouts')    || '[]');
@@ -159,7 +159,7 @@ export async function migrateLocalStorageIfNeeded() {
       setDoc(doc(db, `users/${u}/bodyweights/${e.date}`), e)),
   ]);
 
-  await setDoc(doc(db, `users/${u}/profile`), {
+  await setDoc(doc(db, `users/${u}`), {
     activePlanId: localStorage.getItem('wt_active_plan') || null,
     unitPref:     localStorage.getItem('wt_unit_pref')   || 'lbs',
     theme:        localStorage.getItem('wt_theme')       || 'dark',

@@ -3594,7 +3594,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
       const u = window._auth.currentUser.uid;
-      await setDoc(doc(window._db, `users/${u}/profile`), { displayName: name }, { merge: true });
+      await setDoc(doc(window._db, `users/${u}`), { displayName: name }, { merge: true });
       showAlert('Saved', `Display name updated to "${name}".`);
     } catch (e) {
       showAlert('Error', e.message);
@@ -3614,7 +3614,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window._auth.currentUser) {
       const u = window._auth.currentUser.uid;
       import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ doc, setDoc }) => {
-        setDoc(doc(window._db, `users/${u}/profile`), { theme: 'dark' }, { merge: true });
+        setDoc(doc(window._db, `users/${u}`), { theme: 'dark' }, { merge: true });
       });
     }
     renderSettings();
@@ -3626,7 +3626,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window._auth.currentUser) {
       const u = window._auth.currentUser.uid;
       import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(({ doc, setDoc }) => {
-        setDoc(doc(window._db, `users/${u}/profile`), { theme: 'light' }, { merge: true });
+        setDoc(doc(window._db, `users/${u}`), { theme: 'light' }, { merge: true });
       });
     }
     renderSettings();
