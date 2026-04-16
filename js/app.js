@@ -17,6 +17,10 @@ import {
   clearCaches,
   migrateLocalStorageIfNeeded,
 } from "./storage.js";
+import { APP_RELEASE } from "./release-notes.js";
+
+const RELEASE_NOTES_STORAGE_KEY = "wt_release_notes_seen";
+const RELEASE_RELOAD_PREFIX = "wt_release_reload_";
 
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
@@ -840,6 +844,142 @@ function escHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function renderReleaseNotes() {
+  const overlay = document.getElementById("release-notes");
+  const list = document.getElementById("release-notes-list");
+  if (!overlay || !list) return;
+
+  document.getElementById("release-notes-version").textContent =
+    `Version ${APP_RELEASE.version}`;
+  document.getElementById("release-notes-title").textContent =
+    APP_RELEASE.title;
+  document.getElementById("release-notes-summary").textContent =
+    APP_RELEASE.summary;
+  list.innerHTML = APP_RELEASE.sections
+    .map(
+      (section) => `
+        <div class="release-notes-section">
+          <div class="release-notes-section-title">${escHtml(section.title)}</div>
+          <div class="release-notes-section-items">
+            ${section.items
+              .map(
+                (note) => `
+                  <div class="release-note-item">
+                    <div class="release-note-dot"></div>
+                    <div class="release-note-text">${escHtml(note)}</div>
+                  </div>`,
+              )
+              .join("")}
+          </div>
+        </div>`,
+    )
+    .join("");
+}
+
+function dismissReleaseNotes() {
+  const overlay = document.getElementById("release-notes");
+  if (!overlay) return;
+  localStorage.setItem(RELEASE_NOTES_STORAGE_KEY, APP_RELEASE.version);
+  overlay.classList.add("hidden");
+  overlay.style.display = "";
+}
+
+function showReleaseNotesIfNeeded() {
+  if (!localStorage.getItem("wt_seen")) return;
+  if (localStorage.getItem(RELEASE_NOTES_STORAGE_KEY) === APP_RELEASE.version) {
+    return;
+  }
+
+  renderReleaseNotes();
+  const overlay = document.getElementById("release-notes");
+  if (!overlay) return;
+  overlay.classList.remove("hidden");
+  overlay.style.display = "flex";
+}
+
+function watchInstallingWorker(registration) {
+  return new Promise((resolve) => {
+    const worker = registration.installing;
+    if (!worker) {
+      resolve(null);
+      return;
+    }
+
+    const finish = () => resolve(registration.waiting || null);
+    if (worker.state === "installed") {
+      finish();
+      return;
+    }
+
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "installed") finish();
+      if (worker.state === "redundant") resolve(null);
+    });
+  });
+}
+
+async function ensureLatestAppBuild() {
+  if (!("serviceWorker" in navigator)) return false;
+
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) return false;
+
+  let waitingWorker = registration.waiting || null;
+
+  if (!waitingWorker) {
+    const updateResult = new Promise((resolve) => {
+      const timeoutId = setTimeout(() => resolve(null), 2500);
+
+      const handleWorker = () => {
+        watchInstallingWorker(registration).then((worker) => {
+          clearTimeout(timeoutId);
+          resolve(worker);
+        });
+      };
+
+      if (registration.installing) {
+        handleWorker();
+        return;
+      }
+
+      registration.addEventListener("updatefound", handleWorker, {
+        once: true,
+      });
+    });
+
+    try {
+      await registration.update();
+    } catch (e) {
+      console.warn("Service worker update check failed:", e);
+    }
+
+    waitingWorker = registration.waiting || (await updateResult);
+  }
+
+  if (!waitingWorker) return false;
+
+  const reloadKey = `${RELEASE_RELOAD_PREFIX}${APP_RELEASE.version}`;
+  if (sessionStorage.getItem(reloadKey) === "1") return false;
+
+  sessionStorage.setItem(reloadKey, "1");
+
+  await new Promise((resolve) => {
+    const timeoutId = setTimeout(resolve, 1500);
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      () => {
+        clearTimeout(timeoutId);
+        resolve();
+      },
+      { once: true },
+    );
+    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+  });
+
+  window.location.reload();
+  return true;
 }
 
 // ── Modal ─────────────────────────────────────────────────
@@ -5497,6 +5637,10 @@ document.addEventListener("DOMContentLoaded", () => {
     splash.style.display = "flex";
   };
 
+  document
+    .getElementById("btn-release-dismiss")
+    .addEventListener("click", dismissReleaseNotes);
+
   // Bottom nav
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => navigate(btn.dataset.view));
@@ -5809,6 +5953,9 @@ document.addEventListener("DOMContentLoaded", () => {
   window._onAuthStateChanged(window._auth, async (user) => {
     if (user) {
       try {
+        const reloadedForUpdate = await ensureLatestAppBuild();
+        if (reloadedForUpdate) return;
+
         await migrateLocalStorageIfNeeded();
         await hydrateFromFirestore();
 
@@ -5820,6 +5967,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.warn("Hydration error:", e);
       }
       navigate("home");
+      setTimeout(showReleaseNotesIfNeeded, 180);
     } else {
       clearCaches();
       navigate("auth");

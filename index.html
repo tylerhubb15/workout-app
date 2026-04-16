@@ -279,6 +279,35 @@
       </button>
     </div>
 
+    <div
+      id="release-notes"
+      class="release-notes-overlay hidden"
+      aria-live="polite"
+    >
+      <div
+        class="release-notes-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="release-notes-title"
+      >
+        <div class="release-notes-kicker" id="release-notes-version">
+          Version
+        </div>
+        <div class="release-notes-title" id="release-notes-title">
+          What’s New
+        </div>
+        <div class="release-notes-summary" id="release-notes-summary"></div>
+        <div class="release-notes-list" id="release-notes-list"></div>
+        <button
+          class="btn btn-primary btn-full"
+          id="btn-release-dismiss"
+          style="margin-top: 8px; font-size: 15px; height: 52px"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+
     <div id="app">
       <!-- ── Auth View ─────────────────────────────────── -->
       <section class="view" id="view-auth">
