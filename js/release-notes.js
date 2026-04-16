@@ -1,21 +1,21 @@
 export const APP_RELEASE = {
-  version: "2026.04.15.5",
+  version: "2026.04.15.7",
   title: "What\u2019s New in Tensile",
   summary:
-    "A loading screen now shows progress while your data syncs after an update, so you won\u2019t land on empty views.",
+    "Profile settings now include extra color styles, while dark and light mode still work the same way.",
   sections: [
     {
       title: "Improvements",
       items: [
-        "A progress ring overlay blocks navigation until all your data has loaded after an app update.",
-        "Your display name is saved and shown in profile settings \u2014 tap Change to edit it.",
+        "Profile settings now include multiple color gradient styles with neutral names so you can personalize the app without changing dark or light mode.",
+        "The Exercises tab still shows clear left and right controls plus a swipe hint when more muscle groups are off-screen.",
       ],
     },
     {
       title: "Bug Fixes",
       items: [
+        "Accent color choices now persist across logins and app refreshes.",
         "Calendar and home weekly view no longer appear empty while data is still syncing.",
-        "Setting an active plan no longer fails with an error on slow or offline connections.",
       ],
     },
   ],

@@ -45,6 +45,86 @@ body.light {
   --nav-bg: rgba(242, 242, 248, 0.92);
 }
 
+body[data-accent-palette="classic"] {
+  --accent: #2563eb;
+  --accent2: #60a5fa;
+  --accent-dim: #1d4ed8;
+  --blue: #2563eb;
+  --blue2: #60a5fa;
+}
+
+body.light[data-accent-palette="classic"] {
+  --accent: #1d4ed8;
+  --accent2: #2563eb;
+  --accent-dim: #1e40af;
+  --blue: #1d4ed8;
+  --blue2: #2563eb;
+}
+
+body[data-accent-palette="metro"] {
+  --accent: #c81e4a;
+  --accent2: #f4c542;
+  --accent-dim: #1d4ed8;
+  --blue: #1d4ed8;
+  --blue2: #60a5fa;
+}
+
+body.light[data-accent-palette="metro"] {
+  --accent: #b91c1c;
+  --accent2: #d97706;
+  --accent-dim: #1e3a8a;
+  --blue: #1e3a8a;
+  --blue2: #2563eb;
+}
+
+body[data-accent-palette="pulse"] {
+  --accent: #dc2626;
+  --accent2: #2563eb;
+  --accent-dim: #991b1b;
+  --blue: #2563eb;
+  --blue2: #60a5fa;
+}
+
+body.light[data-accent-palette="pulse"] {
+  --accent: #b91c1c;
+  --accent2: #1d4ed8;
+  --accent-dim: #7f1d1d;
+  --blue: #1d4ed8;
+  --blue2: #60a5fa;
+}
+
+body[data-accent-palette="arcade"] {
+  --accent: #dc2626;
+  --accent2: #fbbf24;
+  --accent-dim: #15803d;
+  --blue: #2563eb;
+  --blue2: #60a5fa;
+}
+
+body.light[data-accent-palette="arcade"] {
+  --accent: #c2410c;
+  --accent2: #ca8a04;
+  --accent-dim: #166534;
+  --blue: #1d4ed8;
+  --blue2: #2563eb;
+}
+
+body[data-accent-palette="alloy"] {
+  --accent: #facc15;
+  --accent2: #2563eb;
+  --accent-dim: #172554;
+  --blue: #2563eb;
+  --blue2: #60a5fa;
+}
+
+body.light[data-accent-palette="alloy"] {
+  --accent: #ca8a04;
+  --accent2: #1d4ed8;
+  --accent-dim: #1e3a8a;
+  --blue: #1d4ed8;
+  --blue2: #2563eb;
+}
+
 /* ── Reset & Base ──────────────────────────────────────── */
 *,
 *::before,
@@ -3984,16 +4064,134 @@ body.light .plan-progress-track {
 }
 
 /* ── Exercise Library ─────────────────────────────────────── */
+.ex-lib-muscle-bar {
+  padding: 0 16px 12px;
+}
+
+.ex-lib-muscle-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ex-lib-muscle-bar-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.ex-lib-muscle-bar-hint {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent2);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(8px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.ex-lib-muscle-bar.show-scroll-hint .ex-lib-muscle-bar-hint {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.ex-lib-muscle-pills-wrap {
+  position: relative;
+}
+
 .ex-lib-muscle-pills {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
   gap: 6px;
-  padding: 0 16px 12px;
+  padding: 0 40px 2px;
+  scroll-behavior: smooth;
   scrollbar-width: none;
 }
 .ex-lib-muscle-pills::-webkit-scrollbar {
   display: none;
+}
+
+.ex-lib-muscle-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 34px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.ex-lib-muscle-fade-left {
+  left: 0;
+  background: linear-gradient(90deg, var(--bg), rgba(12, 12, 16, 0));
+}
+
+.ex-lib-muscle-fade-right {
+  right: 0;
+  background: linear-gradient(270deg, var(--bg), rgba(12, 12, 16, 0));
+}
+
+body.light .ex-lib-muscle-fade-left {
+  background: linear-gradient(90deg, var(--bg), rgba(242, 242, 248, 0));
+}
+
+body.light .ex-lib-muscle-fade-right {
+  background: linear-gradient(270deg, var(--bg), rgba(242, 242, 248, 0));
+}
+
+.ex-lib-muscle-bar.show-left .ex-lib-muscle-fade-left,
+.ex-lib-muscle-bar.show-right .ex-lib-muscle-fade-right {
+  opacity: 1;
+}
+
+.ex-lib-muscle-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: color-mix(in srgb, var(--surface2) 92%, transparent);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  z-index: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    background 0.16s ease;
+}
+
+.ex-lib-muscle-nav-left {
+  left: 0;
+}
+
+.ex-lib-muscle-nav-right {
+  right: 0;
+}
+
+.ex-lib-muscle-bar.show-left .ex-lib-muscle-nav-left,
+.ex-lib-muscle-bar.show-right .ex-lib-muscle-nav-right {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ex-lib-muscle-nav:active {
+  background: var(--surface3);
 }
 
 .ex-lib-pill {
@@ -4069,6 +4267,17 @@ body.light .plan-progress-track {
   flex-direction: column;
   gap: 20px;
   padding: 0 16px calc(var(--nav-h) + 24px);
+}
+
+@media (max-width: 480px) {
+  .ex-lib-muscle-bar {
+    padding-bottom: 10px;
+  }
+
+  .ex-lib-muscle-pills {
+    padding-left: 34px;
+    padding-right: 34px;
+  }
 }
 
 .ex-lib-muscle-section {
@@ -4301,6 +4510,86 @@ body.light .ex-lib-muscle-full-body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
+}
+
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.theme-palette-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.theme-palette-chip:active {
+  transform: scale(0.98);
+}
+
+.theme-palette-chip.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--surface2) 82%, var(--accent) 18%);
+}
+
+.theme-palette-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+body.light .theme-palette-preview {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.theme-palette-preview-classic {
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+}
+
+.theme-palette-preview-metro {
+  background: linear-gradient(135deg, #c81e4a, #1d4ed8 60%, #f4c542);
+}
+
+.theme-palette-preview-pulse {
+  background: linear-gradient(135deg, #dc2626, #2563eb);
+}
+
+.theme-palette-preview-arcade {
+  background: linear-gradient(135deg, #dc2626, #fbbf24 58%, #15803d);
+}
+
+.theme-palette-preview-alloy {
+  background: linear-gradient(135deg, #facc15, #2563eb 62%, #172554);
+}
+
+.theme-palette-label {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 380px) {
+  .settings-theme-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settings-privacy-copy {

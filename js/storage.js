@@ -52,6 +52,8 @@ export async function hydrateFromFirestore() {
       localStorage.setItem("wt_display_name", data.displayName);
     if (data.unitPref) localStorage.setItem("wt_unit_pref", data.unitPref);
     if (data.theme) localStorage.setItem("wt_theme", data.theme);
+    if (data.themePalette)
+      localStorage.setItem("wt_theme_palette", data.themePalette);
   }
 }
 
@@ -192,6 +194,7 @@ export async function migrateLocalStorageIfNeeded() {
       activePlanId: localStorage.getItem("wt_active_plan") || null,
       unitPref: localStorage.getItem("wt_unit_pref") || "lbs",
       theme: localStorage.getItem("wt_theme") || "dark",
+      themePalette: localStorage.getItem("wt_theme_palette") || "classic",
       migrated: true,
     },
     { merge: true },

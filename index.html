@@ -23,6 +23,8 @@
       if (localStorage.getItem("wt_seen")) document.body.classList.add("seen");
       if (localStorage.getItem("wt_theme") === "light")
         document.body.classList.add("light");
+      document.body.dataset.accentPalette =
+        localStorage.getItem("wt_theme_palette") || "classic";
     </script>
     <!-- ── Hydration Loading Overlay ───────────────────────── -->
     <div id="hydration-overlay" class="hydration-overlay" hidden>
@@ -1089,7 +1091,35 @@
         <div class="page-header">
           <h1>Exercises</h1>
         </div>
-        <div class="ex-lib-muscle-pills" id="ex-lib-muscle-pills"></div>
+        <div class="ex-lib-muscle-bar" id="ex-lib-muscle-bar">
+          <div class="ex-lib-muscle-bar-head">
+            <div class="ex-lib-muscle-bar-label">Muscle Group</div>
+            <div class="ex-lib-muscle-bar-hint" id="ex-lib-scroll-hint">
+              Swipe to see more
+            </div>
+          </div>
+          <div class="ex-lib-muscle-pills-wrap">
+            <button
+              class="ex-lib-muscle-nav ex-lib-muscle-nav-left"
+              id="ex-lib-muscle-nav-left"
+              type="button"
+              aria-label="Scroll muscle groups left"
+            >
+              ‹
+            </button>
+            <div class="ex-lib-muscle-fade ex-lib-muscle-fade-left"></div>
+            <div class="ex-lib-muscle-pills" id="ex-lib-muscle-pills"></div>
+            <div class="ex-lib-muscle-fade ex-lib-muscle-fade-right"></div>
+            <button
+              class="ex-lib-muscle-nav ex-lib-muscle-nav-right"
+              id="ex-lib-muscle-nav-right"
+              type="button"
+              aria-label="Scroll muscle groups right"
+            >
+              ›
+            </button>
+          </div>
+        </div>
         <div class="ex-lib-list" id="ex-lib-list"></div>
       </section>
 
@@ -1279,6 +1309,62 @@
             <div style="display: flex; gap: 8px; margin-top: 10px">
               <button class="ex-chip" id="settings-theme-dark">Dark</button>
               <button class="ex-chip" id="settings-theme-light">Light</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="field-label">Color Style</div>
+            <div class="settings-theme-grid" id="settings-theme-palette-grid">
+              <button
+                class="theme-palette-chip"
+                data-palette="classic"
+                type="button"
+              >
+                <span
+                  class="theme-palette-preview theme-palette-preview-classic"
+                ></span>
+                <span class="theme-palette-label">Classic</span>
+              </button>
+              <button
+                class="theme-palette-chip"
+                data-palette="metro"
+                type="button"
+              >
+                <span
+                  class="theme-palette-preview theme-palette-preview-metro"
+                ></span>
+                <span class="theme-palette-label">Metro</span>
+              </button>
+              <button
+                class="theme-palette-chip"
+                data-palette="pulse"
+                type="button"
+              >
+                <span
+                  class="theme-palette-preview theme-palette-preview-pulse"
+                ></span>
+                <span class="theme-palette-label">Pulse</span>
+              </button>
+              <button
+                class="theme-palette-chip"
+                data-palette="arcade"
+                type="button"
+              >
+                <span
+                  class="theme-palette-preview theme-palette-preview-arcade"
+                ></span>
+                <span class="theme-palette-label">Arcade</span>
+              </button>
+              <button
+                class="theme-palette-chip"
+                data-palette="alloy"
+                type="button"
+              >
+                <span
+                  class="theme-palette-preview theme-palette-preview-alloy"
+                ></span>
+                <span class="theme-palette-label">Alloy</span>
+              </button>
             </div>
           </div>
 

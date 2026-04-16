@@ -22,6 +22,14 @@ import { APP_RELEASE } from "./release-notes.js";
 const RELEASE_NOTES_STORAGE_KEY = "wt_release_notes_seen";
 const RELEASE_RELOAD_PREFIX = "wt_release_reload_";
 
+const THEME_PALETTES = [
+  { id: "classic", label: "Classic" },
+  { id: "metro", label: "Metro" },
+  { id: "pulse", label: "Pulse" },
+  { id: "arcade", label: "Arcade" },
+  { id: "alloy", label: "Alloy" },
+];
+
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
   Barbell: [
@@ -1332,6 +1340,13 @@ function renderSettings() {
   document
     .getElementById("settings-theme-light")
     .classList.toggle("chip-active", isLight);
+
+  const palette = getAccentPalette();
+  document
+    .querySelectorAll("#settings-theme-palette-grid .theme-palette-chip")
+    .forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.palette === palette);
+    });
 }
 
 // Auth tab switcher (called from inline onclick)
@@ -2615,6 +2630,30 @@ function renderExerciseLibrary() {
   }
 
   document.getElementById("ex-lib-list").innerHTML = html;
+  requestAnimationFrame(updateExerciseLibraryPillNav);
+}
+
+function updateExerciseLibraryPillNav() {
+  const bar = document.getElementById("ex-lib-muscle-bar");
+  const pills = document.getElementById("ex-lib-muscle-pills");
+  if (!bar || !pills) return;
+
+  const hasOverflow = pills.scrollWidth - pills.clientWidth > 12;
+  const atStart = pills.scrollLeft <= 6;
+  const atEnd = pills.scrollLeft + pills.clientWidth >= pills.scrollWidth - 6;
+
+  bar.classList.toggle("show-left", hasOverflow && !atStart);
+  bar.classList.toggle("show-right", hasOverflow && !atEnd);
+  bar.classList.toggle("show-scroll-hint", hasOverflow && atStart && !atEnd);
+}
+
+function scrollExerciseLibraryPills(direction) {
+  const pills = document.getElementById("ex-lib-muscle-pills");
+  if (!pills) return;
+  pills.scrollBy({
+    left: direction * Math.max(180, Math.round(pills.clientWidth * 0.72)),
+    behavior: "smooth",
+  });
 }
 
 window.setExLibMuscle = function (muscle) {
@@ -5705,6 +5744,31 @@ function updateThemeBtn() {
     : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
 }
 
+function getAccentPalette() {
+  const palette = localStorage.getItem("wt_theme_palette") || "classic";
+  return THEME_PALETTES.some((item) => item.id === palette)
+    ? palette
+    : "classic";
+}
+
+function applyAccentPalette(palette) {
+  const nextPalette = THEME_PALETTES.some((item) => item.id === palette)
+    ? palette
+    : "classic";
+  document.body.dataset.accentPalette = nextPalette;
+  localStorage.setItem("wt_theme_palette", nextPalette);
+}
+
+function syncProfilePrefs(patch) {
+  if (!window._auth || !window._auth.currentUser) return;
+  const u = window._auth.currentUser.uid;
+  import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js")
+    .then(({ doc, setDoc }) =>
+      setDoc(doc(window._db, `users/${u}`), patch, { merge: true }),
+    )
+    .catch((err) => console.warn("Could not sync profile preference:", err));
+}
+
 window.toggleRirGuide = function () {
   const body = document.getElementById("rir-guide-body");
   const toggle = document.getElementById("rir-guide-toggle");
@@ -5754,6 +5818,7 @@ function registerServiceWorker() {
 // ── Event Listeners ───────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   registerServiceWorker();
+  applyAccentPalette(getAccentPalette());
   updateThemeBtn();
 
   // Splash screen — show once on first visit; re-openable via info icon
@@ -5778,6 +5843,21 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("btn-release-dismiss")
     .addEventListener("click", dismissReleaseNotes);
+
+  const exLibPills = document.getElementById("ex-lib-muscle-pills");
+  if (exLibPills) {
+    exLibPills.addEventListener("scroll", updateExerciseLibraryPillNav, {
+      passive: true,
+    });
+  }
+
+  document
+    .getElementById("ex-lib-muscle-nav-left")
+    .addEventListener("click", () => scrollExerciseLibraryPills(-1));
+  document
+    .getElementById("ex-lib-muscle-nav-right")
+    .addEventListener("click", () => scrollExerciseLibraryPills(1));
+  window.addEventListener("resize", updateExerciseLibraryPillNav);
 
   // Bottom nav
   document.querySelectorAll(".nav-btn").forEach((btn) => {
@@ -6110,6 +6190,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const savedTheme = localStorage.getItem("wt_theme");
         if (savedTheme === "light") document.body.classList.add("light");
         else document.body.classList.remove("light");
+        applyAccentPalette(getAccentPalette());
 
         setHydrationProgress(100, "Ready!");
         await new Promise((r) => setTimeout(r, 220));
@@ -6177,18 +6258,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .addEventListener("click", () => {
       document.body.classList.remove("light");
       localStorage.setItem("wt_theme", "dark");
-      if (window._auth.currentUser) {
-        const u = window._auth.currentUser.uid;
-        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js").then(
-          ({ doc, setDoc }) => {
-            setDoc(
-              doc(window._db, `users/${u}`),
-              { theme: "dark" },
-              { merge: true },
-            );
-          },
-        );
-      }
+      syncProfilePrefs({ theme: "dark" });
       renderSettings();
     });
 
@@ -6197,19 +6267,18 @@ document.addEventListener("DOMContentLoaded", () => {
     .addEventListener("click", () => {
       document.body.classList.add("light");
       localStorage.setItem("wt_theme", "light");
-      if (window._auth.currentUser) {
-        const u = window._auth.currentUser.uid;
-        import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js").then(
-          ({ doc, setDoc }) => {
-            setDoc(
-              doc(window._db, `users/${u}`),
-              { theme: "light" },
-              { merge: true },
-            );
-          },
-        );
-      }
+      syncProfilePrefs({ theme: "light" });
       renderSettings();
+    });
+
+  document
+    .querySelectorAll("#settings-theme-palette-grid .theme-palette-chip")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applyAccentPalette(btn.dataset.palette);
+        syncProfilePrefs({ themePalette: getAccentPalette() });
+        renderSettings();
+      });
     });
 
   document.getElementById("btn-logout").addEventListener("click", () => {
