@@ -292,16 +292,16 @@
 
     <!-- Picker Panel -->
     <div id="ex-picker-panel">
-      <div class="ex-search-wrap ex-picker-search">
-        <svg class="ex-search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="ex-filter" placeholder="Search exercises..." autocomplete="off" />
-        <button class="ex-search-clear" id="ex-search-clear" hidden onclick="clearExSearch()" aria-label="Clear search">×</button>
+      <div class="ex-picker-top-row">
+        <div class="ex-search-wrap ex-picker-search">
+          <svg class="ex-search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="ex-filter" placeholder="Search exercises..." autocomplete="off" />
+          <button class="ex-search-clear" id="ex-search-clear" hidden onclick="clearExSearch()" aria-label="Clear search">×</button>
+        </div>
+        <button class="ex-picker-custom-btn" id="btn-add-custom-ex" onclick="openCustomExModal()">+ Custom</button>
       </div>
       <div class="ex-lib-muscle-pills" id="ex-picker-muscle-pills"></div>
       <div class="ex-lib-list" id="ex-picker-list"></div>
-      <div class="ex-picker-custom-wrap">
-        <button class="btn btn-ghost btn-sm" id="btn-add-custom-ex" onclick="openCustomExModal()">+ Add Custom Exercise</button>
-      </div>
     </div>
 
     <!-- Config Panel -->

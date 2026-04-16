@@ -3130,13 +3130,30 @@ input.input-error, select.input-error {
 }
 
 /* ── Exercise Picker / Config Panel ──────────────────────── */
+.ex-picker-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 10px;
+}
 .ex-picker-search {
-  margin: 0 16px 10px;
+  flex: 1;
+  margin: 0;
 }
-.ex-picker-custom-wrap {
-  padding: 12px 16px calc(var(--nav-h) + 16px);
-  text-align: center;
+.ex-picker-custom-btn {
+  flex-shrink: 0;
+  padding: 0 12px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
 }
+.ex-picker-custom-btn:active { background: var(--surface3); }
 
 /* Config panel */
 .ex-config-form {
