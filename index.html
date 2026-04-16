@@ -1,715 +1,1418 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0c0c10" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="WorkoutLog" />
-  <link rel="apple-touch-icon" href="icons/icon-192.svg" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/style.css" />
-  <title>Workout Tracker</title>
-</head>
-<body>
-<script>
-  if(localStorage.getItem('wt_seen')) document.body.classList.add('seen');
-  if(localStorage.getItem('wt_theme') === 'light') document.body.classList.add('light');
-</script>
-<!-- ── Splash / Onboarding Overlay ─────────────────────── -->
-<div id="splash">
-  <div class="splash-logo">
-    <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"/>
-    </svg>
-  </div>
-  <div class="splash-title">Tensile</div>
-  <div class="splash-sub">Your personal training tracker</div>
-
-  <div class="splash-steps">
-
-    <div class="splash-step">
-      <div class="splash-step-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"/>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0c0c10" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="WorkoutLog" />
+    <link rel="apple-touch-icon" href="icons/icon-192.svg" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="css/style.css" />
+    <title>Workout Tracker</title>
+  </head>
+  <body>
+    <script>
+      if (localStorage.getItem("wt_seen")) document.body.classList.add("seen");
+      if (localStorage.getItem("wt_theme") === "light")
+        document.body.classList.add("light");
+    </script>
+    <!-- ── Splash / Onboarding Overlay ─────────────────────── -->
+    <div id="splash">
+      <div class="splash-logo">
+        <svg
+          viewBox="0 0 24 24"
+          width="34"
+          height="34"
+          fill="none"
+          stroke="#fff"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"
+          />
         </svg>
       </div>
-      <div class="splash-step-text">
-        <div class="splash-step-title">Log a Workout</div>
-        <div class="splash-step-desc">Tap <strong>Log workout</strong> to start a session. Search exercises or filter by muscle group and equipment. Need something not on the list? Tap <strong>+ Add Custom Exercise</strong> to name it and tag a muscle group. Check off each set to start the rest timer.</div>
-      </div>
-    </div>
+      <div class="splash-title">Tensile</div>
+      <div class="splash-sub">Your personal training tracker</div>
 
-    <div class="splash-step">
-      <div class="splash-step-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
-          <circle cx="9" cy="6" r="2.5" fill="var(--accent)" stroke="none"/>
-          <circle cx="15" cy="12" r="2.5" fill="var(--accent)" stroke="none"/>
-          <circle cx="10" cy="18" r="2.5" fill="var(--accent)" stroke="none"/>
-        </svg>
-      </div>
-      <div class="splash-step-text">
-        <div class="splash-step-title">Three Rep Modes</div>
-        <div class="splash-step-desc">Each exercise has a 3-way toggle: <strong>Target Reps</strong> for standard training, <strong>RIR</strong> to log reps alongside proximity to failure, and <strong>ER</strong> for effective-rep rest-pause sets. Pick the mode that matches your method.</div>
-      </div>
-    </div>
-
-    <div class="splash-step">
-      <div class="splash-step-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-        </svg>
-      </div>
-      <div class="splash-step-text">
-        <div class="splash-step-title">Effective Reps (ER) Training</div>
-        <div class="splash-step-desc">ER mode is built for rest-pause training. Set an <strong>Ignition Reps</strong> target (e.g. 12) and an <strong>ER Target</strong> (e.g. 20 total). Do your ignition set to near-failure, rest 10–15 seconds, then keep going in short bursts until you hit the total. This accumulates maximum effective reps in minimal time.</div>
-      </div>
-    </div>
-
-    <div class="splash-step">
-      <div class="splash-step-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 9H3V4h18v5h-3"/><path d="M6 9a6 6 0 006 6 6 6 0 006-6"/><path d="M12 15v4"/><path d="M8 19h8"/>
-        </svg>
-      </div>
-      <div class="splash-step-text">
-        <div class="splash-step-title">PR Tracking</div>
-        <div class="splash-step-desc">The app tracks your all-time best weight for every exercise. When you check off a set that breaks your record, a <strong>🏆 New PR!</strong> toast fires instantly. A gold <strong>PR</strong> badge sticks to the set row so you can see all your records at a glance.</div>
-      </div>
-    </div>
-
-    <div class="splash-step">
-      <div class="splash-step-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M8 8h5M8 16h6"/>
-        </svg>
-      </div>
-      <div class="splash-step-text">
-        <div class="splash-step-title">Build a Training Plan</div>
-        <div class="splash-step-desc">Go to <strong>Plans</strong> to build a structured program. Choose your workout days and configure each day exercise-by-exercise. Set one plan as <strong>Active</strong> — it drives the calendar, the home widget, and your next session's pre-loaded exercises.</div>
-      </div>
-    </div>
-
-    <div class="splash-step">
-      <div class="splash-step-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-        </svg>
-      </div>
-      <div class="splash-step-text">
-        <div class="splash-step-title">RIR Progressive Overload</div>
-        <div class="splash-step-desc">Enable <strong>RIR</strong> on a plan to run a 4-week mesocycle (RIR 3 → 2 → 1 → 0). The app reads what you logged last week and automatically adjusts this week's rep targets — no math needed.</div>
-      </div>
-    </div>
-
-    <div class="splash-step">
-      <div class="splash-step-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
-        </svg>
-      </div>
-      <div class="splash-step-text">
-        <div class="splash-step-title">Calendar, History &amp; Body Weight</div>
-        <div class="splash-step-desc">The <strong>Calendar</strong> shows planned and logged days — tap any date to view or log a workout. <strong>History</strong> shows every session with volume and PR badges. Track your weight over time in the <strong>Body Weight</strong> section, visible as a sparkline on the home screen.</div>
-      </div>
-    </div>
-
-  </div>
-
-  <button class="btn btn-primary btn-full" id="btn-splash-dismiss" style="font-size:15px;height:54px;text-transform:uppercase;letter-spacing:0.05em;">
-    Get Started
-  </button>
-</div>
-
-<div id="app">
-
-  <!-- ── Auth View ─────────────────────────────────── -->
-  <section class="view" id="view-auth">
-    <div class="auth-container">
-      <div class="auth-brand">
-        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"/>
-        </svg>
-        <span class="auth-brand-name">Tensile</span>
-      </div>
-      <div class="auth-tagline">Your personal training tracker</div>
-
-      <div class="auth-card">
-        <div class="auth-tabs" id="auth-tabs">
-          <button class="auth-tab active" id="auth-tab-signin" onclick="switchAuthTab('signin')">Sign In</button>
-          <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')">Create Account</button>
+      <div class="splash-steps">
+        <div class="splash-step">
+          <div class="splash-step-icon">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"
+              />
+            </svg>
+          </div>
+          <div class="splash-step-text">
+            <div class="splash-step-title">Log a Workout</div>
+            <div class="splash-step-desc">
+              Tap <strong>Log workout</strong> to start a session. Search
+              exercises or filter by muscle group and equipment. Need something
+              not on the list? Tap <strong>+ Add Custom Exercise</strong> to
+              name it and tag a muscle group. Check off each set to start the
+              rest timer.
+            </div>
+          </div>
         </div>
-        <div class="field-label" style="margin-top:16px">Email</div>
-        <input type="email" id="auth-email" placeholder="you@email.com" autocomplete="email" />
-        <div class="field-label" style="margin-top:12px">Password</div>
-        <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" />
-        <div id="auth-error" class="auth-error" hidden></div>
-        <button class="btn btn-primary btn-full" id="btn-auth-submit" style="margin-top:20px">Sign In</button>
-        <button id="btn-forgot-password" style="margin-top:12px;width:100%;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:4px;">Forgot password?</button>
-      </div>
-    </div>
-  </section>
 
-  <!-- ── Home View ─────────────────────────────────── -->
-  <section class="view active" id="view-home">
-    <div class="home-hero">
-      <div class="home-hero-topbar">
-        <div class="home-date" id="home-date"></div>
-        <div class="home-topbar-icons" style="display:flex;align-items:center;gap:8px;">
-          <button class="btn-topbar-icon" onclick="var s=document.getElementById('splash');s.classList.remove('hidden');s.style.display='flex';document.body.classList.remove('seen');" aria-label="How to use" style="background:var(--surface2);border:1px solid var(--border2);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;flex-shrink:0;">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+        <div class="splash-step">
+          <div class="splash-step-icon">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+              <circle
+                cx="9"
+                cy="6"
+                r="2.5"
+                fill="var(--accent)"
+                stroke="none"
+              />
+              <circle
+                cx="15"
+                cy="12"
+                r="2.5"
+                fill="var(--accent)"
+                stroke="none"
+              />
+              <circle
+                cx="10"
+                cy="18"
+                r="2.5"
+                fill="var(--accent)"
+                stroke="none"
+              />
+            </svg>
+          </div>
+          <div class="splash-step-text">
+            <div class="splash-step-title">Three Rep Modes</div>
+            <div class="splash-step-desc">
+              Each exercise has a 3-way toggle: <strong>Target Reps</strong> for
+              standard training, <strong>RIR</strong> to log reps alongside
+              proximity to failure, and <strong>ER</strong> for effective-rep
+              rest-pause sets. Pick the mode that matches your method.
+            </div>
+          </div>
+        </div>
+
+        <div class="splash-step">
+          <div class="splash-step-icon">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
+          </div>
+          <div class="splash-step-text">
+            <div class="splash-step-title">Effective Reps (ER) Training</div>
+            <div class="splash-step-desc">
+              ER mode is built for rest-pause training. Set an
+              <strong>Ignition Reps</strong> target (e.g. 12) and an
+              <strong>ER Target</strong> (e.g. 20 total). Do your ignition set
+              to near-failure, rest 10–15 seconds, then keep going in short
+              bursts until you hit the total. This accumulates maximum effective
+              reps in minimal time.
+            </div>
+          </div>
+        </div>
+
+        <div class="splash-step">
+          <div class="splash-step-icon">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M6 9H3V4h18v5h-3" />
+              <path d="M6 9a6 6 0 006 6 6 6 0 006-6" />
+              <path d="M12 15v4" />
+              <path d="M8 19h8" />
+            </svg>
+          </div>
+          <div class="splash-step-text">
+            <div class="splash-step-title">PR Tracking</div>
+            <div class="splash-step-desc">
+              The app tracks your all-time best weight for every exercise. When
+              you check off a set that breaks your record, a
+              <strong>🏆 New PR!</strong> toast fires instantly. A gold
+              <strong>PR</strong> badge sticks to the set row so you can see all
+              your records at a glance.
+            </div>
+          </div>
+        </div>
+
+        <div class="splash-step">
+          <div class="splash-step-icon">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M8 12h8M8 8h5M8 16h6" />
+            </svg>
+          </div>
+          <div class="splash-step-text">
+            <div class="splash-step-title">Build a Training Plan</div>
+            <div class="splash-step-desc">
+              Go to <strong>Plans</strong> to build a structured program. Choose
+              your workout days and configure each day exercise-by-exercise. Set
+              one plan as <strong>Active</strong> — it drives the calendar, the
+              home widget, and your next session's pre-loaded exercises.
+            </div>
+          </div>
+        </div>
+
+        <div class="splash-step">
+          <div class="splash-step-icon">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+          </div>
+          <div class="splash-step-text">
+            <div class="splash-step-title">RIR Progressive Overload</div>
+            <div class="splash-step-desc">
+              Enable <strong>RIR</strong> on a plan to run a 4-week mesocycle
+              (RIR 3 → 2 → 1 → 0). The app reads what you logged last week and
+              automatically adjusts this week's rep targets — no math needed.
+            </div>
+          </div>
+        </div>
+
+        <div class="splash-step">
+          <div class="splash-step-icon">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+          </div>
+          <div class="splash-step-text">
+            <div class="splash-step-title">
+              Calendar, History &amp; Body Weight
+            </div>
+            <div class="splash-step-desc">
+              The <strong>Calendar</strong> shows planned and logged days — tap
+              any date to view or log a workout. <strong>History</strong> shows
+              every session with volume and PR badges. Track your weight over
+              time in the <strong>Body Weight</strong> section, visible as a
+              sparkline on the home screen.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button
+        class="btn btn-primary btn-full"
+        id="btn-splash-dismiss"
+        style="
+          font-size: 15px;
+          height: 54px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        "
+      >
+        Get Started
+      </button>
+    </div>
+
+    <div id="app">
+      <!-- ── Auth View ─────────────────────────────────── -->
+      <section class="view" id="view-auth">
+        <div class="auth-container">
+          <div class="auth-brand">
+            <svg
+              viewBox="0 0 24 24"
+              width="36"
+              height="36"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"
+              />
+            </svg>
+            <span class="auth-brand-name">Tensile</span>
+          </div>
+          <div class="auth-tagline">Your personal training tracker</div>
+
+          <div class="auth-card">
+            <div class="auth-tabs" id="auth-tabs">
+              <button
+                class="auth-tab active"
+                id="auth-tab-signin"
+                onclick="switchAuthTab('signin')"
+              >
+                Sign In
+              </button>
+              <button
+                class="auth-tab"
+                id="auth-tab-signup"
+                onclick="switchAuthTab('signup')"
+              >
+                Create Account
+              </button>
+            </div>
+            <div class="field-label" style="margin-top: 16px">Email</div>
+            <input
+              type="email"
+              id="auth-email"
+              placeholder="you@email.com"
+              autocomplete="email"
+            />
+            <div class="field-label" style="margin-top: 12px">Password</div>
+            <input
+              type="password"
+              id="auth-password"
+              placeholder="Password"
+              autocomplete="current-password"
+            />
+            <div id="auth-error" class="auth-error" hidden></div>
+            <button
+              class="btn btn-primary btn-full"
+              id="btn-auth-submit"
+              style="margin-top: 20px"
+            >
+              Sign In
+            </button>
+            <button
+              id="btn-forgot-password"
+              style="
+                margin-top: 12px;
+                width: 100%;
+                background: none;
+                border: none;
+                color: var(--text2);
+                font-size: 13px;
+                cursor: pointer;
+                padding: 4px;
+              "
+            >
+              Forgot password?
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Home View ─────────────────────────────────── -->
+      <section class="view active" id="view-home">
+        <div class="home-hero">
+          <div class="home-hero-topbar">
+            <div class="home-date" id="home-date"></div>
+            <div
+              class="home-topbar-icons"
+              style="display: flex; align-items: center; gap: 8px"
+            >
+              <button
+                class="btn-topbar-icon"
+                onclick="
+                  var s = document.getElementById('splash');
+                  s.classList.remove('hidden');
+                  s.style.display = 'flex';
+                  document.body.classList.remove('seen');
+                "
+                aria-label="How to use"
+                style="
+                  background: var(--surface2);
+                  border: 1px solid var(--border2);
+                  border-radius: 50%;
+                  width: 44px;
+                  height: 44px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: var(--text2);
+                  cursor: pointer;
+                  flex-shrink: 0;
+                "
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="17"
+                  height="17"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4M12 8h.01" />
+                </svg>
+              </button>
+              <button
+                class="btn-topbar-icon btn-theme-toggle"
+                id="btn-theme-toggle"
+                onclick="toggleTheme()"
+                aria-label="Toggle theme"
+                style="
+                  background: var(--surface2);
+                  border: 1px solid var(--border2);
+                  border-radius: 50%;
+                  width: 44px;
+                  height: 44px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: var(--text2);
+                  cursor: pointer;
+                  flex-shrink: 0;
+                "
+              ></button>
+            </div>
+          </div>
+          <div class="home-brand">
+            <svg
+              viewBox="0 0 24 24"
+              width="26"
+              height="26"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"
+              />
+            </svg>
+            <span class="home-brand-name">Tensile</span>
+          </div>
+          <div class="home-today-plan" id="home-today-plan"></div>
+          <div class="home-cta-row">
+            <button
+              class="btn btn-secondary home-start-btn"
+              id="btn-start-workout"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Log workout
+            </button>
+            <button class="btn btn-secondary home-plan-btn" id="btn-go-plan">
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M8 12h8M8 8h5M8 16h6" />
+              </svg>
+              Plans
+            </button>
+          </div>
+          <div
+            class="bw-home-strip"
+            id="bw-home-strip"
+            role="button"
+            tabindex="0"
+          >
+            <div class="bw-home-left">
+              <svg
+                viewBox="0 0 24 24"
+                width="13"
+                height="13"
+                fill="none"
+                stroke="var(--accent)"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9-4-9-9-9z" />
+                <path d="M12 8v4l2 2" />
+                <path d="M7 12h1M16 12h1M12 7v1M12 16v1" />
+              </svg>
+              <span class="bw-home-label">Body Weight</span>
+              <span class="bw-home-value" id="bw-home-value">— lbs</span>
+            </div>
+            <div id="bw-home-sparkline" class="bw-home-sparkline"></div>
+            <span class="bw-home-arrow">›</span>
+          </div>
+          <div class="home-week-card">
+            <div class="week-strip" id="week-strip"></div>
+            <button class="vol-home-btn" onclick="navigate('volume')">
+              <span>Weekly Volume</span>
+              <span class="vol-home-btn-arrow">›</span>
+            </button>
+          </div>
+        </div>
+        <div class="home-guides-label">Guides</div>
+        <!-- RIR Training Guide -->
+        <div class="rir-guide-card">
+          <button
+            class="rir-guide-header"
+            onclick="toggleRirGuide()"
+            aria-expanded="false"
+            id="rir-guide-toggle"
+          >
+            <span>What is RIR training?</span>
+            <svg
+              class="rir-guide-chevron"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>
-          <button class="btn-topbar-icon btn-theme-toggle" id="btn-theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" style="background:var(--surface2);border:1px solid var(--border2);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;flex-shrink:0;"></button>
+          <div class="rir-guide-body" id="rir-guide-body" hidden>
+            <p>
+              <strong>RIR (Reps in Reserve)</strong> is a way to measure how
+              hard you're training relative to failure. RIR&nbsp;3 means you
+              could do 3 more reps; RIR&nbsp;0 means you're at failure.
+            </p>
+            <p>
+              A <strong>mesocycle</strong> is a training block (typically 4
+              weeks) that uses progressively decreasing RIR to drive
+              hypertrophy:
+            </p>
+            <div class="rir-table">
+              <div class="rir-row">
+                <span class="rir-week">Week 1</span
+                ><span class="rir-val">RIR 3</span
+                ><span class="rir-desc"
+                  >Easy — build the habit, feel the movements</span
+                >
+              </div>
+              <div class="rir-row">
+                <span class="rir-week">Week 2</span
+                ><span class="rir-val">RIR 2</span
+                ><span class="rir-desc">Moderate — increasing effort</span>
+              </div>
+              <div class="rir-row">
+                <span class="rir-week">Week 3</span
+                ><span class="rir-val">RIR 1</span
+                ><span class="rir-desc"
+                  >Hard — leaving one rep in the tank</span
+                >
+              </div>
+              <div class="rir-row">
+                <span class="rir-week">Week 4</span
+                ><span class="rir-val">RIR 0</span
+                ><span class="rir-desc"
+                  >Max effort — true failure, peak stimulus</span
+                >
+              </div>
+            </div>
+            <p>
+              After week 4, deload or start a new mesocycle with slightly higher
+              loads than week 1. This
+              <strong>progressive overload</strong> cycle is the foundation of
+              long-term muscle growth.
+            </p>
+            <p style="color: var(--text3); font-size: 11px; margin-top: 8px">
+              Tip: When the app shows a target RIR for a set, log the reps you
+              actually hit — the next session's targets auto-adjust based on
+              your performance.
+            </p>
+          </div>
+        </div>
+        <!-- ER Training Guide -->
+        <div class="rir-guide-card">
+          <button
+            class="rir-guide-header"
+            onclick="toggleErGuide()"
+            aria-expanded="false"
+            id="er-guide-toggle"
+          >
+            <span>What is Effective Reps (ER) training?</span>
+            <svg
+              class="rir-guide-chevron"
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div class="rir-guide-body" id="er-guide-body" hidden>
+            <p>
+              <strong>Effective Reps (ER)</strong> are the reps performed close
+              to muscular failure — typically the last few reps of a set where
+              the muscle is under maximum tension. These are the reps that drive
+              the most growth.
+            </p>
+            <p>
+              The <strong>ER rest-pause method</strong> lets you accumulate a
+              target number of effective reps in one extended set:
+            </p>
+            <div class="rir-table">
+              <div class="rir-row">
+                <span class="rir-week">Step 1</span
+                ><span class="rir-val">Ignition</span
+                ><span class="rir-desc"
+                  >Do 12–15 reps to near-failure (your ignition set)</span
+                >
+              </div>
+              <div class="rir-row">
+                <span class="rir-week">Step 2</span
+                ><span class="rir-val">Rest 10–15s</span
+                ><span class="rir-desc"
+                  >Take a brief rest — just enough to recover 1–2 reps</span
+                >
+              </div>
+              <div class="rir-row">
+                <span class="rir-week">Step 3</span
+                ><span class="rir-val">Keep going</span
+                ><span class="rir-desc"
+                  >Do as many reps as possible to failure again</span
+                >
+              </div>
+              <div class="rir-row">
+                <span class="rir-week">Step 4</span
+                ><span class="rir-val">Repeat</span
+                ><span class="rir-desc"
+                  >Continue until you hit your ER target (e.g. 20 total
+                  reps)</span
+                >
+              </div>
+            </div>
+            <p>
+              <strong>Example:</strong> ER Target 20 · Ignition 13 reps → rest →
+              3 reps → rest → 2 → 1 → 1 = 20 total effective reps.
+            </p>
+            <p style="color: var(--text3); font-size: 11px; margin-top: 8px">
+              Tip: Set the ER Target in the exercise form. Log each mini-set as
+              a separate set. The target keeps you from stopping too early or
+              going too long.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Active Workout View ───────────────────────── -->
+      <section class="view" id="view-workout">
+        <div class="page-header">
+          <button class="btn-back" id="btn-workout-back">‹</button>
+          <h1>Workout</h1>
+        </div>
+        <div class="workout-meta">
+          <div>
+            <div class="field-label">Workout Name</div>
+            <input type="text" id="workout-name" placeholder="e.g. Push Day" />
+          </div>
+          <div>
+            <div class="field-label">Date</div>
+            <input type="date" id="workout-date" />
+          </div>
+        </div>
+        <div class="section-title">Exercises</div>
+        <div class="exercises-section" id="active-exercises"></div>
+        <div class="workout-actions">
+          <button class="btn btn-secondary btn-full" id="btn-add-exercise">
+            + Add Exercise
+          </button>
+          <div class="notes-action-wrap">
+            <div class="field-label">Notes</div>
+            <textarea
+              id="workout-notes"
+              class="notes-input"
+              placeholder="How did it feel? Any PRs or injuries..."
+              rows="2"
+            ></textarea>
+          </div>
+          <button class="btn btn-success btn-full" id="btn-finish-workout">
+            Finish Workout
+          </button>
+        </div>
+      </section>
+
+      <!-- ── Day View (calendar drill-down) ────────────── -->
+      <section class="view" id="view-day">
+        <div class="page-header">
+          <button class="btn-back" id="btn-day-back">‹</button>
+          <div>
+            <h1 id="day-view-title"></h1>
+            <div class="page-subtitle" id="day-view-subtitle"></div>
+          </div>
+        </div>
+        <div
+          id="day-readonly-banner"
+          hidden
+          style="
+            margin: 0 20px 8px;
+            padding: 10px 14px;
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            border-radius: 8px;
+            color: #34d399;
+            font-size: 13px;
+            font-weight: 600;
+          "
+        >
+          ✓ Completed Workout — view only
+        </div>
+        <div id="day-deload-banner" hidden class="day-deload-banner">
+          🔋 Deload Week — reduce weight by ~40–50%, prioritize recovery and
+          form.
+        </div>
+        <div class="exercises-section" id="day-exercises"></div>
+        <div class="workout-actions">
+          <button class="btn btn-secondary btn-full" id="btn-day-add-exercise">
+            + Add Exercise
+          </button>
+          <div class="notes-action-wrap">
+            <div class="field-label">Notes</div>
+            <textarea
+              id="day-notes"
+              class="notes-input"
+              placeholder="How did it feel? Any PRs or injuries..."
+              rows="2"
+            ></textarea>
+          </div>
+          <button
+            class="btn btn-success btn-full"
+            id="btn-day-finish-workout"
+            disabled
+          >
+            Finish Workout
+          </button>
+        </div>
+      </section>
+
+      <!-- ── Exercise Muscle Group Picker ───────────────── -->
+      <section class="view" id="view-exercise-muscle">
+        <div class="page-header">
+          <button class="btn-back" id="btn-ex-muscle-back">‹</button>
+          <h1>Choose Muscle</h1>
+        </div>
+        <div class="ex-muscle-picker-grid" id="ex-muscle-picker-grid"></div>
+      </section>
+
+      <!-- ── Exercise Form View ────────────────────────── -->
+      <section class="view" id="view-exercise">
+        <div class="page-header">
+          <button class="btn-back" id="btn-exercise-back">‹</button>
+          <h1 id="exercise-view-title">Add Exercise</h1>
+        </div>
+        <input type="hidden" id="exercise-name" />
+
+        <!-- Picker Panel -->
+        <div id="ex-picker-panel">
+          <div class="ex-picker-top-row">
+            <div class="ex-search-wrap ex-picker-search">
+              <svg
+                class="ex-search-icon"
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                id="ex-filter"
+                placeholder="Search exercises..."
+                autocomplete="off"
+              />
+              <button
+                class="ex-search-clear"
+                id="ex-search-clear"
+                hidden
+                onclick="clearExSearch()"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            </div>
+            <button
+              class="ex-picker-custom-btn"
+              id="btn-add-custom-ex"
+              onclick="openCustomExModal()"
+            >
+              + Custom
+            </button>
+          </div>
+          <div class="ex-lib-muscle-pills" id="ex-picker-muscle-pills"></div>
+          <div class="ex-lib-list" id="ex-picker-list"></div>
+        </div>
+
+        <!-- Config Panel -->
+        <div id="ex-config-panel" hidden class="ex-config-form">
+          <div id="ex-config-header" class="ex-config-header"></div>
+          <div class="ex-training-type-section">
+            <div class="field-label">Training Type</div>
+            <div
+              class="ex-training-type-chips"
+              id="ex-training-type-chips"
+            ></div>
+          </div>
+          <div class="sets-form-section">
+            <div class="field-label">Sets</div>
+            <div id="sets-form-body"></div>
+            <button class="btn btn-secondary btn-sm" id="btn-add-set">
+              + Add Set
+            </button>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-save-exercise">
+            Save Exercise
+          </button>
+        </div>
+      </section>
+
+      <!-- ── Calendar View ─────────────────────────────── -->
+      <section class="view" id="view-calendar">
+        <div class="page-header">
+          <h1>Calendar</h1>
+          <button
+            class="btn btn-secondary btn-sm"
+            id="cal-jump-today"
+            hidden
+            onclick="jumpCalendarToToday()"
+          >
+            Today
+          </button>
+        </div>
+        <div id="cal-week-banner" class="cal-week-banner" hidden></div>
+        <div id="cal-month-stats" class="cal-month-stats" hidden></div>
+        <div class="cal-month-nav">
+          <button class="btn-cal-nav" id="cal-prev">‹</button>
+          <div class="cal-month-label" id="cal-month-label"></div>
+          <button class="btn-cal-nav" id="cal-next">›</button>
+        </div>
+        <div class="calendar-grid" id="cal-grid"></div>
+        <div class="cal-legend">
+          <span class="legend-item"
+            ><span class="dot dot-workout"></span> Logged</span
+          >
+          <span class="legend-item"
+            ><span class="dot dot-plan"></span> Planned</span
+          >
+          <span class="legend-item"
+            ><span class="dot dot-missed"></span> Missed</span
+          >
+          <span class="legend-item"
+            ><span class="cal-deload-swatch"></span> Deload</span
+          >
+        </div>
+        <!-- Day quick-preview popup (long-press) -->
+        <div id="cal-day-popup" class="cal-day-popup" hidden>
+          <div class="cal-day-popup-header">
+            <div class="cal-day-popup-date" id="cal-popup-date"></div>
+            <button class="cal-day-popup-close" onclick="closeCalDayPopup()">
+              ×
+            </button>
+          </div>
+          <div id="cal-popup-body" class="cal-day-popup-body"></div>
+          <button
+            class="btn btn-primary btn-sm"
+            id="cal-popup-open"
+            style="margin-top: 10px; width: 100%"
+          >
+            Open Day
+          </button>
+        </div>
+      </section>
+
+      <!-- ── Plan View ────────────────────────────────── -->
+      <section class="view" id="view-plan">
+        <div class="page-header">
+          <button class="btn-back" id="btn-plan-back">‹</button>
+          <h1>Plans</h1>
+        </div>
+        <div class="plan-list-header">
+          <div class="section-title" style="margin: 0">Saved Plans</div>
+          <button class="btn btn-primary btn-sm" id="btn-new-plan">
+            + New Plan
+          </button>
+        </div>
+        <div id="plan-form-wrap" hidden>
+          <div class="plan-form-edit-banner" id="plan-form-edit-banner" hidden>
+            <span id="plan-form-edit-label">Editing plan</span>
+          </div>
+          <div class="plan-explainer">
+            <div class="plan-explainer-step">
+              <span class="plan-explainer-num">1</span>
+              <span
+                >Name your plan, set a date range, and pick which days of the
+                week you train.</span
+              >
+            </div>
+            <div class="plan-explainer-step">
+              <span class="plan-explainer-num">2</span>
+              <span
+                >Tap <strong>Edit Days</strong> on a saved plan to assign
+                exercises to each workout day.</span
+              >
+            </div>
+            <div class="plan-explainer-step">
+              <span class="plan-explainer-num">3</span>
+              <span
+                >Your plan shows up in the Calendar. Tap any planned day and
+                your exercises are pre-loaded.</span
+              >
+            </div>
+          </div>
+          <div class="plan-form">
+            <div>
+              <div class="field-label">Plan Name</div>
+              <input
+                type="text"
+                id="plan-name"
+                placeholder="e.g. Summer Bulk"
+                autocomplete="off"
+              />
+            </div>
+            <div class="plan-dates">
+              <div style="flex: 1">
+                <div class="field-label">Start Date</div>
+                <input type="date" id="plan-start" />
+              </div>
+              <div style="flex: 1">
+                <div class="field-label">Training Weeks</div>
+                <input
+                  type="number"
+                  id="plan-weeks"
+                  min="1"
+                  max="52"
+                  value="8"
+                  inputmode="numeric"
+                  style="width: 100%"
+                  placeholder="e.g. 8"
+                />
+              </div>
+            </div>
+            <div id="plan-date-preview" class="plan-date-preview" hidden></div>
+            <!-- hidden end date kept for storage compatibility -->
+            <input type="date" id="plan-end" hidden />
+            <div>
+              <div class="field-label">Workout Days</div>
+              <div class="day-picker" id="day-picker">
+                <button class="day-btn" data-dow="0">Su</button>
+                <button class="day-btn" data-dow="1">Mo</button>
+                <button class="day-btn" data-dow="2">Tu</button>
+                <button class="day-btn" data-dow="3">We</button>
+                <button class="day-btn" data-dow="4">Th</button>
+                <button class="day-btn" data-dow="5">Fr</button>
+                <button class="day-btn" data-dow="6">Sa</button>
+              </div>
+              <div class="day-picker-hint">
+                Blue = workout &nbsp;·&nbsp; Gray = rest
+              </div>
+            </div>
+            <div class="rir-form-block">
+              <div class="field-label">RIR Periodization</div>
+              <label class="rir-toggle-wrap">
+                <input type="checkbox" id="plan-rir-toggle" />
+                <span>Enable auto-progression (Reps in Reserve)</span>
+              </label>
+              <div
+                id="plan-rir-options"
+                style="display: none; margin-top: 12px"
+              >
+                <div class="field-label">Mesocycle Length</div>
+                <select id="plan-mesocycle-length" class="input">
+                  <option value="3">3 weeks (RIR 2 → 1 → 0)</option>
+                  <option value="4" selected>
+                    4 weeks (RIR 3 → 2 → 1 → 0)
+                  </option>
+                  <option value="5">5 weeks (RIR 4 → 3 → 2 → 1 → 0)</option>
+                  <option value="6">6 weeks (RIR 5 → … → 0)</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-full" id="btn-save-plan">
+              Save Plan
+            </button>
+          </div>
+        </div>
+        <div class="plan-list" id="plan-list"></div>
+        <div class="plan-templates-section">
+          <div class="plan-templates-label">Ready-Made Plans</div>
+          <div id="plan-templates-list"></div>
+        </div>
+      </section>
+
+      <!-- ── Plan Day Editor View ─────────────────────── -->
+      <section class="view" id="view-plan-editor">
+        <div class="page-header">
+          <button class="btn-back" id="btn-plan-editor-back">‹</button>
+          <h1 id="plan-editor-title">Edit Days</h1>
+        </div>
+        <div id="plan-editor-body" style="padding: 0 20px 16px"></div>
+        <div style="padding: 0 20px 32px">
+          <button class="btn btn-primary btn-full" id="btn-plan-editor-done">
+            ✓ Done — Plan Saved
+          </button>
+        </div>
+      </section>
+
+      <!-- ── Exercise Library View ────────────────────── -->
+      <section class="view" id="view-exercises">
+        <div class="page-header">
+          <h1>Exercises</h1>
+        </div>
+        <div class="ex-lib-muscle-pills" id="ex-lib-muscle-pills"></div>
+        <div class="ex-lib-list" id="ex-lib-list"></div>
+      </section>
+
+      <!-- ── History View ──────────────────────────────── -->
+      <section class="view" id="view-history">
+        <div class="page-header">
+          <h1>History</h1>
+          <button
+            class="btn btn-secondary btn-sm"
+            id="btn-export-csv"
+            onclick="exportToCSV()"
+            style="margin-left: auto"
+          >
+            Export CSV
+          </button>
+        </div>
+        <div id="progress-graph-section"></div>
+        <div class="history-list" id="history-list"></div>
+      </section>
+
+      <!-- ── Body Weight View ─────────────────────────────── -->
+      <section class="view" id="view-bodyweight">
+        <div class="page-header">
+          <button class="btn-back" id="btn-bw-back">‹</button>
+          <h1>Body Weight</h1>
+        </div>
+        <div class="bw-content">
+          <div class="bw-log-card">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 12px;
+              "
+            >
+              <div class="field-label" style="margin-bottom: 0">Log weight</div>
+              <button class="btn btn-secondary btn-sm" id="btn-unit-toggle">
+                lbs
+              </button>
+            </div>
+            <div class="bw-log-row">
+              <input
+                type="number"
+                id="bw-input"
+                placeholder="lbs"
+                step="0.1"
+                min="0"
+                max="999"
+                inputmode="decimal"
+              />
+              <input type="date" id="bw-date" />
+              <button class="btn btn-primary" id="btn-bw-save">Save</button>
+            </div>
+          </div>
+          <div id="bw-graph-section"></div>
+          <div id="bw-list"></div>
+        </div>
+      </section>
+
+      <!-- ── Exercise History View ─────────────────────────── -->
+      <section class="view" id="view-exercise-history">
+        <div class="page-header">
+          <button class="btn-back" id="btn-ex-history-back">‹</button>
+          <h1 id="ex-history-title">Exercise</h1>
+        </div>
+        <div class="ex-history-content" id="ex-history-content"></div>
+      </section>
+
+      <!-- ── Plan Day Muscle Count Overview ───────────────── -->
+      <section class="view" id="view-plan-day-muscles">
+        <div class="page-header">
+          <button class="btn-back" id="btn-plan-day-muscles-back">‹</button>
+          <h1 id="plan-day-muscles-title">Configure Day</h1>
+        </div>
+        <div id="plan-day-muscles-body" style="padding: 0 20px 100px"></div>
+        <div class="workout-actions">
+          <button
+            class="btn btn-primary btn-full"
+            id="btn-plan-day-muscles-done"
+          >
+            Save Day
+          </button>
+        </div>
+      </section>
+
+      <!-- ── Plan Muscle Group Exercise Picker ─────────────── -->
+      <section class="view" id="view-plan-muscle-picker">
+        <div class="page-header">
+          <button class="btn-back" id="btn-plan-muscle-picker-back">‹</button>
+          <div>
+            <h1 id="plan-muscle-picker-title">Chest</h1>
+            <div class="page-subtitle" id="plan-muscle-picker-subtitle">
+              0 of 2 selected
+            </div>
+          </div>
+        </div>
+        <div id="plan-muscle-picker-body" style="padding: 0 20px 32px"></div>
+      </section>
+
+      <!-- ── Volume Tracker ───────────────────────────────── -->
+      <section class="view" id="view-volume">
+        <div class="page-header">
+          <button class="btn-back" id="btn-volume-back">‹</button>
+          <div>
+            <h1>Weekly Volume</h1>
+            <div class="page-subtitle">Sets per muscle group</div>
+          </div>
+        </div>
+        <div id="volume-content" style="padding: 0 20px 32px"></div>
+      </section>
+
+      <!-- ── Settings / Profile View ─────────────────────── -->
+      <section class="view" id="view-settings">
+        <div class="page-header">
+          <h1>Profile</h1>
+        </div>
+        <div class="settings-body">
+          <div class="settings-card">
+            <div class="field-label">Display Name</div>
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                margin-top: 6px;
+              "
+            >
+              <input
+                type="text"
+                id="settings-name"
+                placeholder="Your name"
+                style="flex: 1"
+              />
+              <button
+                class="btn btn-secondary btn-sm"
+                id="btn-settings-save-name"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="field-label">Weight Unit</div>
+            <div
+              id="settings-unit-chips"
+              style="display: flex; gap: 8px; margin-top: 10px"
+            >
+              <button class="ex-chip" data-unit="lbs">lbs</button>
+              <button class="ex-chip" data-unit="kg">kg</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="field-label">Theme</div>
+            <div style="display: flex; gap: 8px; margin-top: 10px">
+              <button class="ex-chip" id="settings-theme-dark">Dark</button>
+              <button class="ex-chip" id="settings-theme-light">Light</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div
+              class="field-label"
+              style="color: var(--text3); font-size: 12px"
+            >
+              Signed in as
+            </div>
+            <div
+              id="settings-email"
+              style="font-size: 14px; color: var(--text2); margin-top: 4px"
+            ></div>
+          </div>
+
+          <button
+            class="btn btn-full"
+            id="btn-logout"
+            style="
+              margin: 8px 0 0;
+              background: rgba(248, 113, 113, 0.12);
+              color: var(--red);
+              border: 1px solid rgba(248, 113, 113, 0.25);
+            "
+          >
+            Sign Out
+          </button>
+        </div>
+      </section>
+
+      <!-- ── Modal Overlay ─────────────────────────────── -->
+      <div class="modal-overlay" id="modal-overlay" hidden>
+        <div class="modal-box">
+          <div class="modal-title" id="modal-title"></div>
+          <div class="modal-msg" id="modal-msg"></div>
+          <div class="modal-actions" id="modal-actions"></div>
         </div>
       </div>
-      <div class="home-brand">
-        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 4v16M18 4v16M3 9h3M18 9h3M3 15h3M18 15h3M6 9h12M6 15h12"/>
-        </svg>
-        <span class="home-brand-name">Tensile</span>
+
+      <!-- ── Plan Activation Progress ─────────────────── -->
+      <div
+        class="plan-progress-overlay"
+        id="plan-progress-overlay"
+        hidden
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div class="plan-progress-box" role="status" aria-atomic="true">
+          <div class="plan-progress-kicker">Updating Active Plan</div>
+          <div class="plan-progress-title" id="plan-progress-title">
+            Saving your selection
+          </div>
+          <div class="plan-progress-detail" id="plan-progress-detail">
+            Syncing plan data and refreshing your schedule.
+          </div>
+          <div class="plan-progress-track" aria-hidden="true">
+            <div class="plan-progress-fill" id="plan-progress-fill"></div>
+          </div>
+          <div class="plan-progress-meta">
+            <span id="plan-progress-step">Starting</span>
+            <span id="plan-progress-percent">0%</span>
+          </div>
+        </div>
       </div>
-      <div class="home-today-plan" id="home-today-plan"></div>
-      <div class="home-cta-row">
-        <button class="btn btn-secondary home-start-btn" id="btn-start-workout">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Log workout
+
+      <!-- ── PR Toast ──────────────────────────────────── -->
+      <div id="pr-toast" hidden>
+        <span class="pr-toast-icon">🏆</span>
+        <div class="pr-toast-body">
+          <span class="pr-toast-label">New PR!</span>
+          <span class="pr-toast-ex"></span>
+          <span class="pr-toast-weight"></span>
+        </div>
+      </div>
+
+      <!-- ── Rest Timer Chip ────────────────────────────── -->
+      <div class="rest-timer" id="rest-timer" hidden>
+        <div class="rest-timer-inner">
+          <div class="rest-timer-label">Rest</div>
+          <div class="rest-timer-count" id="rest-timer-count">90</div>
+          <div class="rest-timer-presets">
+            <button onclick="setRestTimer(15)">15s</button>
+            <button onclick="setRestTimer(60)">60s</button>
+            <button onclick="setRestTimer(90)">90s</button>
+            <button onclick="setRestTimer(120)">2m</button>
+          </div>
+        </div>
+        <button
+          class="rest-timer-dismiss"
+          onclick="dismissRestTimer()"
+          aria-label="Dismiss timer"
+        >
+          ×
         </button>
-        <button class="btn btn-secondary home-plan-btn" id="btn-go-plan">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <path d="M8 12h8M8 8h5M8 16h6"/>
+      </div>
+
+      <!-- ── Bottom Navigation ─────────────────────────── -->
+      <nav class="bottom-nav" id="bottom-nav">
+        <button class="nav-btn active" data-view="home">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 10L12 3l9 7v10a1 1 0 01-1 1H4a1 1 0 01-1-1z" />
+            <path d="M9 21V12h6v9" />
+          </svg>
+          Home
+        </button>
+        <button class="nav-btn" data-view="calendar">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+          Calendar
+        </button>
+        <button class="nav-btn" data-view="exercises">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6.5 6.5h11M6.5 12h11M6.5 17.5h7" />
+            <circle cx="3.5" cy="6.5" r="1" />
+            <circle cx="3.5" cy="12" r="1" />
+            <circle cx="3.5" cy="17.5" r="1" />
+          </svg>
+          Exercises
+        </button>
+        <button class="nav-btn" data-view="plan">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M8 12h8M8 8h5M8 16h6" />
           </svg>
           Plans
         </button>
-      </div>
-      <div class="bw-home-strip" id="bw-home-strip" role="button" tabindex="0">
-        <div class="bw-home-left">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9-4-9-9-9z"/><path d="M12 8v4l2 2"/><path d="M7 12h1M16 12h1M12 7v1M12 16v1"/></svg>
-          <span class="bw-home-label">Body Weight</span>
-          <span class="bw-home-value" id="bw-home-value">— lbs</span>
-        </div>
-        <div id="bw-home-sparkline" class="bw-home-sparkline"></div>
-        <span class="bw-home-arrow">›</span>
-      </div>
-      <div class="home-week-card">
-        <div class="week-strip" id="week-strip"></div>
-        <button class="vol-home-btn" onclick="navigate('volume')">
-          <span>Weekly Volume</span>
-          <span class="vol-home-btn-arrow">›</span>
+        <button class="nav-btn" data-view="settings">
+          <svg
+            class="nav-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="8" r="3.5" />
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+          </svg>
+          Profile
         </button>
-      </div>
+      </nav>
     </div>
-    <div class="home-guides-label">Guides</div>
-    <!-- RIR Training Guide -->
-    <div class="rir-guide-card">
-      <button class="rir-guide-header" onclick="toggleRirGuide()" aria-expanded="false" id="rir-guide-toggle">
-        <span>What is RIR training?</span>
-        <svg class="rir-guide-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
-      <div class="rir-guide-body" id="rir-guide-body" hidden>
-        <p><strong>RIR (Reps in Reserve)</strong> is a way to measure how hard you're training relative to failure. RIR&nbsp;3 means you could do 3 more reps; RIR&nbsp;0 means you're at failure.</p>
-        <p>A <strong>mesocycle</strong> is a training block (typically 4 weeks) that uses progressively decreasing RIR to drive hypertrophy:</p>
-        <div class="rir-table">
-          <div class="rir-row"><span class="rir-week">Week 1</span><span class="rir-val">RIR 3</span><span class="rir-desc">Easy — build the habit, feel the movements</span></div>
-          <div class="rir-row"><span class="rir-week">Week 2</span><span class="rir-val">RIR 2</span><span class="rir-desc">Moderate — increasing effort</span></div>
-          <div class="rir-row"><span class="rir-week">Week 3</span><span class="rir-val">RIR 1</span><span class="rir-desc">Hard — leaving one rep in the tank</span></div>
-          <div class="rir-row"><span class="rir-week">Week 4</span><span class="rir-val">RIR 0</span><span class="rir-desc">Max effort — true failure, peak stimulus</span></div>
-        </div>
-        <p>After week 4, deload or start a new mesocycle with slightly higher loads than week 1. This <strong>progressive overload</strong> cycle is the foundation of long-term muscle growth.</p>
-        <p style="color:var(--text3);font-size:11px;margin-top:8px">Tip: When the app shows a target RIR for a set, log the reps you actually hit — the next session's targets auto-adjust based on your performance.</p>
-      </div>
-    </div>
-    <!-- ER Training Guide -->
-    <div class="rir-guide-card">
-      <button class="rir-guide-header" onclick="toggleErGuide()" aria-expanded="false" id="er-guide-toggle">
-        <span>What is Effective Reps (ER) training?</span>
-        <svg class="rir-guide-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
-      <div class="rir-guide-body" id="er-guide-body" hidden>
-        <p><strong>Effective Reps (ER)</strong> are the reps performed close to muscular failure — typically the last few reps of a set where the muscle is under maximum tension. These are the reps that drive the most growth.</p>
-        <p>The <strong>ER rest-pause method</strong> lets you accumulate a target number of effective reps in one extended set:</p>
-        <div class="rir-table">
-          <div class="rir-row"><span class="rir-week">Step 1</span><span class="rir-val">Ignition</span><span class="rir-desc">Do 12–15 reps to near-failure (your ignition set)</span></div>
-          <div class="rir-row"><span class="rir-week">Step 2</span><span class="rir-val">Rest 10–15s</span><span class="rir-desc">Take a brief rest — just enough to recover 1–2 reps</span></div>
-          <div class="rir-row"><span class="rir-week">Step 3</span><span class="rir-val">Keep going</span><span class="rir-desc">Do as many reps as possible to failure again</span></div>
-          <div class="rir-row"><span class="rir-week">Step 4</span><span class="rir-val">Repeat</span><span class="rir-desc">Continue until you hit your ER target (e.g. 20 total reps)</span></div>
-        </div>
-        <p><strong>Example:</strong> ER Target 20 · Ignition 13 reps → rest → 3 reps → rest → 2 → 1 → 1 = 20 total effective reps.</p>
-        <p style="color:var(--text3);font-size:11px;margin-top:8px">Tip: Set the ER Target in the exercise form. Log each mini-set as a separate set. The target keeps you from stopping too early or going too long.</p>
-      </div>
-    </div>
-  </section>
+    <!-- ── Firebase SDK ──────────────────────────────────────── -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signOut,
+        sendPasswordResetEmail,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+      import {
+        getFirestore,
+        enableIndexedDbPersistence,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  <!-- ── Active Workout View ───────────────────────── -->
-  <section class="view" id="view-workout">
-    <div class="page-header">
-      <button class="btn-back" id="btn-workout-back">‹</button>
-      <h1>Workout</h1>
-    </div>
-    <div class="workout-meta">
-      <div>
-        <div class="field-label">Workout Name</div>
-        <input type="text" id="workout-name" placeholder="e.g. Push Day" />
-      </div>
-      <div>
-        <div class="field-label">Date</div>
-        <input type="date" id="workout-date" />
-      </div>
-    </div>
-    <div class="section-title">Exercises</div>
-    <div class="exercises-section" id="active-exercises"></div>
-    <div class="workout-actions">
-      <button class="btn btn-secondary btn-full" id="btn-add-exercise">+ Add Exercise</button>
-      <div class="notes-action-wrap">
-        <div class="field-label">Notes</div>
-        <textarea id="workout-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
-      </div>
-      <button class="btn btn-success btn-full" id="btn-finish-workout">Finish Workout</button>
-    </div>
-  </section>
+      const firebaseConfig = {
+        apiKey: "AIzaSyB669HiBIqt0k0gr2KFjffmADqj3RTjSso",
+        authDomain: "tensile-3f6a7.firebaseapp.com",
+        projectId: "tensile-3f6a7",
+        storageBucket: "tensile-3f6a7.firebasestorage.app",
+        messagingSenderId: "1054925466839",
+        appId: "1:1054925466839:web:f65fcf02fa41c3d3835492",
+      };
 
-  <!-- ── Day View (calendar drill-down) ────────────── -->
-  <section class="view" id="view-day">
-    <div class="page-header">
-      <button class="btn-back" id="btn-day-back">‹</button>
-      <div>
-        <h1 id="day-view-title"></h1>
-        <div class="page-subtitle" id="day-view-subtitle"></div>
-      </div>
-    </div>
-    <div id="day-readonly-banner" hidden style="margin:0 20px 8px;padding:10px 14px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);border-radius:8px;color:#34d399;font-size:13px;font-weight:600;">✓ Completed Workout — view only</div>
-    <div id="day-deload-banner" hidden class="day-deload-banner">🔋 Deload Week — reduce weight by ~40–50%, prioritize recovery and form.</div>
-    <div class="exercises-section" id="day-exercises"></div>
-    <div class="workout-actions">
-      <button class="btn btn-secondary btn-full" id="btn-day-add-exercise">+ Add Exercise</button>
-      <div class="notes-action-wrap">
-        <div class="field-label">Notes</div>
-        <textarea id="day-notes" class="notes-input" placeholder="How did it feel? Any PRs or injuries..." rows="2"></textarea>
-      </div>
-      <button class="btn btn-success btn-full" id="btn-day-finish-workout" disabled>Finish Workout</button>
-    </div>
-  </section>
+      const app = initializeApp(firebaseConfig);
+      window._db = getFirestore(app);
+      window._auth = getAuth(app);
+      window._onAuthStateChanged = onAuthStateChanged;
+      window._signIn = signInWithEmailAndPassword;
+      window._signUp = createUserWithEmailAndPassword;
+      window._signOut = signOut;
+      window._resetPassword = sendPasswordResetEmail;
 
-  <!-- ── Exercise Muscle Group Picker ───────────────── -->
-  <section class="view" id="view-exercise-muscle">
-    <div class="page-header">
-      <button class="btn-back" id="btn-ex-muscle-back">‹</button>
-      <h1>Choose Muscle</h1>
-    </div>
-    <div class="ex-muscle-picker-grid" id="ex-muscle-picker-grid"></div>
-  </section>
-
-  <!-- ── Exercise Form View ────────────────────────── -->
-  <section class="view" id="view-exercise">
-    <div class="page-header">
-      <button class="btn-back" id="btn-exercise-back">‹</button>
-      <h1 id="exercise-view-title">Add Exercise</h1>
-    </div>
-    <input type="hidden" id="exercise-name" />
-
-    <!-- Picker Panel -->
-    <div id="ex-picker-panel">
-      <div class="ex-picker-top-row">
-        <div class="ex-search-wrap ex-picker-search">
-          <svg class="ex-search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="ex-filter" placeholder="Search exercises..." autocomplete="off" />
-          <button class="ex-search-clear" id="ex-search-clear" hidden onclick="clearExSearch()" aria-label="Clear search">×</button>
-        </div>
-        <button class="ex-picker-custom-btn" id="btn-add-custom-ex" onclick="openCustomExModal()">+ Custom</button>
-      </div>
-      <div class="ex-lib-muscle-pills" id="ex-picker-muscle-pills"></div>
-      <div class="ex-lib-list" id="ex-picker-list"></div>
-    </div>
-
-    <!-- Config Panel -->
-    <div id="ex-config-panel" hidden class="ex-config-form">
-      <div id="ex-config-header" class="ex-config-header"></div>
-      <div class="ex-training-type-section">
-        <div class="field-label">Training Type</div>
-        <div class="ex-training-type-chips" id="ex-training-type-chips"></div>
-      </div>
-      <div class="sets-form-section">
-        <div class="field-label">Sets</div>
-        <div id="sets-form-body"></div>
-        <button class="btn btn-secondary btn-sm" id="btn-add-set">+ Add Set</button>
-      </div>
-      <button class="btn btn-primary btn-full" id="btn-save-exercise">Save Exercise</button>
-    </div>
-  </section>
-
-  <!-- ── Calendar View ─────────────────────────────── -->
-  <section class="view" id="view-calendar">
-    <div class="page-header">
-      <h1>Calendar</h1>
-      <button class="btn btn-secondary btn-sm" id="cal-jump-today" hidden onclick="jumpCalendarToToday()">Today</button>
-    </div>
-    <div id="cal-week-banner" class="cal-week-banner" hidden></div>
-    <div id="cal-month-stats" class="cal-month-stats" hidden></div>
-    <div class="cal-month-nav">
-      <button class="btn-cal-nav" id="cal-prev">‹</button>
-      <div class="cal-month-label" id="cal-month-label"></div>
-      <button class="btn-cal-nav" id="cal-next">›</button>
-    </div>
-    <div class="calendar-grid" id="cal-grid"></div>
-    <div class="cal-legend">
-      <span class="legend-item"><span class="dot dot-workout"></span> Logged</span>
-      <span class="legend-item"><span class="dot dot-plan"></span> Planned</span>
-      <span class="legend-item"><span class="dot dot-missed"></span> Missed</span>
-      <span class="legend-item"><span class="cal-deload-swatch"></span> Deload</span>
-    </div>
-    <!-- Day quick-preview popup (long-press) -->
-    <div id="cal-day-popup" class="cal-day-popup" hidden>
-      <div class="cal-day-popup-header">
-        <div class="cal-day-popup-date" id="cal-popup-date"></div>
-        <button class="cal-day-popup-close" onclick="closeCalDayPopup()">×</button>
-      </div>
-      <div id="cal-popup-body" class="cal-day-popup-body"></div>
-      <button class="btn btn-primary btn-sm" id="cal-popup-open" style="margin-top:10px;width:100%">Open Day</button>
-    </div>
-  </section>
-
-  <!-- ── Plan View ────────────────────────────────── -->
-  <section class="view" id="view-plan">
-    <div class="page-header">
-      <button class="btn-back" id="btn-plan-back">‹</button>
-      <h1>Plans</h1>
-    </div>
-    <div class="plan-list-header">
-      <div class="section-title" style="margin:0">Saved Plans</div>
-      <button class="btn btn-primary btn-sm" id="btn-new-plan">+ New Plan</button>
-    </div>
-    <div id="plan-form-wrap" hidden>
-      <div class="plan-form-edit-banner" id="plan-form-edit-banner" hidden>
-        <span id="plan-form-edit-label">Editing plan</span>
-      </div>
-      <div class="plan-explainer">
-        <div class="plan-explainer-step">
-          <span class="plan-explainer-num">1</span>
-          <span>Name your plan, set a date range, and pick which days of the week you train.</span>
-        </div>
-        <div class="plan-explainer-step">
-          <span class="plan-explainer-num">2</span>
-          <span>Tap <strong>Edit Days</strong> on a saved plan to assign exercises to each workout day.</span>
-        </div>
-        <div class="plan-explainer-step">
-          <span class="plan-explainer-num">3</span>
-          <span>Your plan shows up in the Calendar. Tap any planned day and your exercises are pre-loaded.</span>
-        </div>
-      </div>
-      <div class="plan-form">
-        <div>
-          <div class="field-label">Plan Name</div>
-          <input type="text" id="plan-name" placeholder="e.g. Summer Bulk" autocomplete="off" />
-        </div>
-        <div class="plan-dates">
-          <div style="flex:1">
-            <div class="field-label">Start Date</div>
-            <input type="date" id="plan-start" />
-          </div>
-          <div style="flex:1">
-            <div class="field-label">Training Weeks</div>
-            <input type="number" id="plan-weeks" min="1" max="52" value="8" inputmode="numeric"
-              style="width:100%" placeholder="e.g. 8" />
-          </div>
-        </div>
-        <div id="plan-date-preview" class="plan-date-preview" hidden></div>
-        <!-- hidden end date kept for storage compatibility -->
-        <input type="date" id="plan-end" hidden />
-        <div>
-          <div class="field-label">Workout Days</div>
-          <div class="day-picker" id="day-picker">
-            <button class="day-btn" data-dow="0">Su</button>
-            <button class="day-btn" data-dow="1">Mo</button>
-            <button class="day-btn" data-dow="2">Tu</button>
-            <button class="day-btn" data-dow="3">We</button>
-            <button class="day-btn" data-dow="4">Th</button>
-            <button class="day-btn" data-dow="5">Fr</button>
-            <button class="day-btn" data-dow="6">Sa</button>
-          </div>
-          <div class="day-picker-hint">Blue = workout &nbsp;·&nbsp; Gray = rest</div>
-        </div>
-        <div class="rir-form-block">
-          <div class="field-label">RIR Periodization</div>
-          <label class="rir-toggle-wrap">
-            <input type="checkbox" id="plan-rir-toggle" />
-            <span>Enable auto-progression (Reps in Reserve)</span>
-          </label>
-          <div id="plan-rir-options" style="display:none; margin-top:12px">
-            <div class="field-label">Mesocycle Length</div>
-            <select id="plan-mesocycle-length" class="input">
-              <option value="3">3 weeks (RIR 2 → 1 → 0)</option>
-              <option value="4" selected>4 weeks (RIR 3 → 2 → 1 → 0)</option>
-              <option value="5">5 weeks (RIR 4 → 3 → 2 → 1 → 0)</option>
-              <option value="6">6 weeks (RIR 5 → … → 0)</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn btn-primary btn-full" id="btn-save-plan">Save Plan</button>
-      </div>
-    </div>
-    <div class="plan-list" id="plan-list"></div>
-    <div class="plan-templates-section">
-      <div class="plan-templates-label">Ready-Made Plans</div>
-      <div id="plan-templates-list"></div>
-    </div>
-  </section>
-
-  <!-- ── Plan Day Editor View ─────────────────────── -->
-  <section class="view" id="view-plan-editor">
-    <div class="page-header">
-      <button class="btn-back" id="btn-plan-editor-back">‹</button>
-      <h1 id="plan-editor-title">Edit Days</h1>
-    </div>
-    <div id="plan-editor-body" style="padding: 0 20px 16px"></div>
-    <div style="padding: 0 20px 32px">
-      <button class="btn btn-primary btn-full" id="btn-plan-editor-done">✓ Done — Plan Saved</button>
-    </div>
-  </section>
-
-  <!-- ── Exercise Library View ────────────────────── -->
-  <section class="view" id="view-exercises">
-    <div class="page-header">
-      <h1>Exercises</h1>
-    </div>
-    <div class="ex-lib-muscle-pills" id="ex-lib-muscle-pills"></div>
-    <div class="ex-lib-list" id="ex-lib-list"></div>
-  </section>
-
-  <!-- ── History View ──────────────────────────────── -->
-  <section class="view" id="view-history">
-    <div class="page-header">
-      <h1>History</h1>
-      <button class="btn btn-secondary btn-sm" id="btn-export-csv" onclick="exportToCSV()" style="margin-left:auto">Export CSV</button>
-    </div>
-    <div id="progress-graph-section"></div>
-    <div class="history-list" id="history-list"></div>
-  </section>
-
-  <!-- ── Body Weight View ─────────────────────────────── -->
-  <section class="view" id="view-bodyweight">
-    <div class="page-header">
-      <button class="btn-back" id="btn-bw-back">‹</button>
-      <h1>Body Weight</h1>
-    </div>
-    <div class="bw-content">
-      <div class="bw-log-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div class="field-label" style="margin-bottom:0">Log weight</div>
-          <button class="btn btn-secondary btn-sm" id="btn-unit-toggle">lbs</button>
-        </div>
-        <div class="bw-log-row">
-          <input type="number" id="bw-input" placeholder="lbs" step="0.1" min="0" max="999" inputmode="decimal" />
-          <input type="date" id="bw-date" />
-          <button class="btn btn-primary" id="btn-bw-save">Save</button>
-        </div>
-      </div>
-      <div id="bw-graph-section"></div>
-      <div id="bw-list"></div>
-    </div>
-  </section>
-
-  <!-- ── Exercise History View ─────────────────────────── -->
-  <section class="view" id="view-exercise-history">
-    <div class="page-header">
-      <button class="btn-back" id="btn-ex-history-back">‹</button>
-      <h1 id="ex-history-title">Exercise</h1>
-    </div>
-    <div class="ex-history-content" id="ex-history-content"></div>
-  </section>
-
-  <!-- ── Plan Day Muscle Count Overview ───────────────── -->
-  <section class="view" id="view-plan-day-muscles">
-    <div class="page-header">
-      <button class="btn-back" id="btn-plan-day-muscles-back">‹</button>
-      <h1 id="plan-day-muscles-title">Configure Day</h1>
-    </div>
-    <div id="plan-day-muscles-body" style="padding: 0 20px 100px"></div>
-    <div class="workout-actions">
-      <button class="btn btn-primary btn-full" id="btn-plan-day-muscles-done">Save Day</button>
-    </div>
-  </section>
-
-  <!-- ── Plan Muscle Group Exercise Picker ─────────────── -->
-  <section class="view" id="view-plan-muscle-picker">
-    <div class="page-header">
-      <button class="btn-back" id="btn-plan-muscle-picker-back">‹</button>
-      <div>
-        <h1 id="plan-muscle-picker-title">Chest</h1>
-        <div class="page-subtitle" id="plan-muscle-picker-subtitle">0 of 2 selected</div>
-      </div>
-    </div>
-    <div id="plan-muscle-picker-body" style="padding: 0 20px 32px"></div>
-  </section>
-
-  <!-- ── Volume Tracker ───────────────────────────────── -->
-  <section class="view" id="view-volume">
-    <div class="page-header">
-      <button class="btn-back" id="btn-volume-back">‹</button>
-      <div>
-        <h1>Weekly Volume</h1>
-        <div class="page-subtitle">Sets per muscle group</div>
-      </div>
-    </div>
-    <div id="volume-content" style="padding: 0 20px 32px;"></div>
-  </section>
-
-  <!-- ── Settings / Profile View ─────────────────────── -->
-  <section class="view" id="view-settings">
-    <div class="page-header">
-      <h1>Profile</h1>
-    </div>
-    <div class="settings-body">
-
-      <div class="settings-card">
-        <div class="field-label">Display Name</div>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
-          <input type="text" id="settings-name" placeholder="Your name" style="flex:1" />
-          <button class="btn btn-secondary btn-sm" id="btn-settings-save-name">Save</button>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <div class="field-label">Weight Unit</div>
-        <div id="settings-unit-chips" style="display:flex;gap:8px;margin-top:10px">
-          <button class="ex-chip" data-unit="lbs">lbs</button>
-          <button class="ex-chip" data-unit="kg">kg</button>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <div class="field-label">Theme</div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="ex-chip" id="settings-theme-dark">Dark</button>
-          <button class="ex-chip" id="settings-theme-light">Light</button>
-        </div>
-      </div>
-
-      <div class="settings-card">
-        <div class="field-label" style="color:var(--text3);font-size:12px">Signed in as</div>
-        <div id="settings-email" style="font-size:14px;color:var(--text2);margin-top:4px"></div>
-      </div>
-
-      <button class="btn btn-full" id="btn-logout" style="margin:8px 0 0;background:rgba(248,113,113,0.12);color:var(--red);border:1px solid rgba(248,113,113,0.25);">Sign Out</button>
-    </div>
-  </section>
-
-  <!-- ── Modal Overlay ─────────────────────────────── -->
-  <div class="modal-overlay" id="modal-overlay" hidden>
-    <div class="modal-box">
-      <div class="modal-title" id="modal-title"></div>
-      <div class="modal-msg" id="modal-msg"></div>
-      <div class="modal-actions" id="modal-actions"></div>
-    </div>
-  </div>
-
-  <!-- ── PR Toast ──────────────────────────────────── -->
-  <div id="pr-toast" hidden>
-    <span class="pr-toast-icon">🏆</span>
-    <div class="pr-toast-body">
-      <span class="pr-toast-label">New PR!</span>
-      <span class="pr-toast-ex"></span>
-      <span class="pr-toast-weight"></span>
-    </div>
-  </div>
-
-  <!-- ── Rest Timer Chip ────────────────────────────── -->
-  <div class="rest-timer" id="rest-timer" hidden>
-    <div class="rest-timer-inner">
-      <div class="rest-timer-label">Rest</div>
-      <div class="rest-timer-count" id="rest-timer-count">90</div>
-      <div class="rest-timer-presets">
-        <button onclick="setRestTimer(15)">15s</button>
-        <button onclick="setRestTimer(60)">60s</button>
-        <button onclick="setRestTimer(90)">90s</button>
-        <button onclick="setRestTimer(120)">2m</button>
-      </div>
-    </div>
-    <button class="rest-timer-dismiss" onclick="dismissRestTimer()" aria-label="Dismiss timer">×</button>
-  </div>
-
-  <!-- ── Bottom Navigation ─────────────────────────── -->
-  <nav class="bottom-nav" id="bottom-nav">
-    <button class="nav-btn active" data-view="home">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 10L12 3l9 7v10a1 1 0 01-1 1H4a1 1 0 01-1-1z"/>
-        <path d="M9 21V12h6v9"/>
-      </svg>
-      Home
-    </button>
-    <button class="nav-btn" data-view="calendar">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2"/>
-        <path d="M16 2v4M8 2v4M3 10h18"/>
-      </svg>
-      Calendar
-    </button>
-    <button class="nav-btn" data-view="exercises">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6.5 6.5h11M6.5 12h11M6.5 17.5h7"/>
-        <circle cx="3.5" cy="6.5" r="1"/>
-        <circle cx="3.5" cy="12" r="1"/>
-        <circle cx="3.5" cy="17.5" r="1"/>
-      </svg>
-      Exercises
-    </button>
-    <button class="nav-btn" data-view="plan">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <path d="M8 12h8M8 8h5M8 16h6"/>
-      </svg>
-      Plans
-    </button>
-    <button class="nav-btn" data-view="settings">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="8" r="3.5"/>
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-      </svg>
-      Profile
-    </button>
-  </nav>
-
-</div>
-<!-- ── Firebase SDK ──────────────────────────────────────── -->
-<script type="module">
-  import { initializeApp }
-    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, onAuthStateChanged,
-           signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
-           sendPasswordResetEmail }
-    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  import { getFirestore, enableIndexedDbPersistence }
-    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-  const firebaseConfig = {
-    apiKey:            "AIzaSyB669HiBIqt0k0gr2KFjffmADqj3RTjSso",
-    authDomain:        "tensile-3f6a7.firebaseapp.com",
-    projectId:         "tensile-3f6a7",
-    storageBucket:     "tensile-3f6a7.firebasestorage.app",
-    messagingSenderId: "1054925466839",
-    appId:             "1:1054925466839:web:f65fcf02fa41c3d3835492"
-  };
-
-  const app          = initializeApp(firebaseConfig);
-  window._db         = getFirestore(app);
-  window._auth       = getAuth(app);
-  window._onAuthStateChanged = onAuthStateChanged;
-  window._signIn             = signInWithEmailAndPassword;
-  window._signUp             = createUserWithEmailAndPassword;
-  window._signOut            = signOut;
-  window._resetPassword      = sendPasswordResetEmail;
-
-  enableIndexedDbPersistence(window._db).catch(() => {});
-</script>
-<script type="module" src="js/app.js"></script>
-</body>
+      enableIndexedDbPersistence(window._db).catch(() => {});
+    </script>
+    <script type="module" src="js/app.js"></script>
+  </body>
 </html>
