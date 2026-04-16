@@ -5330,7 +5330,17 @@ window.setActivePlan = function (id) {
         "Writing the active plan so your app state stays in sync.",
         "Syncing data",
       );
-      await Promise.resolve(saveActivePlanId(id));
+      // localStorage is written synchronously inside saveActivePlanId.
+      // The Firestore sync is fire-and-forget so a network hiccup never
+      // blocks the local UI flow.
+      try {
+        await saveActivePlanId(id);
+      } catch (syncErr) {
+        console.warn(
+          "Firestore sync for active plan failed (will retry on next write):",
+          syncErr,
+        );
+      }
 
       setPlanProgress(
         56,
@@ -5679,7 +5689,19 @@ window.toggleTheme = function () {
 // ── Service Worker ────────────────────────────────────────
 function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    navigator.serviceWorker
+      .register("service-worker.js", { updateViaCache: "none" })
+      .catch(() => {});
+
+    // iOS PWAs resume from memory without a full page reload, so the
+    // normal SW update check (at load time) never re-fires.  Re-check
+    // for a waiting worker every time the app returns to the foreground.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        if (reg) reg.update().catch(() => {});
+      });
+    });
   }
 }
 
