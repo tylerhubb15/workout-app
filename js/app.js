@@ -984,9 +984,13 @@ async function ensureLatestAppBuild() {
 
 function clearLocalUserState() {
   clearCaches();
-  ["wt_active_plan", "wt_workouts", "wt_plans", "wt_bodyweights"].forEach(
-    (key) => localStorage.removeItem(key),
-  );
+  [
+    "wt_active_plan",
+    "wt_workouts",
+    "wt_plans",
+    "wt_bodyweights",
+    "wt_display_name",
+  ].forEach((key) => localStorage.removeItem(key));
 }
 
 async function deleteCurrentUserData(uid) {
@@ -1271,6 +1275,21 @@ function renderSettings() {
   document.getElementById("settings-email").textContent = user
     ? user.email
     : "";
+
+  // Display name: show saved name or prompt to set one
+  const savedName = localStorage.getItem("wt_display_name") || "";
+  const showRow = document.getElementById("display-name-show");
+  const editRow = document.getElementById("display-name-edit");
+  const nameValue = document.getElementById("display-name-value");
+  if (savedName) {
+    nameValue.textContent = savedName;
+    showRow.style.display = "flex";
+    editRow.style.display = "none";
+  } else {
+    showRow.style.display = "none";
+    editRow.style.display = "flex";
+    document.getElementById("settings-name").value = "";
+  }
 
   // Highlight active unit chip
   const unit = loadUnitPref();
@@ -6068,6 +6087,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── Settings ───────────────────────────────────────────
   document
+    .getElementById("btn-display-name-change")
+    .addEventListener("click", () => {
+      const editRow = document.getElementById("display-name-edit");
+      document.getElementById("settings-name").value =
+        localStorage.getItem("wt_display_name") || "";
+      document.getElementById("display-name-show").style.display = "none";
+      editRow.style.display = "flex";
+    });
+
+  document
+    .getElementById("btn-display-name-cancel")
+    .addEventListener("click", () => {
+      renderSettings();
+    });
+
+  document
     .getElementById("btn-settings-save-name")
     .addEventListener("click", async () => {
       const name = document.getElementById("settings-name").value.trim();
@@ -6081,7 +6116,8 @@ document.addEventListener("DOMContentLoaded", () => {
           { displayName: name },
           { merge: true },
         );
-        showAlert("Saved", `Display name updated to "${name}".`);
+        localStorage.setItem("wt_display_name", name);
+        renderSettings();
       } catch (e) {
         showAlert("Error", e.message);
       }

@@ -48,6 +48,8 @@ export async function hydrateFromFirestore() {
         localStorage.setItem("wt_active_plan", data.activePlanId);
       else localStorage.removeItem("wt_active_plan");
     }
+    if (data.displayName)
+      localStorage.setItem("wt_display_name", data.displayName);
     if (data.unitPref) localStorage.setItem("wt_unit_pref", data.unitPref);
     if (data.theme) localStorage.setItem("wt_theme", data.theme);
   }

@@ -1189,9 +1189,32 @@
         <div class="settings-body">
           <div class="settings-card">
             <div class="field-label">Display Name</div>
+            <!-- read-only row -->
             <div
+              id="display-name-show"
               style="
                 display: flex;
+                gap: 10px;
+                align-items: center;
+                margin-top: 6px;
+              "
+            >
+              <span
+                id="display-name-value"
+                style="flex: 1; font-size: 1rem"
+              ></span>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="btn-display-name-change"
+              >
+                Change
+              </button>
+            </div>
+            <!-- edit row (hidden by default) -->
+            <div
+              id="display-name-edit"
+              style="
+                display: none;
                 gap: 10px;
                 align-items: center;
                 margin-top: 6px;
@@ -1208,6 +1231,13 @@
                 id="btn-settings-save-name"
               >
                 Save
+              </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="btn-display-name-cancel"
+                style="opacity: 0.7"
+              >
+                Cancel
               </button>
             </div>
           </div>
