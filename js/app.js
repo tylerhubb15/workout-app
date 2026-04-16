@@ -1215,6 +1215,7 @@ function dismissReleaseNotes() {
   if (!overlay) return;
   localStorage.setItem(RELEASE_NOTES_STORAGE_KEY, APP_RELEASE.version);
   overlay.classList.add("hidden");
+  overlay.hidden = true;
   overlay.style.display = "";
 }
 
@@ -1228,7 +1229,8 @@ function showReleaseNotesIfNeeded() {
   const overlay = document.getElementById("release-notes");
   if (!overlay) return;
   overlay.classList.remove("hidden");
-  overlay.style.display = "flex";
+  overlay.hidden = false;
+  overlay.style.display = "";
 }
 
 function watchInstallingWorker(registration) {
