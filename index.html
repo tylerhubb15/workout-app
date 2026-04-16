@@ -497,6 +497,7 @@
             <span class="home-brand-name">Tensile</span>
           </div>
           <div class="home-today-plan" id="home-today-plan"></div>
+          <div class="home-next-action" id="home-next-action"></div>
           <div class="home-cta-row">
             <button
               class="btn btn-secondary home-start-btn"
@@ -729,6 +730,22 @@
           <button class="btn-back" id="btn-workout-back">‹</button>
           <h1>Workout</h1>
         </div>
+        <div class="context-hint" data-hint-key="workout-recovery">
+          <div class="context-hint-body">
+            <div class="context-hint-title">Autosave On</div>
+            <div class="context-hint-text">
+              Your workout saves while you edit, so you can leave and resume it
+              from Home later.
+            </div>
+          </div>
+          <button
+            class="context-hint-dismiss"
+            onclick="dismissHint('workout-recovery')"
+            aria-label="Dismiss hint"
+          >
+            ×
+          </button>
+        </div>
         <div class="workout-meta">
           <div>
             <div class="field-label">Workout Name</div>
@@ -912,6 +929,22 @@
             Today
           </button>
         </div>
+        <div class="context-hint" data-hint-key="calendar-recovery">
+          <div class="context-hint-body">
+            <div class="context-hint-title">Missed Day Recovery</div>
+            <div class="context-hint-text">
+              Tap a missed planned day to reschedule it, move it to today, or
+              skip it without losing track of your block.
+            </div>
+          </div>
+          <button
+            class="context-hint-dismiss"
+            onclick="dismissHint('calendar-recovery')"
+            aria-label="Dismiss hint"
+          >
+            ×
+          </button>
+        </div>
         <div id="cal-week-banner" class="cal-week-banner" hidden></div>
         <div id="cal-month-stats" class="cal-month-stats" hidden></div>
         <div class="cal-month-nav">
@@ -958,6 +991,22 @@
         <div class="page-header">
           <button class="btn-back" id="btn-plan-back">‹</button>
           <h1>Plans</h1>
+        </div>
+        <div class="context-hint" data-hint-key="plan-shortcuts">
+          <div class="context-hint-body">
+            <div class="context-hint-title">Plan Shortcuts</div>
+            <div class="context-hint-text">
+              Duplicate full plans, copy a previous day, or copy from another
+              day to build templates much faster.
+            </div>
+          </div>
+          <button
+            class="context-hint-dismiss"
+            onclick="dismissHint('plan-shortcuts')"
+            aria-label="Dismiss hint"
+          >
+            ×
+          </button>
         </div>
         <div class="plan-list-header">
           <div class="section-title" style="margin: 0">Saved Plans</div>
@@ -1090,6 +1139,22 @@
       <section class="view" id="view-exercises">
         <div class="page-header">
           <h1>Exercises</h1>
+        </div>
+        <div class="context-hint" data-hint-key="exercise-progression">
+          <div class="context-hint-body">
+            <div class="context-hint-title">Progression View</div>
+            <div class="context-hint-text">
+              Open an exercise from your workout or history to see recent
+              sessions, best lifts, and next-step suggestions.
+            </div>
+          </div>
+          <button
+            class="context-hint-dismiss"
+            onclick="dismissHint('exercise-progression')"
+            aria-label="Dismiss hint"
+          >
+            ×
+          </button>
         </div>
         <div class="ex-lib-muscle-bar" id="ex-lib-muscle-bar">
           <div class="ex-lib-muscle-bar-head">

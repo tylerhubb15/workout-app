@@ -30,6 +30,10 @@ const THEME_PALETTES = [
   { id: "alloy", label: "Alloy" },
 ];
 
+const ACTIVE_WORKOUT_DRAFT_KEY = "wt_draft_active_workout";
+const DAY_WORKOUT_DRAFT_KEY = "wt_draft_day_workout";
+const HINT_STORAGE_PREFIX = "wt_hint_";
+
 // ── Exercise Library ──────────────────────────────────────
 const EXERCISES = {
   Barbell: [
@@ -737,6 +741,7 @@ const state = {
   exLibMuscle: null, // selected muscle filter in exercise library (null = All)
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
   _pendingTemplateDayTemplates: null, // day templates from a pre-made plan, applied on first save
+  _homeAction: null,
 };
 
 // ── Unit Helpers ──────────────────────────────────────────
@@ -745,6 +750,324 @@ const KG_TO_LBS = 2.20462;
 
 function weightUnit() {
   return loadUnitPref();
+}
+
+function cloneJSON(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function readJsonStorage(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function hasWorkoutContent(workout) {
+  if (!workout) return false;
+  return !!(
+    workout.name ||
+    workout.notes ||
+    (Array.isArray(workout.exercises) && workout.exercises.length > 0)
+  );
+}
+
+function clearActiveWorkoutDraft() {
+  localStorage.removeItem(ACTIVE_WORKOUT_DRAFT_KEY);
+}
+
+function clearDayWorkoutDraft() {
+  localStorage.removeItem(DAY_WORKOUT_DRAFT_KEY);
+}
+
+function persistActiveWorkoutDraft() {
+  if (!hasWorkoutContent(state.activeWorkout)) {
+    clearActiveWorkoutDraft();
+    return;
+  }
+  localStorage.setItem(
+    ACTIVE_WORKOUT_DRAFT_KEY,
+    JSON.stringify({ workout: state.activeWorkout }),
+  );
+}
+
+function persistDayWorkoutDraft() {
+  if (state.dayIsReadOnly || !hasWorkoutContent(state.dayWorkout)) {
+    clearDayWorkoutDraft();
+    return;
+  }
+  localStorage.setItem(
+    DAY_WORKOUT_DRAFT_KEY,
+    JSON.stringify({
+      workout: state.dayWorkout,
+      returnView: state.dayReturnView || "calendar",
+    }),
+  );
+}
+
+function restoreWorkoutDrafts() {
+  const activeDraft = readJsonStorage(ACTIVE_WORKOUT_DRAFT_KEY);
+  if (activeDraft && activeDraft.workout) {
+    state.activeWorkout = activeDraft.workout;
+  }
+
+  const dayDraft = readJsonStorage(DAY_WORKOUT_DRAFT_KEY);
+  if (dayDraft && dayDraft.workout) {
+    state.dayWorkout = dayDraft.workout;
+    state.dayReturnView = dayDraft.returnView || "calendar";
+    state.dayIsReadOnly = false;
+  }
+}
+
+function getCompletedDatesSet() {
+  return new Set(
+    loadWorkouts()
+      .filter((w) => (w.status ?? "completed") === "completed")
+      .map((w) => w.date),
+  );
+}
+
+function getSavedPlannedDatesSet() {
+  return new Set(
+    loadWorkouts()
+      .filter((w) => (w.status ?? "completed") === "planned")
+      .map((w) => w.date),
+  );
+}
+
+function getSkippedDatesSet() {
+  return new Set(
+    loadWorkouts()
+      .filter((w) => (w.status ?? "completed") === "skipped")
+      .map((w) => w.date),
+  );
+}
+
+function getNextScheduledWorkout(plan = getActivePlan()) {
+  if (!plan || !Array.isArray(plan.workoutDays)) return null;
+
+  const completedDates = getCompletedDatesSet();
+  const skippedDates = getSkippedDatesSet();
+  const savedPlannedDates = getSavedPlannedDatesSet();
+  const todayIso = todayISO();
+  const todayDow = new Date().getDay();
+
+  const todayIsWorkoutDay =
+    plan.workoutDays.includes(todayDow) &&
+    todayIso >= plan.start &&
+    todayIso <= plan.end;
+
+  if (
+    todayIsWorkoutDay &&
+    !completedDates.has(todayIso) &&
+    !skippedDates.has(todayIso)
+  ) {
+    return {
+      iso: todayIso,
+      dow: todayDow,
+      label: "Today",
+      saved: savedPlannedDates.has(todayIso),
+    };
+  }
+
+  for (let i = 1; i <= 21; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const iso = localISO(d);
+    const dow = d.getDay();
+    if (iso > plan.end) break;
+    if (iso < plan.start) continue;
+    if (!plan.workoutDays.includes(dow)) continue;
+    if (completedDates.has(iso) || skippedDates.has(iso)) continue;
+    return {
+      iso,
+      dow,
+      label:
+        i === 1
+          ? "Tomorrow"
+          : d.toLocaleDateString("en-US", { weekday: "long" }),
+      saved: savedPlannedDates.has(iso),
+    };
+  }
+
+  return null;
+}
+
+function findMostRecentMissedWorkoutDate() {
+  const today = todayISO();
+  const skipped = getSkippedDatesSet();
+  const completed = getCompletedDatesSet();
+  const planned = new Set([...planDatesSet(), ...getSavedPlannedDatesSet()]);
+  return (
+    [...planned]
+      .filter((iso) => iso < today && !completed.has(iso) && !skipped.has(iso))
+      .sort((a, b) => b.localeCompare(a))[0] || null
+  );
+}
+
+function dismissHintKey(key) {
+  localStorage.setItem(`${HINT_STORAGE_PREFIX}${key}`, "1");
+  refreshContextHints();
+}
+
+window.dismissHint = dismissHintKey;
+
+function refreshContextHints() {
+  document.querySelectorAll(".context-hint").forEach((el) => {
+    const key = el.dataset.hintKey;
+    el.hidden = key
+      ? localStorage.getItem(`${HINT_STORAGE_PREFIX}${key}`) === "1"
+      : true;
+  });
+}
+
+function syncHomeAction(action) {
+  state._homeAction = action;
+}
+
+window.runHomeNextAction = function (kind = "primary") {
+  const action = state._homeAction;
+  if (!action) return;
+  const fn =
+    kind === "secondary" ? action.secondary?.onClick : action.primary?.onClick;
+  if (typeof fn === "function") fn();
+};
+
+function renderHomeNextAction() {
+  const el = document.getElementById("home-next-action");
+  if (!el) return;
+
+  let action = null;
+
+  if (hasWorkoutContent(state.activeWorkout)) {
+    const exCount = state.activeWorkout.exercises?.length || 0;
+    action = {
+      kicker: "Recovery",
+      title: state.activeWorkout.name
+        ? `Resume ${state.activeWorkout.name}`
+        : "Resume workout draft",
+      detail: `${exCount} exercise${exCount !== 1 ? "s" : ""} saved${state.activeWorkout.date ? ` · ${formatDate(state.activeWorkout.date)}` : ""}`,
+      primary: {
+        label: "Resume",
+        onClick: () => {
+          state.exerciseContext = "workout";
+          navigate("workout");
+        },
+      },
+      secondary: {
+        label: "Discard",
+        onClick: () => {
+          state.activeWorkout = null;
+          clearActiveWorkoutDraft();
+          renderHome();
+        },
+      },
+    };
+  } else if (hasWorkoutContent(state.dayWorkout) && !state.dayIsReadOnly) {
+    const exCount = state.dayWorkout.exercises?.length || 0;
+    action = {
+      kicker: "Recovery",
+      title: `Resume ${formatDateLong(state.dayWorkout.date)}`,
+      detail: `${exCount} exercise${exCount !== 1 ? "s" : ""} saved in progress`,
+      primary: {
+        label: "Resume",
+        onClick: () => {
+          state.exerciseContext = "day";
+          navigate("day");
+        },
+      },
+      secondary: {
+        label: "Discard",
+        onClick: () => {
+          state.dayWorkout = null;
+          clearDayWorkoutDraft();
+          renderHome();
+        },
+      },
+    };
+  } else {
+    const missedIso = findMostRecentMissedWorkoutDate();
+    if (missedIso) {
+      action = {
+        kicker: "Recovery",
+        title: `Missed workout on ${formatDate(missedIso)}`,
+        detail:
+          "Move it to today, reschedule it, or open the day and finish it later.",
+        primary: {
+          label: "Recover",
+          onClick: () => showMissedDayRecoveryModal(missedIso, "home"),
+        },
+        secondary: {
+          label: "Calendar",
+          onClick: () => navigate("calendar"),
+        },
+      };
+    } else {
+      const plan = getActivePlan();
+      const nextWorkout = getNextScheduledWorkout(plan);
+      if (nextWorkout && plan) {
+        const template = plan.dayTemplates?.[nextWorkout.dow] || [];
+        action = {
+          kicker: "Next Action",
+          title: `${nextWorkout.label} · ${plan.name}`,
+          detail:
+            template.length > 0
+              ? template
+                  .map((ex) => ex.name)
+                  .slice(0, 4)
+                  .join(" · ")
+              : "Your next planned workout is ready to go.",
+          primary: {
+            label:
+              nextWorkout.label === "Today" ? "Open Workout" : "Preview Day",
+            onClick: () => openDaySelection(nextWorkout.iso, "home", true),
+          },
+          secondary: {
+            label: "Plans",
+            onClick: () => navigate("plan"),
+          },
+        };
+      } else {
+        action = {
+          kicker: "Next Action",
+          title: getActivePlan() ? "Browse exercises" : "Set your active plan",
+          detail: getActivePlan()
+            ? "No upcoming workout is queued, so this is a good time to browse exercises or build your next day."
+            : "Create or activate a plan so Home, Calendar, and day suggestions stay in sync.",
+          primary: {
+            label: getActivePlan() ? "Exercises" : "Open Plans",
+            onClick: () => navigate(getActivePlan() ? "exercises" : "plan"),
+          },
+          secondary: getActivePlan()
+            ? {
+                label: "Plans",
+                onClick: () => navigate("plan"),
+              }
+            : null,
+        };
+      }
+    }
+  }
+
+  if (!action) {
+    el.innerHTML = "";
+    syncHomeAction(null);
+    return;
+  }
+
+  syncHomeAction(action);
+  el.innerHTML = `
+    <div class="next-action-card">
+      <div class="next-action-kicker">${escHtml(action.kicker)}</div>
+      <div class="next-action-title">${escHtml(action.title)}</div>
+      <div class="next-action-detail">${escHtml(action.detail)}</div>
+      <div class="next-action-actions">
+        <button class="btn btn-primary" onclick="runHomeNextAction('primary')">${escHtml(action.primary.label)}</button>
+        ${action.secondary ? `<button class="btn btn-secondary" onclick="runHomeNextAction('secondary')">${escHtml(action.secondary.label)}</button>` : ""}
+      </div>
+    </div>`;
 }
 
 // Convert stored lbs value to the user's display unit (returns a number)
@@ -1025,6 +1348,8 @@ function clearLocalUserState() {
     "wt_plans",
     "wt_bodyweights",
     "wt_display_name",
+    "wt_draft_active_workout",
+    "wt_draft_day_workout",
   ].forEach((key) => localStorage.removeItem(key));
 }
 
@@ -1299,6 +1624,7 @@ function navigate(view) {
   if (view === "exercise-muscle") renderExMusclePickerView();
   if (view === "exercises") renderExerciseLibrary();
   if (view === "settings") renderSettings();
+  refreshContextHints();
 
   window.scrollTo(0, 0);
 }
@@ -1380,6 +1706,7 @@ function renderHome() {
   renderStats();
   renderBwHomeWidget();
   renderTodayPlan();
+  renderHomeNextAction();
 }
 
 function renderTodayPlan() {
@@ -1387,65 +1714,22 @@ function renderTodayPlan() {
   if (!el) return;
 
   const plan = getActivePlan();
-  if (!plan || !Array.isArray(plan.workoutDays)) {
-    el.innerHTML = "";
-    return;
-  }
-
-  const todayIso = todayISO();
-  const todayDow = new Date().getDay();
-  const logged = loadWorkouts().find((w) => w.date === todayIso);
-
-  // Decide which workout day to surface:
-  // — today, if it's an unlogged workout day within the plan window
-  // — otherwise, the next upcoming workout day within the plan window
-  let targetIso = null;
-  let targetDow = null;
-  let label = null;
-
-  const todayIsWorkoutDay =
-    plan.workoutDays.includes(todayDow) &&
-    todayIso >= plan.start &&
-    todayIso <= plan.end;
-
-  if (todayIsWorkoutDay && !logged) {
-    targetIso = todayIso;
-    targetDow = todayDow;
-    label = "Today";
-  } else {
-    // Scan up to 14 days ahead for the next workout day in range
-    for (let i = 1; i <= 14; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + i);
-      const iso = localISO(d);
-      const dow = d.getDay();
-      if (iso > plan.end) break;
-      if (iso < plan.start) continue;
-      if (plan.workoutDays.includes(dow)) {
-        targetIso = iso;
-        targetDow = dow;
-        label =
-          i === 1
-            ? "Tomorrow"
-            : d.toLocaleDateString("en-US", { weekday: "long" });
-        break;
-      }
-    }
-  }
-
-  if (!targetIso) {
+  const nextWorkout = getNextScheduledWorkout(plan);
+  if (!plan || !Array.isArray(plan.workoutDays) || !nextWorkout) {
     el.innerHTML = "";
     return;
   }
 
   const exList =
     plan.dayTemplates &&
-    plan.dayTemplates[targetDow] &&
-    plan.dayTemplates[targetDow].length > 0
-      ? plan.dayTemplates[targetDow].map((e) => escHtml(e.name)).join(" · ")
+    plan.dayTemplates[nextWorkout.dow] &&
+    plan.dayTemplates[nextWorkout.dow].length > 0
+      ? plan.dayTemplates[nextWorkout.dow]
+          .map((e) => escHtml(e.name))
+          .join(" · ")
       : "Workout day";
 
-  const rirCtx = getRirContext(plan, targetIso);
+  const rirCtx = getRirContext(plan, nextWorkout.iso);
   const rirBadge = rirCtx
     ? rirCtx.isDeloadWeek
       ? `<span class="today-plan-rir today-plan-rir-deload">Deload Week</span>`
@@ -1457,10 +1741,10 @@ function renderTodayPlan() {
       <div class="today-plan-next-label">Next Workout</div>
       <div class="today-plan-card-top">
         <div>
-          <div class="today-plan-label">${label} — ${escHtml(plan.name)} ${rirBadge}</div>
+          <div class="today-plan-label">${nextWorkout.label} — ${escHtml(plan.name)} ${rirBadge}</div>
           <div class="today-plan-exercises">${exList}</div>
         </div>
-        <button class="today-plan-start-btn" onclick="startNextWorkout('${targetIso}','${label}')">Start ›</button>
+        <button class="today-plan-start-btn" onclick="startNextWorkout('${nextWorkout.iso}','${nextWorkout.label}')">Start ›</button>
       </div>
     </div>`;
 }
@@ -1793,6 +2077,48 @@ function renderExerciseHistory() {
     return { date: w.date, value: toDisplayWeight(max) || 0 };
   });
 
+  const lastSession = sessions[sessions.length - 1];
+  const lastExercise = lastSession.exercises.find((e) => e.name === name);
+  const bestWeight = Math.max(...graphData.map((entry) => entry.value || 0));
+  const lastMax = Math.max(...lastExercise.sets.map((s) => s.weight || 0));
+  const lastDisplay = toDisplayWeight(lastMax);
+  const allTargetsHit = lastExercise.sets
+    .filter((s) => (s.weight || 0) > 0)
+    .every((s) => (s.actualReps ?? s.reps) >= (s.reps || 1));
+  const isKg = weightUnit() === "kg";
+  const jumpLbs = isKg
+    ? lastMax >= 220
+      ? 2.5 * KG_TO_LBS
+      : 1.25 * KG_TO_LBS
+    : lastMax >= 100
+      ? 5
+      : 2.5;
+  const jumpDisplay = isKg
+    ? lastMax >= 220
+      ? 2.5
+      : 1.25
+    : lastMax >= 100
+      ? 5
+      : 2.5;
+  const progressSummary = `
+    <div class="ex-history-summary">
+      <div class="ex-history-summary-card">
+        <div class="ex-history-summary-label">Best Weight</div>
+        <div class="ex-history-summary-value">${bestWeight ? `${bestWeight} ${weightUnit()}` : "—"}</div>
+        <div class="ex-history-summary-detail">Top single-session weight for ${escHtml(name)}</div>
+      </div>
+      <div class="ex-history-summary-card">
+        <div class="ex-history-summary-label">Last Session</div>
+        <div class="ex-history-summary-value">${lastDisplay ? `${lastDisplay} ${weightUnit()}` : "—"}</div>
+        <div class="ex-history-summary-detail">${formatDate(lastSession.date)} · ${lastSession.sets ? "" : escHtml(lastSession.name)}</div>
+      </div>
+      <div class="ex-history-summary-card ex-history-summary-wide">
+        <div class="ex-history-summary-label">Suggested Next Step</div>
+        <div class="ex-history-summary-value">${allTargetsHit && lastMax > 0 ? `${toDisplayWeight(lastMax + jumpLbs)} ${weightUnit()}` : `${lastDisplay || 0} ${weightUnit()}`}</div>
+        <div class="ex-history-summary-detail">${allTargetsHit && lastMax > 0 ? `Last session hit every target, so try +${jumpDisplay} ${weightUnit()} next time.` : "Repeat the same weight until every set hits its target reps cleanly."}</div>
+      </div>
+    </div>`;
+
   const sessionsHtml = [...sessions]
     .reverse()
     .map((w) => {
@@ -1814,6 +2140,7 @@ function renderExerciseHistory() {
     .join("");
 
   content.innerHTML = `
+    ${progressSummary}
     <div class="ex-history-graph-wrap">${makeSvgLineChart(graphData, { w: 320, h: 100 })}</div>
     <div class="ex-history-subtitle">Max weight per session</div>
     <div class="ex-history-sessions">${sessionsHtml}</div>`;
@@ -1894,6 +2221,11 @@ window.toggleCard = function (el) {
 
 // ── Active Workout (Start Workout flow) ───────────────────
 function startWorkout() {
+  if (hasWorkoutContent(state.activeWorkout)) {
+    state.exerciseContext = "workout";
+    navigate("workout");
+    return;
+  }
   state.activeWorkout = {
     id: uid(),
     name: "",
@@ -1902,6 +2234,7 @@ function startWorkout() {
   };
   state._sessionPRs = {};
   state.exerciseContext = "workout";
+  persistActiveWorkoutDraft();
   navigate("workout");
 }
 
@@ -1927,6 +2260,7 @@ function syncWorkoutFields() {
   w.name = document.getElementById("workout-name").value.trim();
   w.date = document.getElementById("workout-date").value;
   w.notes = document.getElementById("workout-notes").value.trim() || undefined;
+  persistActiveWorkoutDraft();
 }
 
 // ── Progressive Overload ──────────────────────────────────
@@ -2021,6 +2355,7 @@ function finishWorkout() {
     const suggestions = getOverloadSuggestions(w);
     addWorkout(w);
     state.activeWorkout = null;
+    clearActiveWorkoutDraft();
     navigate("home");
     if (suggestions.length > 0)
       setTimeout(() => showOverloadModal(suggestions), 300);
@@ -2042,18 +2377,12 @@ function finishWorkout() {
 }
 
 // ── Day View (calendar drill-down) ────────────────────────
-window.selectDay = function (iso, from) {
-  const workouts = loadWorkouts();
-  const existing = workouts.find((w) => w.date === iso);
-  state.dayWorkout = existing
-    ? JSON.parse(JSON.stringify(existing))
+function buildWorkoutForDate(iso, existingWorkout) {
+  const workout = existingWorkout
+    ? cloneJSON(existingWorkout)
     : { id: uid(), date: iso, name: "", exercises: [] };
-  state.dayIsReadOnly = !!(
-    existing && (existing.status ?? "completed") === "completed"
-  );
 
-  // If the day has no exercises, pre-load from the active plan
-  if (state.dayWorkout.exercises.length === 0) {
+  if (workout.exercises.length === 0) {
     const dow = new Date(iso + "T00:00:00").getDay();
     const plan = getActivePlan();
     if (
@@ -2065,16 +2394,13 @@ window.selectDay = function (iso, from) {
       plan.dayTemplates[dow] &&
       plan.dayTemplates[dow].length > 0
     ) {
-      state.dayWorkout.exercises = JSON.parse(
-        JSON.stringify(plan.dayTemplates[dow]),
-      );
-      if (!state.dayWorkout.name) state.dayWorkout.name = plan.name;
+      workout.exercises = cloneJSON(plan.dayTemplates[dow]);
+      if (!workout.name) workout.name = plan.name;
 
-      // RIR: adjust target reps based on last week's logged performance
       const rirCtx = getRirContext(plan, iso);
       if (rirCtx) {
         const allWorkouts = loadWorkouts();
-        state.dayWorkout.exercises = state.dayWorkout.exercises.map((ex) => ({
+        workout.exercises = workout.exercises.map((ex) => ({
           ...ex,
           sets: ex.sets.map((s) => {
             const lastSet = findLastLoggedSet(
@@ -2092,14 +2418,148 @@ window.selectDay = function (iso, from) {
             return { ...s, reps: adjReps, rir: rirCtx.targetRIR };
           }),
         }));
-        state.dayWorkout._rirCtx = rirCtx;
+        workout._rirCtx = rirCtx;
       }
     }
   }
 
+  return workout;
+}
+
+function isMissedPlannedDate(iso) {
+  const today = todayISO();
+  if (iso >= today) return false;
+  return (
+    (planDatesSet().has(iso) || getSavedPlannedDatesSet().has(iso)) &&
+    !getCompletedDatesSet().has(iso) &&
+    !getSkippedDatesSet().has(iso)
+  );
+}
+
+function upsertWorkoutByDate(workout) {
+  const existing = loadWorkouts().find((w) => w.date === workout.date);
+  if (existing) updateWorkout({ ...existing, ...workout, id: existing.id });
+  else addWorkout({ ...workout, id: workout.id || uid() });
+}
+
+function getRecoverySeedForDate(iso) {
+  const existing = loadWorkouts().find((w) => w.date === iso);
+  return buildWorkoutForDate(iso, existing);
+}
+
+function showMissedDayRecoveryModal(iso, from = "calendar") {
+  state._missedRecovery = { iso, from };
+  showModal({
+    title: "Recover Missed Workout",
+    msg: `<div class="swap-prompt">${formatDateLong(iso)} was planned but not completed.</div>
+      <div class="swap-list">
+        <div class="swap-option" onclick="recoverMissedDay('open')">Open scheduled day</div>
+        <div class="swap-option" onclick="recoverMissedDay('today')">Move to today</div>
+        <div class="swap-option" onclick="recoverMissedDay('pick')">Pick another date</div>
+        <div class="swap-option" onclick="recoverMissedDay('skip')">Skip this day</div>
+      </div>`,
+    confirmText: "Close",
+    confirmClass: "btn-secondary",
+  });
+}
+
+window.recoverMissedDay = function (action) {
+  document.getElementById("modal-overlay").hidden = true;
+  const recovery = state._missedRecovery;
+  if (!recovery) return;
+
+  if (action === "open") {
+    openDaySelection(recovery.iso, recovery.from, true);
+    return;
+  }
+
+  if (action === "skip") {
+    const existing = loadWorkouts().find((w) => w.date === recovery.iso);
+    upsertWorkoutByDate({
+      ...(existing || {}),
+      date: recovery.iso,
+      name: existing?.name || `${formatDate(recovery.iso)} Workout`,
+      exercises: existing?.exercises || [],
+      status: "skipped",
+    });
+    renderHome();
+    if (state.view === "calendar") renderCalendar();
+    return;
+  }
+
+  const openMovedDate = (targetIso) => {
+    const source = getRecoverySeedForDate(recovery.iso);
+    const targetExisting = loadWorkouts().find((w) => w.date === targetIso);
+    if (
+      targetExisting &&
+      (targetExisting.status ?? "completed") === "completed"
+    ) {
+      showAlert(
+        "Date already completed",
+        "Choose a date that does not already have a completed workout.",
+      );
+      return;
+    }
+
+    upsertWorkoutByDate({
+      ...(targetExisting || {}),
+      date: targetIso,
+      name: source.name || `${formatDate(targetIso)} Workout`,
+      notes: source.notes,
+      exercises: cloneJSON(source.exercises || []),
+      status: "planned",
+    });
+    upsertWorkoutByDate({
+      ...(loadWorkouts().find((w) => w.date === recovery.iso) || {}),
+      date: recovery.iso,
+      name: source.name || `${formatDate(recovery.iso)} Workout`,
+      exercises: cloneJSON(source.exercises || []),
+      status: "skipped",
+    });
+    openDaySelection(targetIso, recovery.from, true);
+  };
+
+  if (action === "today") {
+    openMovedDate(todayISO());
+    return;
+  }
+
+  if (action === "pick") {
+    showModal({
+      title: "Reschedule Workout",
+      msg: `<div class="field-label" style="margin-top:4px">Target Date</div>
+          <input type="date" id="modal-date-input" value="${todayISO()}" style="margin-top:6px;width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;color:var(--text);font-size:15px;outline:none" />`,
+      confirmText: "Move",
+      cancelText: "Cancel",
+      onConfirm: () => {
+        const dateStr = document.getElementById("modal-date-input").value;
+        if (!dateStr) return false;
+        openMovedDate(dateStr);
+      },
+    });
+  }
+};
+
+function openDaySelection(iso, from, skipRecovery = false) {
+  const workouts = loadWorkouts();
+  const existing = workouts.find((w) => w.date === iso);
+  if (!skipRecovery && isMissedPlannedDate(iso)) {
+    showMissedDayRecoveryModal(iso, from || "calendar");
+    return;
+  }
+  state.dayWorkout = buildWorkoutForDate(iso, existing);
+  state.dayIsReadOnly = !!(
+    existing && (existing.status ?? "completed") === "completed"
+  );
+
   state.exerciseContext = "day";
   state.dayReturnView = from || "calendar";
+  persistDayWorkoutDraft();
   navigate("day");
+}
+
+window.selectDay = function (iso, from) {
+  openDaySelection(iso, from);
 };
 
 function renderDay() {
@@ -2179,6 +2639,7 @@ function persistDay() {
   if (!w.status) w.status = "planned";
   if (exists) updateWorkout(w);
   else addWorkout(w);
+  persistDayWorkoutDraft();
 }
 
 // ── Shared Exercise Card ──────────────────────────────────
@@ -2347,6 +2808,7 @@ function rerenderFor(ctx) {
     upsertPlan(state.editingPlan);
     renderPlanEditor();
   } else {
+    persistActiveWorkoutDraft();
     renderWorkout();
   }
 }
@@ -2356,6 +2818,7 @@ window.handleSetChange = function (ctx, ei, si, field, val) {
     field === "weight" ? fromDisplayWeight(val) : parseFloat(val) || 0;
   if (ctx === "day") persistDay();
   if (ctx === "planTemplate") upsertPlan(state.editingPlan);
+  if (ctx === "workout") persistActiveWorkoutDraft();
 };
 
 window.handleRemoveSet = function (ctx, ei, si) {
@@ -3097,6 +3560,7 @@ function saveExercise() {
 
   if (state.exerciseContext === "day") persistDay();
   if (state.exerciseContext === "planTemplate") upsertPlan(state.editingPlan);
+  if (state.exerciseContext === "workout") persistActiveWorkoutDraft();
 
   state.editingExIndex = null;
   const dest =
@@ -3195,8 +3659,11 @@ function renderCalendar() {
       .filter((w) => (w.status ?? "completed") === "planned")
       .map((w) => w.date),
   );
+  const skippedDates = getSkippedDatesSet();
   const plan = getActivePlan();
-  const plannedDates = planDatesSet();
+  const plannedDates = new Set(
+    [...planDatesSet()].filter((iso) => !skippedDates.has(iso)),
+  );
 
   // ── Mesocycle week banner ──
   const weekBannerEl = document.getElementById("cal-week-banner");
@@ -3275,7 +3742,8 @@ function renderCalendar() {
       const hasLog = workoutDates.has(iso);
       const hasSvdPlan = savedPlannedDates.has(iso);
       const hasPlan = plannedDates.has(iso);
-      const isPlanned = hasPlan || hasSvdPlan;
+      const isSkipped = skippedDates.has(iso);
+      const isPlanned = !isSkipped && (hasPlan || hasSvdPlan);
       const isMissed = isPast && isPlanned && !hasLog;
 
       // Muscle group label from plan template
@@ -3475,6 +3943,9 @@ function renderPlanEditor() {
   body.innerHTML = plan.workoutDays
     .map((dow) => {
       const exercises = plan.dayTemplates[dow] || [];
+      const sortedDays = [...plan.workoutDays].sort((a, b) => a - b);
+      const dayIndex = sortedDays.indexOf(dow);
+      const prevDow = dayIndex > 0 ? sortedDays[dayIndex - 1] : null;
 
       // Summary line for the header
       let summary = "";
@@ -3526,6 +3997,11 @@ function renderPlanEditor() {
           </div>
         </div>
         <div class="plan-day-card-body">
+          <div class="plan-day-shortcuts">
+            <button class="btn btn-secondary btn-sm" onclick="planTemplateCopyPreviousDay(${dow})" ${prevDow === null ? "disabled" : ""}>Copy Prev</button>
+            <button class="btn btn-secondary btn-sm" onclick="openPlanDayCopyMenu(${dow})">Copy From…</button>
+            <button class="btn btn-secondary btn-sm" onclick="planTemplateClearDay(${dow})">Clear</button>
+          </div>
           ${exRows}
           <button class="btn btn-ghost btn-sm plan-day-add-btn" onclick="planTemplateAddEx(${dow})">+ Add Exercise</button>
         </div>
@@ -3554,6 +4030,49 @@ window.planTemplateEditEx = function (dow, ei) {
 
 window.planTemplateRemoveEx = function (dow, ei) {
   state.editingPlan.dayTemplates[dow].splice(ei, 1);
+  upsertPlan(state.editingPlan);
+  renderPlanEditor();
+};
+
+window.planTemplateCopyPreviousDay = function (dow) {
+  const days = [...state.editingPlan.workoutDays].sort((a, b) => a - b);
+  const idx = days.indexOf(dow);
+  if (idx <= 0) return;
+  const prevDow = days[idx - 1];
+  state.editingPlan.dayTemplates[dow] = cloneJSON(
+    state.editingPlan.dayTemplates[prevDow] || [],
+  );
+  upsertPlan(state.editingPlan);
+  renderPlanEditor();
+};
+
+window.openPlanDayCopyMenu = function (dow) {
+  const options = [...state.editingPlan.workoutDays]
+    .filter((candidate) => candidate !== dow)
+    .map(
+      (candidate) =>
+        `<div class="swap-option" onclick="copyPlanDayFrom(${dow},${candidate})">${DOW_NAMES[candidate]}</div>`,
+    )
+    .join("");
+  showModal({
+    title: "Copy Day Template",
+    msg: `<div class="swap-prompt">Copy exercises into ${DOW_NAMES[dow]} from:</div><div class="swap-list">${options}</div>`,
+    confirmText: "Cancel",
+    confirmClass: "btn-secondary",
+  });
+};
+
+window.copyPlanDayFrom = function (targetDow, sourceDow) {
+  document.getElementById("modal-overlay").hidden = true;
+  state.editingPlan.dayTemplates[targetDow] = cloneJSON(
+    state.editingPlan.dayTemplates[sourceDow] || [],
+  );
+  upsertPlan(state.editingPlan);
+  renderPlanEditor();
+};
+
+window.planTemplateClearDay = function (dow) {
+  state.editingPlan.dayTemplates[dow] = [];
   upsertPlan(state.editingPlan);
   renderPlanEditor();
 };
@@ -5240,7 +5759,7 @@ function renderPlan() {
           </div>
           <div class="plan-card-secondary-actions" id="plan-menu-${p.id}" hidden>
             <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit Details</button>
-            <button class="btn btn-secondary btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
+            <button class="btn btn-secondary btn-sm" onclick="copyPlan('${p.id}')">Duplicate Plan</button>
             <button class="btn btn-danger btn-sm" onclick="confirmDeletePlan('${p.id}')">Delete</button>
           </div>
         </div>
@@ -5820,6 +6339,7 @@ document.addEventListener("DOMContentLoaded", () => {
   registerServiceWorker();
   applyAccentPalette(getAccentPalette());
   updateThemeBtn();
+  refreshContextHints();
 
   // Splash screen — show once on first visit; re-openable via info icon
   const splash = document.getElementById("splash");
@@ -5877,17 +6397,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Active workout
   document.getElementById("btn-workout-back").addEventListener("click", () => {
-    showModal({
-      title: "Discard Workout?",
-      msg: "Your unsaved changes will be lost.",
-      confirmText: "Discard",
-      confirmClass: "btn-danger-solid",
-      cancelText: "Keep Editing",
-      onConfirm: () => {
-        state.activeWorkout = null;
-        navigate("home");
-      },
-    });
+    syncWorkoutFields();
+    persistActiveWorkoutDraft();
+    navigate("home");
   });
   document.getElementById("btn-add-exercise").addEventListener("click", () => {
     state.exerciseContext = "workout";
@@ -5909,11 +6421,10 @@ document.addEventListener("DOMContentLoaded", () => {
     .addEventListener("input", syncWorkoutFields);
 
   // Day view
-  document
-    .getElementById("btn-day-back")
-    .addEventListener("click", () =>
-      navigate(state.dayReturnView || "calendar"),
-    );
+  document.getElementById("btn-day-back").addEventListener("click", () => {
+    persistDay();
+    navigate(state.dayReturnView || "calendar");
+  });
   document
     .getElementById("btn-day-add-exercise")
     .addEventListener("click", () => {
@@ -5933,6 +6444,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const suggestions = getOverloadSuggestions(w);
         persistDay();
         state.dayWorkout = null;
+        clearDayWorkoutDraft();
         navigate(state.dayReturnView || "calendar");
         if (suggestions.length > 0)
           setTimeout(() => showOverloadModal(suggestions), 300);
@@ -5954,6 +6466,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     });
+  document.getElementById("day-notes").addEventListener("input", () => {
+    const w = state.dayWorkout;
+    if (!w) return;
+    w.notes = document.getElementById("day-notes").value.trim() || undefined;
+    persistDay();
+  });
 
   // Muscle picker (exercise flow)
   document
@@ -6191,6 +6709,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (savedTheme === "light") document.body.classList.add("light");
         else document.body.classList.remove("light");
         applyAccentPalette(getAccentPalette());
+        restoreWorkoutDrafts();
+        refreshContextHints();
 
         setHydrationProgress(100, "Ready!");
         await new Promise((r) => setTimeout(r, 220));
@@ -6203,7 +6723,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(showReleaseNotesIfNeeded, 180);
     } else {
       hideHydrationOverlay();
-      clearCaches();
+      clearLocalUserState();
       navigate("auth");
     }
   });
