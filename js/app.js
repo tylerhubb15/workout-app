@@ -920,6 +920,33 @@ function watchInstallingWorker(registration) {
   });
 }
 
+// ── Hydration loading overlay ──────────────────────────
+const HYDRATION_CIRCUMFERENCE = 2 * Math.PI * 52; // matches r="52" in SVG
+
+function showHydrationOverlay() {
+  const overlay = document.getElementById("hydration-overlay");
+  if (!overlay) return;
+  overlay.hidden = false;
+  setHydrationProgress(0, "Loading your data\u2026");
+}
+
+function setHydrationProgress(percent, label) {
+  const pct = Math.max(0, Math.min(100, Math.round(percent)));
+  const ring = document.getElementById("hydration-ring-fill");
+  const pctEl = document.getElementById("hydration-pct");
+  const labelEl = document.getElementById("hydration-label");
+  if (ring)
+    ring.style.strokeDashoffset = HYDRATION_CIRCUMFERENCE * (1 - pct / 100);
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (labelEl && label) labelEl.textContent = label;
+}
+
+function hideHydrationOverlay() {
+  const overlay = document.getElementById("hydration-overlay");
+  if (!overlay) return;
+  overlay.hidden = true;
+}
+
 async function ensureLatestAppBuild() {
   if (!("serviceWorker" in navigator)) return false;
 
@@ -6067,19 +6094,34 @@ document.addEventListener("DOMContentLoaded", () => {
         const reloadedForUpdate = await ensureLatestAppBuild();
         if (reloadedForUpdate) return;
 
+        showHydrationOverlay();
+        setHydrationProgress(10, "Checking for migrations\u2026");
+        await nextPaint();
+
         await migrateLocalStorageIfNeeded();
+        setHydrationProgress(25, "Fetching your workouts\u2026");
+        await nextPaint();
+
         await hydrateFromFirestore();
+        setHydrationProgress(80, "Applying preferences\u2026");
+        await nextPaint();
 
         // Sync theme from cloud on login
         const savedTheme = localStorage.getItem("wt_theme");
         if (savedTheme === "light") document.body.classList.add("light");
         else document.body.classList.remove("light");
+
+        setHydrationProgress(100, "Ready!");
+        await new Promise((r) => setTimeout(r, 220));
       } catch (e) {
         console.warn("Hydration error:", e);
+      } finally {
+        hideHydrationOverlay();
       }
       navigate("home");
       setTimeout(showReleaseNotesIfNeeded, 180);
     } else {
+      hideHydrationOverlay();
       clearCaches();
       navigate("auth");
     }

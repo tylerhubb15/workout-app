@@ -24,6 +24,27 @@
       if (localStorage.getItem("wt_theme") === "light")
         document.body.classList.add("light");
     </script>
+    <!-- ── Hydration Loading Overlay ───────────────────────── -->
+    <div id="hydration-overlay" class="hydration-overlay" hidden>
+      <div class="hydration-box">
+        <div class="hydration-ring-wrap">
+          <svg class="hydration-ring" viewBox="0 0 120 120">
+            <circle class="hydration-ring-track" cx="60" cy="60" r="52" />
+            <circle
+              class="hydration-ring-fill"
+              id="hydration-ring-fill"
+              cx="60"
+              cy="60"
+              r="52"
+            />
+          </svg>
+          <span class="hydration-ring-pct" id="hydration-pct">0%</span>
+        </div>
+        <div class="hydration-label" id="hydration-label">
+          Loading your data…
+        </div>
+      </div>
+    </div>
     <!-- ── Splash / Onboarding Overlay ─────────────────────── -->
     <div id="splash">
       <div class="splash-logo">

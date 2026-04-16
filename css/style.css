@@ -3241,6 +3241,71 @@ select.input-error {
   flex: 1;
 }
 
+/* ── Hydration Loading Overlay ───────────────────────── */
+.hydration-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.12s ease;
+}
+.hydration-overlay[hidden] {
+  display: none;
+}
+.hydration-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.hydration-ring-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+.hydration-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.hydration-ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 10;
+}
+body.light .hydration-ring-track {
+  stroke: rgba(29, 78, 216, 0.08);
+}
+.hydration-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 326.73;
+  stroke-dashoffset: 326.73;
+  transition: stroke-dashoffset 0.3s ease;
+}
+.hydration-ring-pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.hydration-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: -0.01em;
+}
+
 /* ── Plan Activation Progress ────────────────────────── */
 .plan-progress-overlay {
   position: fixed;
