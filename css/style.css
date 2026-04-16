@@ -161,6 +161,16 @@ body {
   position: relative;
 }
 
+body.app-booting #app {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.app-booting .bottom-nav {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ── Views ─────────────────────────────────────────────── */
 .view {
   display: none;

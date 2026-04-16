@@ -1269,6 +1269,10 @@ function hideStartupBrandOverlay() {
   overlay.hidden = true;
 }
 
+function finishInitialBoot() {
+  document.body.classList.remove("app-booting");
+}
+
 function showHydrationOverlay() {
   const overlay = document.getElementById("hydration-overlay");
   if (!overlay) return;
@@ -6797,12 +6801,14 @@ document.addEventListener("DOMContentLoaded", () => {
         hideStartupBrandOverlay();
       }
       navigate("home");
+      finishInitialBoot();
       setTimeout(showReleaseNotesIfNeeded, 180);
     } else {
       hideHydrationOverlay();
       hideStartupBrandOverlay();
       clearLocalUserState();
       navigate("auth");
+      finishInitialBoot();
     }
   });
 

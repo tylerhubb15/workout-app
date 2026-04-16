@@ -20,6 +20,7 @@
   </head>
   <body>
     <script>
+      document.body.classList.add("app-booting");
       if (localStorage.getItem("wt_seen")) document.body.classList.add("seen");
       if (localStorage.getItem("wt_theme") === "light")
         document.body.classList.add("light");
