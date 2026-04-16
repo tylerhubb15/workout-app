@@ -2354,9 +2354,11 @@ body.seen #splash {
   inset: 0;
   z-index: 105;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background:
     radial-gradient(circle at top, rgba(37, 99, 235, 0.18), transparent 38%),
     rgba(12, 12, 16, 0.88);
@@ -2371,11 +2373,28 @@ body.seen #splash {
 .release-notes-card {
   width: 100%;
   max-width: 380px;
+  max-height: calc(100dvh - 48px - env(safe-area-inset-bottom));
   background: linear-gradient(180deg, var(--surface), var(--surface2));
   border: 1px solid var(--border2);
   border-radius: 22px;
   padding: 24px 20px 20px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  margin: auto 0;
+}
+
+.release-notes-card #btn-release-dismiss {
+  position: sticky;
+  bottom: 0;
+  margin-top: 12px;
+}
+
+@supports not (height: 100dvh) {
+  .release-notes-card {
+    max-height: calc(100vh - 48px);
+  }
 }
 
 .release-notes-kicker {
