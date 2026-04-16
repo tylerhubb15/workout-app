@@ -719,6 +719,7 @@ const state = {
   activeWorkout: null, // workout in progress (Start Workout flow)
   dayWorkout: null, // workout being edited from the calendar day view
   dayIsReadOnly: false, // true when viewing a previously completed workout
+  exerciseSavePending: false,
   editingExIndex: null,
   formSets: [],
   formRepMode: "target", // 'target' | 'rir' | 'er' — rep mode for the exercise form
@@ -1466,6 +1467,44 @@ function showAlert(title, msg) {
   showModal({ title, msg, confirmText: "OK" });
 }
 
+function showToastMessage({
+  icon = "✓",
+  label = "Update",
+  title = "Saved",
+  detail = "",
+  tone = "default",
+}) {
+  const toast = document.getElementById("pr-toast");
+  if (!toast) return;
+  toast.querySelector(".pr-toast-icon").textContent = icon;
+  toast.querySelector(".pr-toast-label").textContent = label;
+  toast.querySelector(".pr-toast-ex").textContent = title;
+  toast.querySelector(".pr-toast-weight").textContent = detail;
+  toast.classList.remove(
+    "pr-toast-success",
+    "pr-toast-neutral",
+    "pr-toast-out",
+  );
+  if (tone === "success") toast.classList.add("pr-toast-success");
+  if (tone === "neutral") toast.classList.add("pr-toast-neutral");
+  toast.hidden = false;
+  void toast.offsetWidth;
+  toast.classList.add("pr-toast-in");
+  clearTimeout(toast._prTimeout);
+  toast._prTimeout = setTimeout(() => {
+    toast.classList.remove("pr-toast-in");
+    toast.classList.add("pr-toast-out");
+    setTimeout(() => {
+      toast.hidden = true;
+      toast.classList.remove(
+        "pr-toast-out",
+        "pr-toast-success",
+        "pr-toast-neutral",
+      );
+    }, 350);
+  }, 2200);
+}
+
 function nextPaint() {
   return new Promise((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(resolve)),
@@ -1525,24 +1564,20 @@ window.showTrainingMethodInfo = function (method) {
 };
 
 function showPRToast(exerciseName, weight) {
-  const toast = document.getElementById("pr-toast");
-  if (!toast) return;
-  toast.querySelector(".pr-toast-ex").textContent = exerciseName;
-  toast.querySelector(".pr-toast-weight").textContent = fmtWeight(weight);
-  toast.hidden = false;
-  toast.classList.remove("pr-toast-out");
-  // Force reflow so the transition fires from the hidden position
-  void toast.offsetWidth;
-  toast.classList.add("pr-toast-in");
-  clearTimeout(toast._prTimeout);
-  toast._prTimeout = setTimeout(() => {
-    toast.classList.remove("pr-toast-in");
-    toast.classList.add("pr-toast-out");
-    setTimeout(() => {
-      toast.hidden = true;
-      toast.classList.remove("pr-toast-out");
-    }, 350);
-  }, 2500);
+  showToastMessage({
+    icon: "🏆",
+    label: "New PR!",
+    title: exerciseName,
+    detail: fmtWeight(weight),
+  });
+}
+
+function setExerciseSavePending(pending) {
+  state.exerciseSavePending = pending;
+  const btn = document.getElementById("btn-save-exercise");
+  if (!btn) return;
+  btn.disabled = pending;
+  btn.textContent = pending ? "Saving..." : "Save Exercise";
 }
 
 // ── Rest Timer ────────────────────────────────────────────
@@ -2873,8 +2908,17 @@ window.handleEditExercise = function (ctx, ei) {
 };
 
 window.handleRemoveExercise = function (ctx, ei) {
-  workoutFor(ctx).exercises.splice(ei, 1);
+  const exercises = workoutFor(ctx).exercises;
+  const removed = exercises[ei];
+  exercises.splice(ei, 1);
   rerenderFor(ctx);
+  showToastMessage({
+    icon: "🗑",
+    label: "Removed",
+    title: removed?.name || "Exercise deleted",
+    detail: "Deleted from this workout",
+    tone: "neutral",
+  });
 };
 
 // ── Superset ──────────────────────────────────────────────
@@ -3132,6 +3176,7 @@ window.openExLibExercise = function (name) {
 
 // ── Exercise Form ─────────────────────────────────────────
 function renderExerciseForm() {
+  setExerciseSavePending(false);
   const editing = state.editingExIndex !== null;
   document.getElementById("exercise-view-title").textContent = editing
     ? "Edit Exercise"
@@ -3487,87 +3532,99 @@ function addFormSet() {
 }
 
 function saveExercise() {
+  if (state.exerciseSavePending) return;
+  setExerciseSavePending(true);
+
   const name = document.getElementById("exercise-name").value.trim();
   if (!name) {
+    setExerciseSavePending(false);
     showAlert(
       "No exercise selected",
       "Select an exercise from the list or tap + Add Custom Exercise.",
     );
     return;
   }
+  try {
+    // Flush any uncommitted input values
+    const inRirTemplate =
+      state.exerciseContext === "planTemplate" &&
+      state.editingPlan &&
+      state.editingPlan.rir;
+    const mode = inRirTemplate ? "planRir" : state.formRepMode;
+    document
+      .querySelectorAll("#sets-form-body .set-block")
+      .forEach((block, idx) => {
+        const inputs = block.querySelectorAll("input");
+        state.formSets[idx].weight = fromDisplayWeight(inputs[0].value);
+        if (mode === "target") {
+          if (inputs[1])
+            state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
+        } else if (mode === "rir") {
+          if (inputs[1])
+            state.formSets[idx].rir = parseFloat(inputs[1].value) || 0;
+        } else if (mode === "er") {
+          if (inputs[1])
+            state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
+          if (inputs[2])
+            state.formSets[idx].erTarget = parseFloat(inputs[2].value) || 0;
+        }
+      });
 
-  // Flush any uncommitted input values
-  const inRirTemplate =
-    state.exerciseContext === "planTemplate" &&
-    state.editingPlan &&
-    state.editingPlan.rir;
-  const mode = inRirTemplate ? "planRir" : state.formRepMode;
-  document
-    .querySelectorAll("#sets-form-body .set-block")
-    .forEach((block, idx) => {
-      const inputs = block.querySelectorAll("input");
-      state.formSets[idx].weight = fromDisplayWeight(inputs[0].value);
-      if (mode === "target") {
-        if (inputs[1])
-          state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
+    // Strip fields that don't belong to the current mode (prevents stale RIR/ER badges)
+    state.formSets.forEach((s) => {
+      if (mode === "target" || mode === "planRir") {
+        delete s.rir;
+        delete s.erTarget;
       } else if (mode === "rir") {
-        if (inputs[1])
-          state.formSets[idx].rir = parseFloat(inputs[1].value) || 0;
+        delete s.erTarget;
       } else if (mode === "er") {
-        if (inputs[1])
-          state.formSets[idx].reps = parseFloat(inputs[1].value) || 0;
-        if (inputs[2])
-          state.formSets[idx].erTarget = parseFloat(inputs[2].value) || 0;
+        delete s.rir;
       }
     });
 
-  // Strip fields that don't belong to the current mode (prevents stale RIR/ER badges)
-  state.formSets.forEach((s) => {
-    if (mode === "target" || mode === "planRir") {
-      delete s.rir;
-      delete s.erTarget;
-    } else if (mode === "rir") {
-      delete s.erTarget;
-    } else if (mode === "er") {
-      delete s.rir;
-    }
-  });
+    // For RIR templates: store repMode only when exercise is ER (marks it as ad-hoc ER)
+    const resolvedMuscle =
+      state.customExMuscleGroup || getMuscleGroup(name) || undefined;
+    const exercise = {
+      name,
+      repMode: inRirTemplate
+        ? mode === "er"
+          ? "er"
+          : undefined
+        : state.formRepMode,
+      muscleGroup: resolvedMuscle,
+      sets: inRirTemplate
+        ? state.formSets
+        : state.formSets.filter(
+            (s) => s.reps > 0 || s.weight > 0 || s.erTarget > 0,
+          ),
+    };
+    if (exercise.sets.length === 0) exercise.sets = [{ reps: 0, weight: 0 }];
+    state.customExMuscleGroup = null;
 
-  // For RIR templates: store repMode only when exercise is ER (marks it as ad-hoc ER)
-  const resolvedMuscle =
-    state.customExMuscleGroup || getMuscleGroup(name) || undefined;
-  const exercise = {
-    name,
-    repMode: inRirTemplate
-      ? mode === "er"
-        ? "er"
-        : undefined
-      : state.formRepMode,
-    muscleGroup: resolvedMuscle,
-    sets: inRirTemplate
-      ? state.formSets
-      : state.formSets.filter(
-          (s) => s.reps > 0 || s.weight > 0 || s.erTarget > 0,
-        ),
-  };
-  if (exercise.sets.length === 0) exercise.sets = [{ reps: 0, weight: 0 }];
-  state.customExMuscleGroup = null;
+    const target = workoutFor(state.exerciseContext);
+    if (state.editingExIndex !== null)
+      target.exercises[state.editingExIndex] = exercise;
+    else target.exercises.push(exercise);
 
-  const target = workoutFor(state.exerciseContext);
-  if (state.editingExIndex !== null)
-    target.exercises[state.editingExIndex] = exercise;
-  else target.exercises.push(exercise);
+    if (state.exerciseContext === "day") persistDay();
+    if (state.exerciseContext === "planTemplate") upsertPlan(state.editingPlan);
+    if (state.exerciseContext === "workout") persistActiveWorkoutDraft();
 
-  if (state.exerciseContext === "day") persistDay();
-  if (state.exerciseContext === "planTemplate") upsertPlan(state.editingPlan);
-  if (state.exerciseContext === "workout") persistActiveWorkoutDraft();
-
-  state.editingExIndex = null;
-  const dest =
-    state.exerciseContext === "planTemplate"
-      ? "plan-editor"
-      : state.exerciseContext;
-  navigate(dest);
+    state.editingExIndex = null;
+    const dest =
+      state.exerciseContext === "planTemplate"
+        ? "plan-editor"
+        : state.exerciseContext;
+    navigate(dest);
+  } catch (error) {
+    console.error("Failed to save exercise:", error);
+    setExerciseSavePending(false);
+    showAlert(
+      "Could not save exercise",
+      "Something went wrong while saving this exercise. Please try again.",
+    );
+  }
 }
 
 // ── Calendar ──────────────────────────────────────────────

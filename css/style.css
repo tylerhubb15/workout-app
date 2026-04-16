@@ -3344,6 +3344,24 @@ select.input-error {
     opacity 0.3s ease;
   pointer-events: none;
 }
+#pr-toast.pr-toast-success {
+  background: linear-gradient(
+    135deg,
+    rgba(52, 211, 153, 0.18),
+    rgba(52, 211, 153, 0.08)
+  );
+  border-color: rgba(52, 211, 153, 0.45);
+  color: var(--green);
+}
+#pr-toast.pr-toast-neutral {
+  background: linear-gradient(
+    135deg,
+    rgba(148, 163, 184, 0.18),
+    rgba(148, 163, 184, 0.08)
+  );
+  border-color: rgba(148, 163, 184, 0.35);
+  color: var(--text);
+}
 #pr-toast.pr-toast-in {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
@@ -4113,7 +4131,7 @@ body.light .plan-progress-track {
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0 16px;
+  padding: 0 16px calc(var(--nav-h) + 36px);
 }
 .ex-config-header {
   background: var(--surface2);
@@ -4146,6 +4164,24 @@ body.light .plan-progress-track {
 }
 .ex-config-change-btn:active {
   opacity: 0.7;
+}
+
+#btn-save-exercise {
+  position: sticky;
+  bottom: calc(var(--nav-h) + 12px);
+  margin-top: 20px;
+  z-index: 5;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+@supports (bottom: calc(env(safe-area-inset-bottom) + 1px)) {
+  .ex-config-form {
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 36px);
+  }
+
+  #btn-save-exercise {
+    bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+  }
 }
 
 /* Training type chips */
