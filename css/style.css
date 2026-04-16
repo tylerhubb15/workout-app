@@ -4238,6 +4238,40 @@ body.light .ex-lib-muscle-full-body {
   padding: 16px;
 }
 
+.settings-privacy-copy {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text2);
+}
+
+.settings-card-danger {
+  border-color: rgba(248, 113, 113, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 113, 113, 0.08),
+    rgba(248, 113, 113, 0.03)
+  );
+}
+
+body.light .settings-card-danger {
+  background: linear-gradient(
+    180deg,
+    rgba(220, 38, 38, 0.06),
+    rgba(220, 38, 38, 0.02)
+  );
+}
+
+.settings-danger-copy {
+  margin-bottom: 14px;
+}
+
+.btn-danger-soft {
+  background: rgba(248, 113, 113, 0.14);
+  color: var(--red);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+}
+
 /* Active state for settings toggle chips */
 .ex-chip.chip-active,
 .ex-chip.chip-active:active {

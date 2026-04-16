@@ -982,6 +982,76 @@ async function ensureLatestAppBuild() {
   return true;
 }
 
+function clearLocalUserState() {
+  clearCaches();
+  ["wt_active_plan", "wt_workouts", "wt_plans", "wt_bodyweights"].forEach(
+    (key) => localStorage.removeItem(key),
+  );
+}
+
+async function deleteCurrentUserData(uid) {
+  const { collection, getDocs, deleteDoc, doc } =
+    await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+  const collections = ["workouts", "plans", "bodyweights"];
+  await Promise.all(
+    collections.map(async (name) => {
+      const snap = await getDocs(
+        collection(window._db, `users/${uid}/${name}`),
+      );
+      await Promise.all(snap.docs.map((entry) => deleteDoc(entry.ref)));
+    }),
+  );
+
+  await deleteDoc(doc(window._db, `users/${uid}`)).catch(() => {});
+}
+
+async function handleDeleteAccount() {
+  const btn = document.getElementById("btn-delete-account");
+  const user = window._auth && window._auth.currentUser;
+  if (!btn || !user) return;
+
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Deleting...";
+
+  try {
+    const uid = user.uid;
+    const { deleteUser, getIdTokenResult } =
+      await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+
+    const token = await getIdTokenResult(user, true);
+    const authTimeMs = token.claims.auth_time
+      ? Number(token.claims.auth_time) * 1000
+      : 0;
+    const authAgeMs = Date.now() - authTimeMs;
+
+    if (!authTimeMs || authAgeMs > 5 * 60 * 1000) {
+      throw new Error("requires-recent-login");
+    }
+
+    await deleteCurrentUserData(uid);
+    await deleteUser(user);
+    clearLocalUserState();
+  } catch (e) {
+    const msg = String(e && e.message ? e.message : e);
+    if (msg.includes("requires-recent-login") || msg.includes("recent login")) {
+      showAlert(
+        "Re-authentication required",
+        "For security, please sign out, sign back in, and then try deleting your account again.",
+      );
+    } else {
+      showAlert(
+        "Could not delete account",
+        "Something went wrong while deleting your account. Please try again.",
+      );
+    }
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 // ── Modal ─────────────────────────────────────────────────
 function showModal({
   title,
@@ -6052,6 +6122,21 @@ document.addEventListener("DOMContentLoaded", () => {
       onConfirm: () => window._signOut(window._auth),
     });
   });
+
+  document
+    .getElementById("btn-delete-account")
+    .addEventListener("click", () => {
+      showModal({
+        title: "Delete Account?",
+        msg: "This permanently removes your login and saved data from Tensile. This action cannot be undone.",
+        confirmText: "Delete Account",
+        confirmClass: "btn-danger-solid",
+        cancelText: "Cancel",
+        onConfirm: () => {
+          handleDeleteAccount();
+        },
+      });
+    });
 
   // Don't navigate to home here — onAuthStateChanged handles initial navigation.
 });
