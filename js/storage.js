@@ -19,6 +19,20 @@ let _workouts = null;
 let _plans = null;
 let _bodyWeights = null;
 
+function sanitizeFirestoreData(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeFirestoreData(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, nested]) => nested !== undefined)
+        .map(([key, nested]) => [key, sanitizeFirestoreData(nested)]),
+    );
+  }
+  return value;
+}
+
 // ── Hydrate: load all data from Firestore into caches ─────
 // Call this once after login before navigating to the app.
 export async function hydrateFromFirestore() {
@@ -70,16 +84,18 @@ export function loadWorkouts() {
 }
 
 export function addWorkout(workout) {
-  if (_workouts) _workouts.unshift(workout);
-  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), workout);
+  const payload = sanitizeFirestoreData(workout);
+  if (_workouts) _workouts.unshift(payload);
+  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload);
 }
 
 export function updateWorkout(workout) {
+  const payload = sanitizeFirestoreData(workout);
   if (_workouts) {
     const i = _workouts.findIndex((w) => w.id === workout.id);
-    if (i !== -1) _workouts[i] = workout;
+    if (i !== -1) _workouts[i] = payload;
   }
-  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), workout);
+  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload);
 }
 
 export function deleteWorkout(id) {
@@ -93,12 +109,13 @@ export function loadPlans() {
 }
 
 export function upsertPlan(plan) {
+  const payload = sanitizeFirestoreData(plan);
   if (_plans) {
     const i = _plans.findIndex((p) => p.id === plan.id);
-    if (i !== -1) _plans[i] = plan;
-    else _plans.unshift(plan);
+    if (i !== -1) _plans[i] = payload;
+    else _plans.unshift(payload);
   }
-  setDoc(doc(window._db, `users/${uid()}/plans/${plan.id}`), plan);
+  setDoc(doc(window._db, `users/${uid()}/plans/${plan.id}`), payload);
 }
 
 export function deletePlan(id) {
@@ -136,10 +153,13 @@ export function logBodyWeight(date, weight) {
       _bodyWeights.sort((a, b) => b.date.localeCompare(a.date));
     }
   }
-  setDoc(doc(window._db, `users/${uid()}/bodyweights/${date}`), {
-    date,
-    weight,
-  });
+  setDoc(
+    doc(window._db, `users/${uid()}/bodyweights/${date}`),
+    sanitizeFirestoreData({
+      date,
+      weight,
+    }),
+  );
 }
 
 export function deleteBodyWeight(date) {
@@ -180,11 +200,16 @@ export async function migrateLocalStorageIfNeeded() {
 
   await Promise.all([
     ...rawWorkouts.map((w) =>
-      setDoc(doc(db, `users/${u}/workouts/${w.id}`), w),
+      setDoc(doc(db, `users/${u}/workouts/${w.id}`), sanitizeFirestoreData(w)),
     ),
-    ...rawPlans.map((p) => setDoc(doc(db, `users/${u}/plans/${p.id}`), p)),
+    ...rawPlans.map((p) =>
+      setDoc(doc(db, `users/${u}/plans/${p.id}`), sanitizeFirestoreData(p)),
+    ),
     ...rawBodyWeights.map((e) =>
-      setDoc(doc(db, `users/${u}/bodyweights/${e.date}`), e),
+      setDoc(
+        doc(db, `users/${u}/bodyweights/${e.date}`),
+        sanitizeFirestoreData(e),
+      ),
     ),
   ]);
 
