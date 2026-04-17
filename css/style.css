@@ -1218,6 +1218,8 @@ body.app-booting .bottom-nav {
 }
 
 input[type="text"],
+input[type="email"],
+input[type="password"],
 input[type="date"],
 input[type="number"] {
   width: 100%;
@@ -4716,9 +4718,10 @@ body.light .ex-lib-muscle-full-body {
   background: none;
   border: none;
   color: var(--text2);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  padding: 8px;
+  min-height: 48px;
+  padding: 10px 12px;
   border-radius: 6px;
   cursor: pointer;
   transition:
@@ -4738,6 +4741,44 @@ body.light .ex-lib-muscle-full-body {
   color: var(--red);
   font-size: 13px;
   line-height: 1.4;
+}
+
+#auth-email,
+#auth-password {
+  min-height: 52px;
+  font-size: 17px;
+}
+
+#btn-auth-submit {
+  min-height: 58px;
+  font-size: 18px;
+}
+
+@media (max-width: 480px) {
+  .auth-container {
+    padding: 32px 20px 40px;
+  }
+
+  .auth-brand-name {
+    font-size: 32px;
+  }
+
+  .auth-tagline {
+    font-size: 15px;
+  }
+
+  .auth-card {
+    padding: 22px 18px 24px;
+  }
+
+  .auth-tab {
+    font-size: 17px;
+  }
+
+  #btn-auth-submit {
+    min-height: 60px;
+    font-size: 19px;
+  }
 }
 
 /* ── Settings View ──────────────────────────────────────── */
