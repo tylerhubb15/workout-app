@@ -6416,11 +6416,8 @@ document.addEventListener("DOMContentLoaded", () => {
   updateThemeBtn();
   refreshContextHints();
 
-  // Splash screen — show once on first visit; re-openable via info icon
+  // Splash screen — manual only; re-openable via the home-screen info icon
   const splash = document.getElementById("splash");
-  if (localStorage.getItem("wt_seen")) {
-    splash.classList.add("hidden");
-  }
   document
     .getElementById("btn-splash-dismiss")
     .addEventListener("click", () => {
@@ -6431,6 +6428,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   window.showSplash = function () {
+    document.body.classList.remove("seen");
     splash.classList.remove("hidden");
     splash.style.display = "flex";
   };
