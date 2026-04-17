@@ -1,50 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="512" height="512">
-  <!-- Background -->
-  <rect width="192" height="192" rx="42" fill="#ffffff"/>
-
-  <!-- Barbell (overhead press position) -->
-  <!-- Left outer plate -->
-  <rect x="14" y="22" width="22" height="42" rx="6" fill="#14b8a6"/>
-  <!-- Left inner plate -->
-  <rect x="32" y="28" width="14" height="30" rx="4" fill="#0f766e"/>
-  <!-- Bar -->
-  <rect x="14" y="37" width="164" height="12" rx="6" fill="#2dd4bf"/>
-  <!-- Right inner plate -->
-  <rect x="146" y="28" width="14" height="30" rx="4" fill="#0f766e"/>
-  <!-- Right outer plate -->
-  <rect x="156" y="22" width="22" height="42" rx="6" fill="#14b8a6"/>
-
-  <!-- Left arm / flipper (reaching up to grip) -->
-  <path d="M 70 108 Q 56 74 58 44" stroke="#111827" stroke-width="17" fill="none" stroke-linecap="round"/>
-  <!-- Right arm / flipper -->
-  <path d="M 122 108 Q 136 74 134 44" stroke="#111827" stroke-width="17" fill="none" stroke-linecap="round"/>
-
-  <!-- Body -->
-  <ellipse cx="96" cy="140" rx="34" ry="42" fill="#111827"/>
-  <!-- Belly -->
-  <ellipse cx="96" cy="145" rx="21" ry="28" fill="#dff0ed"/>
-
-  <!-- Neck (connects head to body smoothly) -->
-  <ellipse cx="96" cy="106" rx="22" ry="10" fill="#111827"/>
-
-  <!-- Head -->
-  <circle cx="96" cy="85" r="27" fill="#111827"/>
-  <!-- Face patch -->
-  <ellipse cx="96" cy="88" rx="16" ry="18" fill="#dff0ed"/>
-
-  <!-- Eyes -->
-  <circle cx="89" cy="81" r="5" fill="white"/>
-  <circle cx="103" cy="81" r="5" fill="white"/>
-  <circle cx="90" cy="82" r="2.5" fill="#0c0c10"/>
-  <circle cx="104" cy="82" r="2.5" fill="#0c0c10"/>
-  <!-- Eye shine -->
-  <circle cx="91" cy="81" r="1.1" fill="white"/>
-  <circle cx="105" cy="81" r="1.1" fill="white"/>
-
-  <!-- Beak -->
-  <ellipse cx="96" cy="94" rx="6" ry="4.5" fill="#fb923c"/>
-
-  <!-- Feet -->
-  <ellipse cx="81" cy="179" rx="14" ry="6" fill="#fb923c" transform="rotate(-10 81 179)"/>
-  <ellipse cx="111" cy="179" rx="14" ry="6" fill="#fb923c" transform="rotate(10 111 179)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="128" fill="#0c0c10"/>
+  <g fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 86v340"/>
+    <path d="M384 86v340"/>
+    <path d="M64 192h64"/>
+    <path d="M384 192h64"/>
+    <path d="M64 320h64"/>
+    <path d="M384 320h64"/>
+    <path d="M128 192h256"/>
+    <path d="M128 320h256"/>
+  </g>
 </svg>
