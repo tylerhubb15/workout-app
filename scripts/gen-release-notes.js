@@ -32,7 +32,9 @@ try {
   tag = run("git describe --tags --abbrev=0");
 } catch {
   console.error("No git tags found. Create one first:");
-  console.error('  git tag -a v2026.04.18 -m "Release title\\n\\nBullet 1\\nBullet 2"');
+  console.error(
+    '  git tag -a v2026.04.18 -m "Release title\\n\\nBullet 1\\nBullet 2"',
+  );
   process.exit(1);
 }
 
@@ -57,15 +59,9 @@ const items = lines
   .filter((l) => l.length > 0)
   .map((l) => l.replace(/^[-*]\s*/, "")); // strip leading bullet chars
 
-const summary =
-  items.length > 0
-    ? items[0]
-    : `Release ${version}`;
+const summary = items.length > 0 ? items[0] : `Release ${version}`;
 
-const sections =
-  items.length > 0
-    ? [{ title: "Highlights", items }]
-    : [];
+const sections = items.length > 0 ? [{ title: "Highlights", items }] : [];
 
 const output = `export const APP_RELEASE = ${JSON.stringify(
   { version, title, summary, sections },
