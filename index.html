@@ -395,14 +395,24 @@
                 Create Account
               </button>
             </div>
-            <div class="field-label" style="margin-top: 16px">Email</div>
+            <label
+              class="field-label"
+              for="auth-email"
+              style="margin-top: 16px"
+              >Email</label
+            >
             <input
               type="email"
               id="auth-email"
               placeholder="you@email.com"
               autocomplete="email"
             />
-            <div class="field-label" style="margin-top: 12px">Password</div>
+            <label
+              class="field-label"
+              for="auth-password"
+              style="margin-top: 12px"
+              >Password</label
+            >
             <input
               type="password"
               id="auth-password"
@@ -772,11 +782,11 @@
         </div>
         <div class="workout-meta">
           <div>
-            <div class="field-label">Workout Name</div>
+            <label class="field-label" for="workout-name">Workout Name</label>
             <input type="text" id="workout-name" placeholder="e.g. Push Day" />
           </div>
           <div>
-            <div class="field-label">Date</div>
+            <label class="field-label" for="workout-date">Date</label>
             <input type="date" id="workout-date" />
           </div>
         </div>
@@ -787,7 +797,7 @@
             + Add Exercise
           </button>
           <div class="notes-action-wrap">
-            <div class="field-label">Notes</div>
+            <label class="field-label" for="workout-notes">Notes</label>
             <textarea
               id="workout-notes"
               class="notes-input"
@@ -836,7 +846,7 @@
             + Add Exercise
           </button>
           <div class="notes-action-wrap">
-            <div class="field-label">Notes</div>
+            <label class="field-label" for="day-notes">Notes</label>
             <textarea
               id="day-notes"
               class="notes-input"
@@ -1069,7 +1079,7 @@
           </div>
           <div class="plan-form">
             <div>
-              <div class="field-label">Plan Name</div>
+              <label class="field-label" for="plan-name">Plan Name</label>
               <input
                 type="text"
                 id="plan-name"
@@ -1079,11 +1089,13 @@
             </div>
             <div class="plan-dates">
               <div style="flex: 1">
-                <div class="field-label">Start Date</div>
+                <label class="field-label" for="plan-start">Start Date</label>
                 <input type="date" id="plan-start" />
               </div>
               <div style="flex: 1">
-                <div class="field-label">Training Weeks</div>
+                <label class="field-label" for="plan-weeks"
+                  >Training Weeks</label
+                >
                 <input
                   type="number"
                   id="plan-weeks"
@@ -1124,7 +1136,9 @@
                 id="plan-rir-options"
                 style="display: none; margin-top: 12px"
               >
-                <div class="field-label">Mesocycle Length</div>
+                <label class="field-label" for="plan-mesocycle-length"
+                  >Mesocycle Length</label
+                >
                 <select id="plan-mesocycle-length" class="input">
                   <option value="3">3 weeks (RIR 2 → 1 → 0)</option>
                   <option value="4" selected>

@@ -16,7 +16,10 @@
   --red: #f87171; /* rose — danger/delete */
   --text: #f0f0f8;
   --text2: #7878a0;
-  --text3: #44444f;
+  /* Bumped from #44444f — the old value landed around 3.8:1 on --bg,
+     below WCAG AA (4.5:1) for small text. #6a6a7f reads as the same
+     "muted tertiary" visually while clearing AA comfortably. */
+  --text3: #6a6a7f;
   --nav-bg: rgba(12, 12, 16, 0.92);
   --radius: 10px;
   --radius-sm: 6px;
@@ -41,7 +44,10 @@ body.light {
   --red: #dc2626;
   --text: #111118;
   --text2: #55556a;
-  --text3: #8888a0;
+  /* Darkened from #8888a0 — the old value sat around 3.3:1 on the
+     --bg light-mode surface, failing WCAG AA. #6a6a80 clears AA while
+     remaining dimmer than --text2 to preserve the visual hierarchy. */
+  --text3: #6a6a80;
   --nav-bg: rgba(242, 242, 248, 0.92);
 }
 
@@ -1209,6 +1215,9 @@ body.app-booting .bottom-nav {
 }
 
 .field-label {
+  /* display:block so when this class is applied to a <label> it still
+     stacks above its input like the previous <div> did. */
+  display: block;
   font-size: 11px;
   font-weight: 700;
   color: var(--text3);
