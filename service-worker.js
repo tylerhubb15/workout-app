@@ -1,4 +1,4 @@
-const CACHE = "workout-v80";
+const CACHE = "workout-v81";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -35,9 +35,16 @@ self.addEventListener("activate", (event) => {
         Promise.all(
           keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)),
         ),
+      )
+      .then(() => self.clients.claim())
+      .then(() =>
+        self.clients.matchAll({ type: "window" }).then((clients) => {
+          clients.forEach((client) =>
+            client.postMessage({ type: "SW_UPDATED" }),
+          );
+        }),
       ),
   );
-  self.clients.claim();
 });
 
 self.addEventListener("message", (event) => {

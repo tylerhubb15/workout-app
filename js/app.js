@@ -3421,7 +3421,7 @@ window.openCustomExModal = function () {
         ${muscles.map((m) => `<button class="custom-ex-muscle-btn${state._pendingCustomMuscle === m ? " active" : ""}" data-muscle="${escHtml(m)}" onclick="selectCustomExMuscle('${escHtml(m)}')">${escHtml(m)}</button>`).join("")}
       </div>
       <div class="field-label" style="margin-top:14px">2. Exercise Name</div>
-      <input type="text" id="modal-custom-ex-name" autocomplete="off"
+      <input type="text" id="modal-custom-ex-name" autocomplete="off" maxlength="60"
         style="margin-top:6px;width:100%;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;color:var(--text);font-size:15px;outline:none"
         placeholder="e.g. Banded Pull-Apart" />
       <div id="modal-custom-ex-error" style="color:var(--red);font-size:13px;font-weight:600;margin-top:8px;min-height:18px"></div>`,
@@ -3430,7 +3430,7 @@ window.openCustomExModal = function () {
     onConfirm: () => {
       const nameEl = document.getElementById("modal-custom-ex-name");
       const errEl = document.getElementById("modal-custom-ex-error");
-      const name = nameEl ? nameEl.value.trim() : "";
+      const name = nameEl ? nameEl.value.trim().slice(0, 60) : "";
       if (!state._pendingCustomMuscle) {
         if (errEl) errEl.textContent = "Please select a muscle group first.";
         return false; // keep modal open
@@ -3882,43 +3882,41 @@ let _calSwipeMoved = false;
 let _calLongPressTimer = null;
 let _calLongPressIso = null;
 
+let _calSwipeHandlers = null;
 function setupCalendarSwipe() {
   const section = document.getElementById("view-calendar");
-  if (!section || section._swipeReady) return;
-  section._swipeReady = true;
+  if (!section) return;
+  // Remove prior listeners if any (avoids stacking on DOM rebuilds)
+  if (_calSwipeHandlers && _calSwipeHandlers.el) {
+    const h = _calSwipeHandlers;
+    h.el.removeEventListener("touchstart", h.start);
+    h.el.removeEventListener("touchmove", h.move);
+    h.el.removeEventListener("touchend", h.end);
+  }
   let sx = 0,
     moved = false;
-  section.addEventListener(
-    "touchstart",
-    (e) => {
-      // only track swipes that start outside the popup
-      if (
-        document.getElementById("cal-day-popup") &&
-        !document.getElementById("cal-day-popup").hidden
-      )
-        return;
-      sx = e.touches[0].clientX;
-      moved = false;
-    },
-    { passive: true },
-  );
-  section.addEventListener(
-    "touchmove",
-    () => {
-      moved = true;
-    },
-    { passive: true },
-  );
-  section.addEventListener(
-    "touchend",
-    (e) => {
-      if (moved) {
-        const dx = e.changedTouches[0].clientX - sx;
-        if (Math.abs(dx) > 55) advanceMonth(dx < 0 ? 1 : -1);
-      }
-    },
-    { passive: true },
-  );
+  const onStart = (e) => {
+    if (
+      document.getElementById("cal-day-popup") &&
+      !document.getElementById("cal-day-popup").hidden
+    )
+      return;
+    sx = e.touches[0].clientX;
+    moved = false;
+  };
+  const onMove = () => {
+    moved = true;
+  };
+  const onEnd = (e) => {
+    if (moved) {
+      const dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 55) advanceMonth(dx < 0 ? 1 : -1);
+    }
+  };
+  section.addEventListener("touchstart", onStart, { passive: true });
+  section.addEventListener("touchmove", onMove, { passive: true });
+  section.addEventListener("touchend", onEnd, { passive: true });
+  _calSwipeHandlers = { el: section, start: onStart, move: onMove, end: onEnd };
 }
 
 window.calDayTouchStart = function (e, iso) {
@@ -6398,6 +6396,13 @@ function registerServiceWorker() {
     navigator.serviceWorker
       .register("service-worker.js", { updateViaCache: "none" })
       .catch(() => {});
+
+    // Auto-reload when the service worker activates a new cache version
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "SW_UPDATED") {
+        window.location.reload();
+      }
+    });
 
     // iOS PWAs resume from memory without a full page reload, so the
     // normal SW update check (at load time) never re-fires.  Re-check
