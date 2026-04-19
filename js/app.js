@@ -17,6 +17,7 @@ import {
   clearCaches,
   migrateLocalStorageIfNeeded,
   subscribeSaveStatus,
+  getWorkoutsGeneration,
 } from "./storage.js";
 import { APP_RELEASE } from "./release-notes.js";
 
@@ -1631,8 +1632,29 @@ window.dismissRestTimer = () => {
   document.getElementById("rest-timer").hidden = true;
 };
 
+// ── Built-in Exercise Set (lazy, cached) ──────────────────
+// Flattens EXERCISES into a Set for O(1) membership checks. EXERCISES is
+// constant after module init, so a single lazy build is enough for the
+// lifetime of the page.
+let _builtInSetCache = null;
+function _builtInSet() {
+  if (!_builtInSetCache) {
+    _builtInSetCache = new Set(Object.values(EXERCISES).flat());
+  }
+  return _builtInSetCache;
+}
+
 // ── PR Detection ──────────────────────────────────────────
+// Memoized by the workouts cache generation counter from storage.js.
+// Invalidated implicitly whenever addWorkout/updateWorkout/deleteWorkout,
+// clearCaches, or hydrateFromFirestore bump the generation, so callers
+// never see a stale PR map without us having to thread invalidations
+// through every call site.
+let _prMapCache = null;
+let _prMapCacheGen = -1;
 function buildPRMap() {
+  const gen = getWorkoutsGeneration();
+  if (_prMapCache && _prMapCacheGen === gen) return _prMapCache;
   const workouts = loadWorkouts();
   const prMap = {}; // exName → maxWeight
   for (const w of workouts) {
@@ -1643,6 +1665,8 @@ function buildPRMap() {
       }
     }
   }
+  _prMapCache = prMap;
+  _prMapCacheGen = gen;
   return prMap;
 }
 
@@ -3251,11 +3275,13 @@ function renderExPickerMuscleFilters() {
 }
 
 function renderExPickerList(filter) {
-  const builtInAll = Object.values(EXERCISES).flat();
+  // O(1) membership checks: the prior code ran used.filter(n => !builtInAll.includes(n))
+  // which is O(used × builtIn) per keystroke in the picker filter input.
+  const builtInSet = _builtInSet();
   const used = [
     ...new Set(loadWorkouts().flatMap((w) => w.exercises.map((e) => e.name))),
   ];
-  const custom = used.filter((n) => !builtInAll.includes(n));
+  const custom = used.filter((n) => !builtInSet.has(n));
   const selectedMuscle = state.exMuscleFilter;
   let html = "";
 

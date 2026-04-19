@@ -19,6 +19,18 @@ let _workouts = null;
 let _plans = null;
 let _bodyWeights = null;
 
+// Opaque generation counter bumped on every workout mutation. Consumers
+// (e.g., buildPRMap memoization in app.js) can read it via
+// getWorkoutsGeneration() to detect when their cached derivations are
+// stale without having to diff the array themselves.
+let _workoutsGeneration = 0;
+function bumpWorkoutsGeneration() {
+  _workoutsGeneration += 1;
+}
+export function getWorkoutsGeneration() {
+  return _workoutsGeneration;
+}
+
 function sanitizeFirestoreData(value) {
   if (Array.isArray(value)) {
     return value.map((item) => sanitizeFirestoreData(item));
@@ -143,6 +155,7 @@ export async function hydrateFromFirestore() {
   _bodyWeights = bwSnap.docs
     .map((d) => d.data())
     .sort((a, b) => b.date.localeCompare(a.date));
+  bumpWorkoutsGeneration();
 
   // Sync preferences and plan id from cloud profile to localStorage
   if (profileSnap.exists()) {
@@ -166,6 +179,7 @@ export function clearCaches() {
   _workouts = null;
   _plans = null;
   _bodyWeights = null;
+  bumpWorkoutsGeneration();
 }
 
 // ── Workouts ──────────────────────────────────────────────
@@ -176,6 +190,7 @@ export function loadWorkouts() {
 export function addWorkout(workout) {
   const payload = sanitizeFirestoreData(workout);
   if (_workouts) _workouts.unshift(payload);
+  bumpWorkoutsGeneration();
   return trackWrite(
     setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload),
     "addWorkout",
@@ -188,6 +203,7 @@ export function updateWorkout(workout) {
     const i = _workouts.findIndex((w) => w.id === workout.id);
     if (i !== -1) _workouts[i] = payload;
   }
+  bumpWorkoutsGeneration();
   return trackWrite(
     setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload),
     "updateWorkout",
@@ -196,6 +212,7 @@ export function updateWorkout(workout) {
 
 export function deleteWorkout(id) {
   if (_workouts) _workouts = _workouts.filter((w) => w.id !== id);
+  bumpWorkoutsGeneration();
   return trackWrite(
     deleteDoc(doc(window._db, `users/${uid()}/workouts/${id}`)),
     "deleteWorkout",
