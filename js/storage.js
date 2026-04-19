@@ -132,8 +132,12 @@ export function loadActivePlanId() {
 export function saveActivePlanId(id) {
   if (id) localStorage.setItem("wt_active_plan", id);
   else localStorage.removeItem("wt_active_plan");
+  // Profile fields live on the user document (users/{uid}), matching
+  // hydrateFromFirestore() and migrateLocalStorageIfNeeded(). The previous
+  // 3-segment path users/{uid}/profile is a subcollection reference and
+  // caused doc() to throw, so this write was silently failing.
   return setDoc(
-    doc(window._db, `users/${uid()}/profile`),
+    doc(window._db, `users/${uid()}`),
     { activePlanId: id || null },
     { merge: true },
   );
@@ -175,8 +179,8 @@ export function loadUnitPref() {
 
 export function saveUnitPref(unit) {
   localStorage.setItem("wt_unit_pref", unit);
-  setDoc(
-    doc(window._db, `users/${uid()}/profile`),
+  return setDoc(
+    doc(window._db, `users/${uid()}`),
     { unitPref: unit },
     { merge: true },
   );
