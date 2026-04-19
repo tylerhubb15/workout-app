@@ -23,12 +23,7 @@ import { APP_RELEASE } from "./release-notes.js";
 // First pieces of the incremental app.js split. Pure, dependency-light
 // helpers live in js/lib/ so they can be unit-tested and reused without
 // loading the 6k-line monolith.
-import {
-  localISO,
-  todayISO,
-  formatDate,
-  formatDateLong,
-} from "./lib/dates.js";
+import { localISO, todayISO, formatDate, formatDateLong } from "./lib/dates.js";
 import {
   LBS_TO_KG,
   KG_TO_LBS,
@@ -2863,8 +2858,12 @@ function rerenderFor(ctx) {
 }
 
 window.handleSetChange = function (ctx, ei, si, field, val) {
-  workoutFor(ctx).exercises[ei].sets[si][field] =
+  const set = workoutFor(ctx).exercises[ei].sets[si];
+  set[field] =
     field === "weight" ? fromDisplayWeight(val) : parseFloat(val) || 0;
+  if (field === "reps" && set.done && set.rir != null) {
+    set.actualReps = set.reps;
+  }
   if (ctx === "day") persistDay();
   if (ctx === "planTemplate") upsertPlan(state.editingPlan);
   if (ctx === "workout") persistActiveWorkoutDraft();
