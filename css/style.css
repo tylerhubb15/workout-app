@@ -131,6 +131,86 @@ body.light[data-accent-palette="alloy"] {
   --blue2: #2563eb;
 }
 
+body[data-accent-palette="ember"] {
+  --accent: #ea580c;
+  --accent2: #f97316;
+  --accent-dim: #c2410c;
+  --blue: #ea580c;
+  --blue2: #fb923c;
+}
+
+body.light[data-accent-palette="ember"] {
+  --accent: #c2410c;
+  --accent2: #ea580c;
+  --accent-dim: #9a3412;
+  --blue: #c2410c;
+  --blue2: #ea580c;
+}
+
+body[data-accent-palette="neon"] {
+  --accent: #06b6d4;
+  --accent2: #ec4899;
+  --accent-dim: #0e7490;
+  --blue: #06b6d4;
+  --blue2: #22d3ee;
+}
+
+body.light[data-accent-palette="neon"] {
+  --accent: #0891b2;
+  --accent2: #db2777;
+  --accent-dim: #155e75;
+  --blue: #0891b2;
+  --blue2: #06b6d4;
+}
+
+body[data-accent-palette="stealth"] {
+  --accent: #64748b;
+  --accent2: #94a3b8;
+  --accent-dim: #475569;
+  --blue: #64748b;
+  --blue2: #94a3b8;
+}
+
+body.light[data-accent-palette="stealth"] {
+  --accent: #475569;
+  --accent2: #64748b;
+  --accent-dim: #334155;
+  --blue: #475569;
+  --blue2: #64748b;
+}
+
+body[data-accent-palette="forest"] {
+  --accent: #16a34a;
+  --accent2: #4ade80;
+  --accent-dim: #15803d;
+  --blue: #16a34a;
+  --blue2: #4ade80;
+}
+
+body.light[data-accent-palette="forest"] {
+  --accent: #15803d;
+  --accent2: #16a34a;
+  --accent-dim: #166534;
+  --blue: #15803d;
+  --blue2: #16a34a;
+}
+
+body[data-accent-palette="violet"] {
+  --accent: #8b5cf6;
+  --accent2: #a78bfa;
+  --accent-dim: #6d28d9;
+  --blue: #8b5cf6;
+  --blue2: #a78bfa;
+}
+
+body.light[data-accent-palette="violet"] {
+  --accent: #7c3aed;
+  --accent2: #8b5cf6;
+  --accent-dim: #5b21b6;
+  --blue: #7c3aed;
+  --blue2: #8b5cf6;
+}
+
 /* ── Reset & Base ──────────────────────────────────────── */
 *,
 *::before,
@@ -4872,6 +4952,26 @@ body.light .theme-palette-preview {
   background: linear-gradient(135deg, #facc15, #2563eb 62%, #172554);
 }
 
+.theme-palette-preview-ember {
+  background: linear-gradient(135deg, #ea580c, #f97316);
+}
+
+.theme-palette-preview-neon {
+  background: linear-gradient(135deg, #06b6d4, #ec4899);
+}
+
+.theme-palette-preview-stealth {
+  background: linear-gradient(135deg, #475569, #94a3b8);
+}
+
+.theme-palette-preview-forest {
+  background: linear-gradient(135deg, #15803d, #4ade80);
+}
+
+.theme-palette-preview-violet {
+  background: linear-gradient(135deg, #6d28d9, #a78bfa);
+}
+
 .theme-palette-label {
   font-size: 14px;
   font-weight: 700;
@@ -5012,6 +5112,13 @@ body.light .settings-card-danger {
 }
 
 @keyframes save-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.82); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
 }

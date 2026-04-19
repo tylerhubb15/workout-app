@@ -42,6 +42,11 @@ const THEME_PALETTES = [
   { id: "pulse", label: "Pulse" },
   { id: "arcade", label: "Arcade" },
   { id: "alloy", label: "Alloy" },
+  { id: "ember", label: "Ember" },
+  { id: "neon", label: "Neon" },
+  { id: "stealth", label: "Stealth" },
+  { id: "forest", label: "Forest" },
+  { id: "violet", label: "Violet" },
 ];
 
 const ACTIVE_WORKOUT_DRAFT_KEY = "wt_draft_active_workout";
