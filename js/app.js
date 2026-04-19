@@ -16,6 +16,7 @@ import {
   hydrateFromFirestore,
   clearCaches,
   migrateLocalStorageIfNeeded,
+  subscribeSaveStatus,
 } from "./storage.js";
 import { APP_RELEASE } from "./release-notes.js";
 
@@ -6409,9 +6410,64 @@ function registerServiceWorker() {
   }
 }
 
+// ── Save Status Indicator ─────────────────────────────────
+// Subscribes to storage.js write-tracker events and updates the
+// #save-status pill. Hidden when idle+online; visible (and auto-fading
+// after "Saved") otherwise. One source of truth: the state coming out
+// of subscribeSaveStatus() in storage.js.
+function setupSaveStatusIndicator() {
+  const el = document.getElementById("save-status");
+  if (!el) return;
+  const textEl = document.getElementById("save-status-text");
+  const LABELS = {
+    idle: "",
+    saving: "Saving…",
+    saved: "Saved",
+    offline: "Offline",
+    error: "Save failed",
+  };
+  let hideTimer = null;
+
+  const clearHide = () => {
+    if (hideTimer) {
+      clearTimeout(hideTimer);
+      hideTimer = null;
+    }
+  };
+
+  subscribeSaveStatus(({ state }) => {
+    el.setAttribute("data-state", state);
+    if (textEl) textEl.textContent = LABELS[state] || "";
+
+    if (state === "idle") {
+      // Fade out, then remove from the accessibility tree.
+      clearHide();
+      el.classList.remove("is-visible");
+      hideTimer = setTimeout(() => el.setAttribute("hidden", ""), 200);
+      return;
+    }
+
+    clearHide();
+    el.removeAttribute("hidden");
+    // Next frame so the transition picks up the display change.
+    requestAnimationFrame(() => el.classList.add("is-visible"));
+
+    if (state === "saved") {
+      // Briefly show "Saved" then drop to idle so it doesn't nag.
+      hideTimer = setTimeout(() => {
+        el.setAttribute("data-state", "idle");
+        if (textEl) textEl.textContent = "";
+        el.classList.remove("is-visible");
+        setTimeout(() => el.setAttribute("hidden", ""), 200);
+      }, 1400);
+    }
+  });
+}
+
 // ── Event Listeners ───────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   registerServiceWorker();
+  setupSaveStatusIndicator();
   applyAccentPalette(getAccentPalette());
   updateThemeBtn();
   refreshContextHints();

@@ -33,6 +33,96 @@ function sanitizeFirestoreData(value) {
   return value;
 }
 
+// ── Save status tracker ────────────────────────────────────
+// Tracks in-flight Firestore writes so the UI can surface Saving / Saved /
+// Offline / Error state. `state` is one of: "idle" | "saving" | "saved"
+// | "offline" | "error". Every write funnels through trackWrite() so
+// callers can still `await` the returned promise and handle errors locally.
+const _saveStatus = {
+  state: "idle",
+  pending: 0,
+  lastError: null,
+  // last time we transitioned to "saved" — used to auto-fade the indicator
+  savedAt: 0,
+};
+const _saveSubs = new Set();
+
+function notifySaveSubs() {
+  for (const cb of _saveSubs) {
+    try {
+      cb({ ..._saveStatus });
+    } catch (err) {
+      console.error("saveStatus subscriber threw:", err);
+    }
+  }
+}
+
+function setSaveState(next) {
+  if (_saveStatus.state === next) return;
+  _saveStatus.state = next;
+  if (next === "saved") _saveStatus.savedAt = Date.now();
+  notifySaveSubs();
+}
+
+function trackWrite(promise, label = "write") {
+  _saveStatus.pending += 1;
+  if (_saveStatus.state !== "offline") setSaveState("saving");
+  // Note: we return the original promise, so callers can still await/catch.
+  // The .then/.catch below is a sibling handler purely for status tracking.
+  promise
+    .then(() => {
+      _saveStatus.lastError = null;
+    })
+    .catch((err) => {
+      _saveStatus.lastError = { at: Date.now(), label, message: err?.message || String(err) };
+      // If the browser knows we're offline, show offline instead of error —
+      // Firestore's IndexedDB persistence will replay the write when back online.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        setSaveState("offline");
+      } else {
+        setSaveState("error");
+        console.warn(`Firestore ${label} failed:`, err);
+      }
+    })
+    .finally(() => {
+      _saveStatus.pending = Math.max(0, _saveStatus.pending - 1);
+      if (_saveStatus.pending === 0 && _saveStatus.state === "saving") {
+        setSaveState("saved");
+      }
+    });
+  return promise;
+}
+
+export function subscribeSaveStatus(cb) {
+  _saveSubs.add(cb);
+  // Fire immediately with current state so new subscribers can sync the UI.
+  try {
+    cb({ ..._saveStatus });
+  } catch (err) {
+    console.error("saveStatus subscriber threw:", err);
+  }
+  return () => _saveSubs.delete(cb);
+}
+
+export function getSaveStatus() {
+  return { ..._saveStatus };
+}
+
+// Hook browser online/offline events so the indicator reflects connectivity
+// even when no writes are pending.
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    if (_saveStatus.state === "offline") {
+      setSaveState(_saveStatus.pending > 0 ? "saving" : "idle");
+    }
+  });
+  window.addEventListener("offline", () => setSaveState("offline"));
+  // Initial state check — if the app boots offline, surface it.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    _saveStatus.state = "offline";
+  }
+}
+
 // ── Hydrate: load all data from Firestore into caches ─────
 // Call this once after login before navigating to the app.
 export async function hydrateFromFirestore() {
@@ -86,7 +176,10 @@ export function loadWorkouts() {
 export function addWorkout(workout) {
   const payload = sanitizeFirestoreData(workout);
   if (_workouts) _workouts.unshift(payload);
-  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload);
+  return trackWrite(
+    setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload),
+    "addWorkout",
+  );
 }
 
 export function updateWorkout(workout) {
@@ -95,12 +188,18 @@ export function updateWorkout(workout) {
     const i = _workouts.findIndex((w) => w.id === workout.id);
     if (i !== -1) _workouts[i] = payload;
   }
-  setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload);
+  return trackWrite(
+    setDoc(doc(window._db, `users/${uid()}/workouts/${workout.id}`), payload),
+    "updateWorkout",
+  );
 }
 
 export function deleteWorkout(id) {
   if (_workouts) _workouts = _workouts.filter((w) => w.id !== id);
-  deleteDoc(doc(window._db, `users/${uid()}/workouts/${id}`));
+  return trackWrite(
+    deleteDoc(doc(window._db, `users/${uid()}/workouts/${id}`)),
+    "deleteWorkout",
+  );
 }
 
 // ── Plans ─────────────────────────────────────────────────
@@ -115,12 +214,18 @@ export function upsertPlan(plan) {
     if (i !== -1) _plans[i] = payload;
     else _plans.unshift(payload);
   }
-  setDoc(doc(window._db, `users/${uid()}/plans/${plan.id}`), payload);
+  return trackWrite(
+    setDoc(doc(window._db, `users/${uid()}/plans/${plan.id}`), payload),
+    "upsertPlan",
+  );
 }
 
 export function deletePlan(id) {
   if (_plans) _plans = _plans.filter((p) => p.id !== id);
-  deleteDoc(doc(window._db, `users/${uid()}/plans/${id}`));
+  return trackWrite(
+    deleteDoc(doc(window._db, `users/${uid()}/plans/${id}`)),
+    "deletePlan",
+  );
 }
 
 // ── Active Plan ───────────────────────────────────────────
@@ -136,10 +241,13 @@ export function saveActivePlanId(id) {
   // hydrateFromFirestore() and migrateLocalStorageIfNeeded(). The previous
   // 3-segment path users/{uid}/profile is a subcollection reference and
   // caused doc() to throw, so this write was silently failing.
-  return setDoc(
-    doc(window._db, `users/${uid()}`),
-    { activePlanId: id || null },
-    { merge: true },
+  return trackWrite(
+    setDoc(
+      doc(window._db, `users/${uid()}`),
+      { activePlanId: id || null },
+      { merge: true },
+    ),
+    "saveActivePlanId",
   );
 }
 
@@ -157,18 +265,24 @@ export function logBodyWeight(date, weight) {
       _bodyWeights.sort((a, b) => b.date.localeCompare(a.date));
     }
   }
-  setDoc(
-    doc(window._db, `users/${uid()}/bodyweights/${date}`),
-    sanitizeFirestoreData({
-      date,
-      weight,
-    }),
+  return trackWrite(
+    setDoc(
+      doc(window._db, `users/${uid()}/bodyweights/${date}`),
+      sanitizeFirestoreData({
+        date,
+        weight,
+      }),
+    ),
+    "logBodyWeight",
   );
 }
 
 export function deleteBodyWeight(date) {
   if (_bodyWeights) _bodyWeights = _bodyWeights.filter((e) => e.date !== date);
-  deleteDoc(doc(window._db, `users/${uid()}/bodyweights/${date}`));
+  return trackWrite(
+    deleteDoc(doc(window._db, `users/${uid()}/bodyweights/${date}`)),
+    "deleteBodyWeight",
+  );
 }
 
 // ── Unit Preference ───────────────────────────────────────
@@ -179,10 +293,13 @@ export function loadUnitPref() {
 
 export function saveUnitPref(unit) {
   localStorage.setItem("wt_unit_pref", unit);
-  return setDoc(
-    doc(window._db, `users/${uid()}`),
-    { unitPref: unit },
-    { merge: true },
+  return trackWrite(
+    setDoc(
+      doc(window._db, `users/${uid()}`),
+      { unitPref: unit },
+      { merge: true },
+    ),
+    "saveUnitPref",
   );
 }
 

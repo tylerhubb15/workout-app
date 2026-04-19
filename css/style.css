@@ -4916,3 +4916,93 @@ body.light .settings-card-danger {
   border-color: var(--accent);
   color: #fff;
 }
+
+/* ── Save Status Indicator ───────────────────────────────
+   Fixed, non-blocking pill in the top-right corner. Hidden by default;
+   toggled visible by app.js when there are in-flight writes, offline,
+   or a save failure. Driven by subscribeSaveStatus() in storage.js. */
+.save-status {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  z-index: 450; /* below modals (500+) but above nav */
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text2);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.save-status[hidden] {
+  display: none;
+}
+
+.save-status.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.save-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text3);
+  flex-shrink: 0;
+}
+
+/* State: saving — pulsing accent dot */
+.save-status[data-state="saving"] .save-status-dot {
+  background: var(--accent);
+  animation: save-pulse 1.2s ease-in-out infinite;
+}
+
+/* State: saved — brief green confirmation */
+.save-status[data-state="saved"] {
+  color: var(--green);
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.1);
+}
+.save-status[data-state="saved"] .save-status-dot {
+  background: var(--green);
+}
+
+/* State: offline — amber */
+.save-status[data-state="offline"] {
+  color: var(--gold);
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.1);
+}
+.save-status[data-state="offline"] .save-status-dot {
+  background: var(--gold);
+}
+
+/* State: error — red, stays put until retry */
+.save-status[data-state="error"] {
+  color: var(--red);
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.12);
+}
+.save-status[data-state="error"] .save-status-dot {
+  background: var(--red);
+}
+
+@keyframes save-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.82); }
+}

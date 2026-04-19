@@ -1576,6 +1576,22 @@
         </button>
       </div>
 
+      <!-- ── Save Status Indicator ─────────────────────── -->
+      <!-- Small pill anchored under the safe-area top-inset. Hidden when
+           idle + online; surfaces Saving / Saved / Offline / Error states
+           driven by subscribeSaveStatus() in storage.js. -->
+      <div
+        id="save-status"
+        class="save-status"
+        data-state="idle"
+        role="status"
+        aria-live="polite"
+        hidden
+      >
+        <span class="save-status-dot" aria-hidden="true"></span>
+        <span class="save-status-text" id="save-status-text">Saved</span>
+      </div>
+
       <!-- ── Bottom Navigation ─────────────────────────── -->
       <nav class="bottom-nav" id="bottom-nav">
         <button class="nav-btn active" data-view="home">
