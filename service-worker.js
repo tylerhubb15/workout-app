@@ -1,4 +1,4 @@
-const CACHE = "workout-v77";
+const CACHE = "workout-v78";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,6 +6,8 @@ const APP_SHELL = [
   "./js/app.js",
   "./js/release-notes.js",
   "./js/storage.js",
+  "./js/lib/dates.js",
+  "./js/lib/units.js",
   "./manifest.json",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",

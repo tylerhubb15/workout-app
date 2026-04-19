@@ -20,6 +20,23 @@ import {
   getWorkoutsGeneration,
 } from "./storage.js";
 import { APP_RELEASE } from "./release-notes.js";
+// First pieces of the incremental app.js split. Pure, dependency-light
+// helpers live in js/lib/ so they can be unit-tested and reused without
+// loading the 6k-line monolith.
+import {
+  localISO,
+  todayISO,
+  formatDate,
+  formatDateLong,
+} from "./lib/dates.js";
+import {
+  LBS_TO_KG,
+  KG_TO_LBS,
+  weightUnit,
+  toDisplayWeight,
+  fromDisplayWeight,
+  fmtWeight,
+} from "./lib/units.js";
 
 const RELEASE_NOTES_STORAGE_KEY = "wt_release_notes_seen";
 const RELEASE_RELOAD_PREFIX = "wt_release_reload_";
@@ -748,12 +765,8 @@ const state = {
 };
 
 // ── Unit Helpers ──────────────────────────────────────────
-const LBS_TO_KG = 0.453592;
-const KG_TO_LBS = 2.20462;
-
-function weightUnit() {
-  return loadUnitPref();
-}
+// (LBS_TO_KG, KG_TO_LBS, weightUnit, toDisplayWeight, fromDisplayWeight,
+// fmtWeight now live in ./lib/units.js and are imported at the top.)
 
 function cloneJSON(value) {
   return JSON.parse(JSON.stringify(value));
@@ -1073,25 +1086,6 @@ function renderHomeNextAction() {
     </div>`;
 }
 
-// Convert stored lbs value to the user's display unit (returns a number)
-function toDisplayWeight(lbs) {
-  if (lbs == null || lbs === "") return "";
-  const v = parseFloat(lbs) || 0;
-  return weightUnit() === "kg" ? +(v * LBS_TO_KG).toFixed(2) : v;
-}
-
-// Convert a value the user typed (in their preferred unit) back to lbs for storage
-function fromDisplayWeight(displayVal) {
-  const v = parseFloat(displayVal) || 0;
-  return weightUnit() === "kg" ? Math.round(v * KG_TO_LBS * 100) / 100 : v;
-}
-
-// Format a stored lbs value as "X lbs" or "X kg" for display
-function fmtWeight(lbs) {
-  if (!lbs) return "";
-  return `${toDisplayWeight(lbs)} ${weightUnit()}`;
-}
-
 window.toggleWeightUnit = function (ctx) {
   saveUnitPref(weightUnit() === "lbs" ? "kg" : "lbs");
   renderBwHomeWidget();
@@ -1142,31 +1136,8 @@ function computeAdjustedReps(templateReps, lastSet, targetRIR) {
 }
 
 // ── Helpers ───────────────────────────────────────────────
-function localISO(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-function todayISO() {
-  return localISO(new Date());
-}
-
-function formatDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatDateLong(iso) {
-  const [y, m, d] = iso.split("-");
-  return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-}
+// (localISO, todayISO, formatDate, formatDateLong now live in
+// ./lib/dates.js and are imported at the top.)
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
