@@ -6,11 +6,11 @@ A step-by-step guide to evolving this app from a local PWA into a multi-user, ap
 
 ## Overview
 
-| Phase | What it does | Cost |
-|-------|-------------|------|
-| 1. Firebase | Real user accounts + cloud storage | Free to start |
-| 2. PWABuilder | Publish to Google Play Store | $25 one-time |
-| 3. Capacitor | Publish to Apple App Store | $99/year + Mac required |
+| Phase         | What it does                       | Cost                    |
+| ------------- | ---------------------------------- | ----------------------- |
+| 1. Firebase   | Real user accounts + cloud storage | Free to start           |
+| 2. PWABuilder | Publish to Google Play Store       | $25 one-time            |
+| 3. Capacitor  | Publish to Apple App Store         | $99/year + Mac required |
 
 ---
 
@@ -62,7 +62,7 @@ Add these two script tags to the bottom of `index.html` before your own scripts:
     projectId: "YOUR_PROJECT_ID",
     storageBucket: "YOUR_PROJECT.appspot.com",
     messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    appId: "YOUR_APP_ID",
   };
 
   const app = initializeApp(firebaseConfig);
@@ -98,32 +98,32 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   onAuthStateChanged,
-  signOut
+  signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const auth = window.auth;
 
-document.getElementById('btn-signup').addEventListener('click', () => {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
+document.getElementById("btn-signup").addEventListener("click", () => {
+  const email = document.getElementById("auth-email").value;
+  const password = document.getElementById("auth-password").value;
   createUserWithEmailAndPassword(auth, email, password).catch(console.error);
 });
 
-document.getElementById('btn-login').addEventListener('click', () => {
-  const email = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
+document.getElementById("btn-login").addEventListener("click", () => {
+  const email = document.getElementById("auth-email").value;
+  const password = document.getElementById("auth-password").value;
   signInWithEmailAndPassword(auth, email, password).catch(console.error);
 });
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'block';
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("main-app").style.display = "block";
     window.currentUserId = user.uid;
     // initialize your app here
   } else {
-    document.getElementById('auth-screen').style.display = 'block';
-    document.getElementById('main-app').style.display = 'none';
+    document.getElementById("auth-screen").style.display = "block";
+    document.getElementById("main-app").style.display = "none";
   }
 });
 ```
@@ -133,34 +133,40 @@ onAuthStateChanged(auth, (user) => {
 In `js/storage.js`, replace localStorage calls with Firestore reads/writes.
 
 **Before (localStorage):**
+
 ```js
 export function loadWorkouts() {
-  return JSON.parse(localStorage.getItem('workouts') || '[]');
+  return JSON.parse(localStorage.getItem("workouts") || "[]");
 }
 
 export function addWorkout(workout) {
   const workouts = loadWorkouts();
   workouts.push(workout);
-  localStorage.setItem('workouts', JSON.stringify(workouts));
+  localStorage.setItem("workouts", JSON.stringify(workouts));
 }
 ```
 
 **After (Firestore):**
+
 ```js
 import {
-  collection, addDoc, getDocs, query, where
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 export async function loadWorkouts() {
   const uid = window.currentUserId;
-  const q = query(collection(window.db, 'workouts'), where('uid', '==', uid));
+  const q = query(collection(window.db, "workouts"), where("uid", "==", uid));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 export async function addWorkout(workout) {
   const uid = window.currentUserId;
-  await addDoc(collection(window.db, 'workouts'), { ...workout, uid });
+  await addDoc(collection(window.db, "workouts"), { ...workout, uid });
 }
 ```
 
@@ -184,15 +190,24 @@ service cloud.firestore {
 
 This ensures users can only read and write their own data.
 
-### Step 10: Deploy to GitHub Pages
+### Step 10: Deploy to GitHub Pages & Firebase Hosting
 
-Your app is already on GitHub Pages. After the Firebase changes, just push to `main`:
+After any changes, push to `main` **and** redeploy Firebase Hosting:
 
 ```bash
 git add .
-git commit -m "Add Firebase auth and Firestore storage"
+git commit -m "Your commit message"
 git push origin main
 ```
+
+Then **always** redeploy to Firebase Hosting:
+
+```bash
+cd path/to/workout_app
+firebase deploy --only hosting
+```
+
+> **Important:** GitHub Pages updates automatically on push, but Firebase Hosting does **not**. You must run `firebase deploy --only hosting` after every commit/push, or your Firebase-hosted version will be stale.
 
 ---
 
@@ -201,12 +216,14 @@ git push origin main
 PWABuilder wraps your existing PWA into a Play Store package — no native code required.
 
 ### Prerequisites
+
 - Your app must be live at a public HTTPS URL (GitHub Pages works)
 - A Google Play Developer account ($25 one-time fee at [play.google.com/console](https://play.google.com/console))
 
 ### Step 1: Verify Your PWA is Valid
 
 Check these are in place:
+
 - `manifest.json` exists with `name`, `short_name`, `icons`, `start_url`, `display: "standalone"`
 - `service-worker.js` is registered in `index.html`
 - Site is served over HTTPS
@@ -259,6 +276,7 @@ PWABuilder's output zip includes this file and instructions.
 Capacitor wraps your web app in a native iOS shell. This requires a Mac and Xcode.
 
 ### Prerequisites
+
 - A Mac with Xcode installed (free from the Mac App Store)
 - Apple Developer account ($99/year at [developer.apple.com](https://developer.apple.com))
 - Node.js installed on your Mac
@@ -341,6 +359,7 @@ This opens the project in Xcode.
 ## Summary Checklist
 
 ### Phase 1 — Firebase
+
 - [ ] Create Firebase project
 - [ ] Enable Email/Password auth
 - [ ] Create Firestore database
@@ -351,6 +370,7 @@ This opens the project in Xcode.
 - [ ] Push to GitHub Pages
 
 ### Phase 2 — Google Play
+
 - [ ] Register Google Play Developer account ($25)
 - [ ] Validate PWA at pwabuilder.com
 - [ ] Download `.aab` from PWABuilder
@@ -360,6 +380,7 @@ This opens the project in Xcode.
 - [ ] Submit for review
 
 ### Phase 3 — Apple App Store
+
 - [ ] Register Apple Developer account ($99/yr)
 - [ ] Install Node, Capacitor on Mac
 - [ ] Run `npx cap add ios`
