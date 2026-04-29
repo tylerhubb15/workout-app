@@ -3165,6 +3165,73 @@ body.light .er-badge {
   line-height: 1.5;
   margin-bottom: 6px;
 }
+/* ── Template card start-day row ─────────────────────────── */
+.tpl-start-day-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+.tpl-start-day-label {
+  font-size: 12px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.tpl-start-day-select {
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  flex: 1;
+}
+/* ── Template card action row ────────────────────────────── */
+.tpl-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+/* ── Template exercise preview ───────────────────────────── */
+.tpl-preview-wrap {
+  margin-top: 12px;
+  border-top: 1px solid var(--border2);
+  padding-top: 12px;
+}
+.tpl-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.tpl-day-preview {
+  background: var(--surface3);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.tpl-day-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 6px;
+}
+.tpl-ex-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tpl-ex-list li {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.4;
+}
 
 /* ── Muscle Count Overview ─────────────────────────────── */
 .muscle-count-row {

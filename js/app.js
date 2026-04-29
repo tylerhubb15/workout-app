@@ -761,6 +761,7 @@ const state = {
   exLibMuscle: null, // selected muscle filter in exercise library (null = All)
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
   _pendingTemplateDayTemplates: null, // day templates from a pre-made plan, applied on first save
+  _pendingTemplateDayLabels: null, // day labels from a pre-made plan, applied on first save
   _homeAction: null,
 };
 
@@ -1837,7 +1838,10 @@ function getWeekVolumeByMuscle() {
     w.exercises.forEach((ex) => {
       const muscle = ex.muscleGroup || getMuscleGroup(ex.name);
       if (!muscle || muscle === "Full Body") return;
-      sets[muscle] = (sets[muscle] || 0) + ex.sets.length;
+      // ER sets count as 1.5× toward weekly volume (rest-pause technique is
+      // more stimulus-per-set than a straight set)
+      const erMultiplier = ex.repMode === "er" ? 1.5 : 1;
+      sets[muscle] = (sets[muscle] || 0) + ex.sets.length * erMultiplier;
     });
   });
   return { sets, monday, sunday };
@@ -1873,7 +1877,7 @@ function renderVolumeTracker() {
       <div class="vol-row">
         <div class="vol-row-top">
           <span class="vol-muscle">${muscle}</span>
-          <span class="vol-count${count === 0 ? " vol-count-zero" : ""}">${count} set${count !== 1 ? "s" : ""}</span>
+          <span class="vol-count${count === 0 ? " vol-count-zero" : ""}">${Number.isInteger(count) ? count : count.toFixed(1)} set${count !== 1 ? "s" : ""}</span>
         </div>
         <div class="vol-bar-bg">
           <div class="vol-bar-fill ${barCls}" style="width:${pct}%"></div>
@@ -4429,6 +4433,10 @@ const PLAN_TEMPLATES = [
     tags: ["Intermediate", "Hypertrophy"],
     workoutDays: [1, 2, 3, 5, 6, 0], // Mon–Sat + Sun
     defaultWeeks: 8,
+    // pattern: 7-element array, true = workout day (starting from defaultStartDow=Mon)
+    pattern: [true, true, true, true, true, true, false],
+    defaultStartDow: 1,
+    slotLabels: ["Push A", "Pull A", "Legs A", "Push B", "Pull B", "Legs B"],
     dayLabels: {
       1: "Push A",
       2: "Pull A",
@@ -4813,6 +4821,9 @@ const PLAN_TEMPLATES = [
     tags: ["Beginner", "Intermediate", "Hypertrophy"],
     workoutDays: [1, 2, 4, 5], // Mon, Tue, Thu, Fri
     defaultWeeks: 8,
+    pattern: [true, true, false, true, true, false, false],
+    defaultStartDow: 1,
+    slotLabels: ["Upper A", "Lower A", "Upper B", "Lower B"],
     dayTemplates: {
       1: [
         // Upper A
@@ -5057,6 +5068,9 @@ const PLAN_TEMPLATES = [
     tags: ["Beginner", "Strength", "Time-Efficient"],
     workoutDays: [1, 3, 5], // Mon, Wed, Fri
     defaultWeeks: 6,
+    pattern: [true, false, true, false, true, false, false],
+    defaultStartDow: 1,
+    slotLabels: ["Full Body A", "Full Body B", "Full Body C"],
     dayTemplates: {
       1: [
         // Day A
@@ -5234,6 +5248,9 @@ const PLAN_TEMPLATES = [
     tags: ["Intermediate", "Hypertrophy", "Glutes"],
     workoutDays: [1, 2, 4, 5],
     defaultWeeks: 8,
+    pattern: [true, true, false, true, true, false, false],
+    defaultStartDow: 1,
+    slotLabels: ["Glutes & Hamstrings", "Upper", "Quads & Glutes", "Upper B"],
     dayTemplates: {
       1: [
         // Glutes & Hamstrings
@@ -5469,6 +5486,14 @@ const PLAN_TEMPLATES = [
     tags: ["Intermediate", "Hypertrophy", "Arms"],
     workoutDays: [1, 2, 4, 5],
     defaultWeeks: 6,
+    pattern: [true, true, false, true, true, false, false],
+    defaultStartDow: 1,
+    slotLabels: [
+      "Chest & Triceps",
+      "Back & Biceps",
+      "Shoulders & Arms",
+      "Legs",
+    ],
     dayTemplates: {
       1: [
         // Chest & Triceps
@@ -5720,44 +5745,162 @@ const PLAN_TEMPLATES = [
 function renderPlanTemplates() {
   const container = document.getElementById("plan-templates-list");
   if (!container) return;
+  const DOW_FULL = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
   container.innerHTML = PLAN_TEMPLATES.map((tpl) => {
-    const dayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-    const pips = dayLabels
+    const dowLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+    // Build the day-of-week pips dynamically from pattern + default start
+    const defaultStart = tpl.defaultStartDow ?? 1;
+    const computedWorkoutDays = tpl.pattern
+      ? tpl.pattern
+          .map((on, i) => (on ? (defaultStart + i) % 7 : -1))
+          .filter((d) => d !== -1)
+      : tpl.workoutDays;
+    const pips = dowLabels
       .map(
         (lbl, i) =>
-          `<div class="plan-day-pip ${tpl.workoutDays.includes(i) ? "on" : "off"}">${lbl}</div>`,
+          `<div class="plan-day-pip ${computedWorkoutDays.includes(i) ? "on" : "off"}">${lbl}</div>`,
       )
       .join("");
+
     const tags = tpl.tags
       .map((t) => `<span class="tpl-tag">${t}</span>`)
       .join("");
+
+    // Start-day selector (only for templates with a pattern)
+    const startDayRow = tpl.pattern
+      ? `
+      <div class="tpl-start-day-row">
+        <label class="tpl-start-day-label">First workout day:</label>
+        <select class="tpl-start-day-select" id="tpl-startdow-${tpl.id}" onchange="updateTplPips('${tpl.id}')">
+          ${DOW_FULL.map((name, i) => `<option value="${i}"${i === defaultStart ? " selected" : ""}>${name}</option>`).join("")}
+        </select>
+      </div>`
+      : "";
+
+    // Exercise preview per day
+    const patternPositions = tpl.pattern
+      ? tpl.pattern.map((on, i) => (on ? i : -1)).filter((i) => i !== -1)
+      : [];
+    const previewDays = tpl.workoutDays
+      .map((origDow, slotIdx) => {
+        const label =
+          (tpl.slotLabels && tpl.slotLabels[slotIdx]) || `Day ${slotIdx + 1}`;
+        const exercises = (tpl.dayTemplates[origDow] || [])
+          .map((ex) => `<li>${escHtml(ex.name)}</li>`)
+          .join("");
+        return `<div class="tpl-day-preview"><div class="tpl-day-label">${escHtml(label)}</div><ul class="tpl-ex-list">${exercises}</ul></div>`;
+      })
+      .join("");
+
     return `
-      <div class="plan-template-card">
+      <div class="plan-template-card" id="tpl-card-${tpl.id}">
         <div class="plan-template-name">${escHtml(tpl.name)}</div>
         <div class="plan-template-tags">${tags}</div>
         <div class="plan-template-desc">${escHtml(tpl.description)}</div>
-        <div class="plan-card-days" style="margin:10px 0 6px">${pips}</div>
-        <button class="btn btn-primary btn-sm" onclick="usePlanTemplate('${tpl.id}')">Use This Plan</button>
+        <div class="plan-card-days tpl-pips-${tpl.id}" style="margin:10px 0 6px">${pips}</div>
+        ${startDayRow}
+        <div class="tpl-actions">
+          <button class="btn btn-primary btn-sm" onclick="usePlanTemplate('${tpl.id}')">Use This Plan</button>
+          <button class="btn btn-ghost btn-sm tpl-preview-btn" onclick="toggleTplPreview('${tpl.id}')">View Exercises ▾</button>
+        </div>
+        <div class="tpl-preview-wrap" id="tpl-preview-${tpl.id}" hidden>
+          <div class="tpl-preview-grid">${previewDays}</div>
+        </div>
       </div>`;
   }).join("");
 }
 
+window.toggleTplPreview = function (tplId) {
+  const wrap = document.getElementById(`tpl-preview-${tplId}`);
+  const btn = document.querySelector(`#tpl-card-${tplId} .tpl-preview-btn`);
+  if (!wrap) return;
+  wrap.hidden = !wrap.hidden;
+  if (btn)
+    btn.textContent = wrap.hidden ? "View Exercises ▾" : "Hide Exercises ▴";
+};
+
+window.updateTplPips = function (tplId) {
+  const tpl = PLAN_TEMPLATES.find((t) => t.id === tplId);
+  if (!tpl || !tpl.pattern) return;
+  const select = document.getElementById(`tpl-startdow-${tplId}`);
+  const startDow = parseInt(select.value, 10);
+  const dowLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const newWorkoutDays = tpl.pattern
+    .map((on, i) => (on ? (startDow + i) % 7 : -1))
+    .filter((d) => d !== -1);
+  const pipsEl = document.querySelector(`.tpl-pips-${tplId}`);
+  if (pipsEl) {
+    pipsEl.innerHTML = dowLabels
+      .map(
+        (lbl, i) =>
+          `<div class="plan-day-pip ${newWorkoutDays.includes(i) ? "on" : "off"}">${lbl}</div>`,
+      )
+      .join("");
+  }
+};
+
 window.usePlanTemplate = function (tplId) {
   const tpl = PLAN_TEMPLATES.find((t) => t.id === tplId);
   if (!tpl) return;
+
+  // Read the user-selected start day (falls back to template default or Monday)
+  const startDowSelect = document.getElementById(`tpl-startdow-${tplId}`);
+  const startDow = startDowSelect
+    ? parseInt(startDowSelect.value, 10)
+    : (tpl.defaultStartDow ?? 1);
+
+  // Compute workout days and remap day templates based on selected start day
+  let finalWorkoutDays = tpl.workoutDays;
+  let finalDayTemplates = tpl.dayTemplates;
+  let finalDayLabels = tpl.dayLabels || {};
+
+  if (tpl.pattern) {
+    // Positions within the 7-day cycle that are workout days (in slot order)
+    const patternPositions = tpl.pattern
+      .map((on, i) => (on ? i : -1))
+      .filter((i) => i !== -1);
+    // Map each slot position to a DOW based on start day
+    const newWorkoutDays = patternPositions.map((pos) => (startDow + pos) % 7);
+    // Remap dayTemplates and dayLabels from original DOWs to new DOWs
+    const newDayTemplates = {};
+    const newDayLabels = {};
+    tpl.workoutDays.forEach((origDow, slotIdx) => {
+      const newDow = newWorkoutDays[slotIdx];
+      if (newDow !== undefined) {
+        newDayTemplates[newDow] = tpl.dayTemplates[origDow];
+        if (tpl.slotLabels && tpl.slotLabels[slotIdx]) {
+          newDayLabels[newDow] = tpl.slotLabels[slotIdx];
+        }
+      }
+    });
+    finalWorkoutDays = newWorkoutDays;
+    finalDayTemplates = newDayTemplates;
+    finalDayLabels = newDayLabels;
+  }
+
   // Pre-fill the plan form with this template's defaults and open it
   resetPlanForm();
   document.getElementById("plan-name").value = tpl.name;
   document.getElementById("plan-weeks").value = tpl.defaultWeeks;
   document.getElementById("plan-start").value = todayISO();
-  tpl.workoutDays.forEach((dow) => state.planDays.add(dow));
+  finalWorkoutDays.forEach((dow) => state.planDays.add(dow));
   document.querySelectorAll(".day-btn").forEach((btn) => {
     btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
   });
-  // Store template day templates for after save
+  // Store template day templates (remapped) for after save
   state._pendingTemplateDayTemplates = JSON.parse(
-    JSON.stringify(tpl.dayTemplates),
+    JSON.stringify(finalDayTemplates),
   );
+  state._pendingTemplateDayLabels = JSON.parse(JSON.stringify(finalDayLabels));
   updatePlanDatePreview();
   setPlanFormOpen(true);
   // Scroll to form
@@ -5784,6 +5927,7 @@ function resetPlanForm() {
   document.getElementById("btn-save-plan").textContent = "Save Plan";
   document.getElementById("plan-form-edit-banner").hidden = true;
   state._pendingTemplateDayTemplates = null;
+  state._pendingTemplateDayLabels = null;
 }
 
 function setPlanFormOpen(open) {
@@ -5929,7 +6073,9 @@ function savePlan() {
   const existing = editId ? loadPlans().find((p) => p.id === editId) : null;
   // Apply pre-made template day templates on first save (not on edit)
   const pendingTemplates = state._pendingTemplateDayTemplates;
+  const pendingDayLabels = state._pendingTemplateDayLabels;
   state._pendingTemplateDayTemplates = null;
+  state._pendingTemplateDayLabels = null;
   const plan = {
     id: editId || uid(),
     name,
@@ -5940,6 +6086,7 @@ function savePlan() {
     dayTemplates: existing
       ? existing.dayTemplates || {}
       : pendingTemplates || {},
+    dayLabels: existing ? existing.dayLabels || {} : pendingDayLabels || {},
     rir: isRir,
     mesocycleLength: msLen,
   };
