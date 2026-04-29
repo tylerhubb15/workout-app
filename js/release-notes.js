@@ -1,15 +1,26 @@
 export const APP_RELEASE = {
-  version: "2026.04.16.5",
+  version: "2026.04.29.1",
   title: "What\u2019s New in Tensile",
   summary:
-    "Startup is now fully gated so the app shell stays hidden until Tensile branding and hydration are ready.",
+    "Smarter weekly volume tracking, a rest-day picker for plan templates, and exercise previews before you commit to a plan.",
   sections: [
     {
-      title: "Startup Flow",
+      title: "Volume Tracker",
       items: [
-        "The app shell now stays hidden during initial boot, so Home cannot paint underneath the startup overlays on a fast signed-in reload.",
-        "Signed-in launches now hand off from a dedicated Tensile logo screen to the hydration ring before revealing the main app.",
-        "Signed-out launches still route cleanly to auth, but the boot lock is only released after the correct first screen is ready.",
+        "ER (Explosive Reps) sets now count as 1.5\u00d7 toward weekly volume, reflecting their higher stimulus-per-set.",
+      ],
+    },
+    {
+      title: "Plan Templates",
+      items: [
+        "Choose your preferred start day when selecting a plan template — the schedule rotates automatically so your rest day lands where you want it.",
+        "Tap \"View Exercises\" on any template card to preview the full exercise list for each training day before committing.",
+      ],
+    },
+    {
+      title: "Active Workout",
+      items: [
+        "A new tip reminds you that tapping an exercise name opens its full history, PRs, and progress graph.",
       ],
     },
   ],
