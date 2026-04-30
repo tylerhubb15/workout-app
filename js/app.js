@@ -7022,8 +7022,10 @@ document.addEventListener("DOMContentLoaded", () => {
         await migrateLocalStorageIfNeeded();
         setHydrationProgress(25, "Fetching your workouts\u2026");
         await nextPaint();
+        document.querySelector(".hydration-ring-wrap")?.classList.add("spinning");
 
         await hydrateFromFirestore();
+        document.querySelector(".hydration-ring-wrap")?.classList.remove("spinning");
         setHydrationProgress(80, "Applying preferences\u2026");
         await nextPaint();
 
