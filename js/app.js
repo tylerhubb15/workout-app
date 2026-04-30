@@ -762,6 +762,7 @@ const state = {
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
   _pendingTemplateDayTemplates: null, // day templates from a pre-made plan, applied on first save
   _pendingTemplateDayLabels: null, // day labels from a pre-made plan, applied on first save
+  openPlanDays: null, // Set of DOW indices with open accordion panels; null = all open
   _homeAction: null,
 };
 
@@ -4010,36 +4011,111 @@ window.openPlanEditor = function (id) {
   if (!plan) return;
   if (!plan.dayTemplates) plan.dayTemplates = {};
   state.editingPlan = JSON.parse(JSON.stringify(plan));
+  state.openPlanDays = null;
+  document.getElementById("plan-name").value = plan.name;
+  document.getElementById("plan-name").dataset.editId = plan.id;
+  document.getElementById("plan-start").value = plan.start;
+  let weeks = plan.weeks || 0;
+  if (!weeks && plan.start && plan.end) {
+    const ms =
+      new Date(plan.end + "T00:00:00") - new Date(plan.start + "T00:00:00");
+    weeks = Math.max(1, Math.round(ms / (7 * 86400000)));
+  }
+  document.getElementById("plan-weeks").value = weeks || 8;
+  document.getElementById("plan-end").value = plan.end || "";
+  document.getElementById("plan-rir-toggle").checked = !!plan.rir;
+  document.getElementById("plan-rir-options").style.display = plan.rir
+    ? ""
+    : "none";
+  document.getElementById("plan-mesocycle-length").value =
+    plan.mesocycleLength || 4;
+  state.planDays = new Set(plan.workoutDays);
+  document.querySelectorAll(".day-btn").forEach((btn) => {
+    btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
+  });
+  updatePlanDatePreview();
+  document.getElementById("plan-editor-title").textContent =
+    plan.name || "Edit Plan";
+  document.getElementById("plan-form-edit-banner").hidden = false;
+  document.getElementById(
+    "plan-form-edit-label",
+  ).textContent = `Editing: ${plan.name}`;
+  document.getElementById("btn-save-plan").textContent = "Update Plan";
+  clearPlanErrors();
   navigate("plan-editor");
 };
+
+function openPlanEditorNew() {
+  state.editingPlan = {
+    id: uid(),
+    name: "",
+    workoutDays: [],
+    dayTemplates: {},
+    dayLabels: {},
+    rir: false,
+    mesocycleLength: 4,
+  };
+  state.openPlanDays = null;
+  state._pendingTemplateDayTemplates = null;
+  state._pendingTemplateDayLabels = null;
+  document.getElementById("plan-name").value = "";
+  document.getElementById("plan-name").dataset.editId = state.editingPlan.id;
+  document.getElementById("plan-start").value = todayISO();
+  document.getElementById("plan-weeks").value = "8";
+  document.getElementById("plan-end").value = "";
+  document.getElementById("plan-date-preview").hidden = true;
+  document.getElementById("plan-rir-toggle").checked = false;
+  document.getElementById("plan-rir-options").style.display = "none";
+  document.getElementById("plan-mesocycle-length").value = "4";
+  state.planDays = new Set();
+  document
+    .querySelectorAll(".day-btn")
+    .forEach((btn) => btn.classList.remove("active"));
+  document.getElementById("plan-editor-title").textContent = "New Plan";
+  document.getElementById("plan-form-edit-banner").hidden = true;
+  document.getElementById("btn-save-plan").textContent = "Save Plan";
+  clearPlanErrors();
+  navigate("plan-editor");
+}
 
 function renderPlanEditor() {
   const plan = state.editingPlan;
   if (!plan) return;
-  document.getElementById("plan-editor-title").textContent = plan.name;
-
   const body = document.getElementById("plan-editor-body");
-  body.innerHTML = plan.workoutDays
+
+  if (!plan.workoutDays || plan.workoutDays.length === 0) {
+    body.innerHTML = `<div class="plan-editor-empty">Select workout days above to add exercises.</div>`;
+    return;
+  }
+
+  const sortedDays = [...plan.workoutDays].sort((a, b) => a - b);
+  body.innerHTML = sortedDays
     .map((dow) => {
       const exercises = plan.dayTemplates[dow] || [];
-      const sortedDays = [...plan.workoutDays].sort((a, b) => a - b);
       const dayIndex = sortedDays.indexOf(dow);
       const prevDow = dayIndex > 0 ? sortedDays[dayIndex - 1] : null;
 
-      // Summary line for the header
-      let summary = "";
-      if (exercises.length > 0) {
-        const muscles = [
-          ...new Set(
-            exercises
-              .map((e) => e.muscleGroup || getMuscleGroup(e.name))
-              .filter(Boolean),
-          ),
-        ];
-        summary = `<div class="plan-day-card-summary">${exercises.length} exercise${exercises.length !== 1 ? "s" : ""}${muscles.length ? " · " + muscles.join(", ") : ""}</div>`;
-      }
+      // Summary line
+      const muscles =
+        exercises.length > 0
+          ? [
+              ...new Set(
+                exercises
+                  .map((e) => e.muscleGroup || getMuscleGroup(e.name))
+                  .filter(Boolean),
+              ),
+            ]
+          : [];
+      const summary =
+        exercises.length > 0
+          ? `<div class="plan-day-card-summary">${exercises.length} exercise${exercises.length !== 1 ? "s" : ""}${muscles.length ? " · " + muscles.join(", ") : ""}</div>`
+          : `<div class="plan-day-card-summary plan-day-card-summary-empty">Tap to add exercises</div>`;
 
-      // Exercise rows with edit + remove buttons
+      // Is this day's accordion open?
+      const isOpen =
+        state.openPlanDays === null || state.openPlanDays.has(dow);
+
+      // Exercise rows
       const exRows =
         exercises.length === 0
           ? `<div class="plan-day-empty">No exercises yet — add one below.</div>`
@@ -4069,13 +4145,14 @@ function renderPlanEditor() {
 
       return `
       <div class="plan-day-card">
-        <div class="plan-day-card-header">
+        <button class="plan-day-card-header" onclick="togglePlanDayAccordion(${dow})" aria-expanded="${isOpen}">
           <div>
             <div class="plan-day-card-title">${DOW_NAMES[dow]}</div>
             ${summary}
           </div>
-        </div>
-        <div class="plan-day-card-body">
+          <span class="plan-day-card-chevron${isOpen ? " open" : ""}">&#9660;</span>
+        </button>
+        <div class="plan-day-card-body"${isOpen ? "" : " hidden"}>
           <div class="plan-day-shortcuts">
             <button class="btn btn-secondary btn-sm" onclick="planTemplateCopyPreviousDay(${dow})" ${prevDow === null ? "disabled" : ""}>Copy Prev</button>
             <button class="btn btn-secondary btn-sm" onclick="openPlanDayCopyMenu(${dow})">Copy From…</button>
@@ -4088,6 +4165,19 @@ function renderPlanEditor() {
     })
     .join("");
 }
+
+window.togglePlanDayAccordion = function (dow) {
+  if (state.openPlanDays === null) {
+    // Initialize: all open except this one
+    state.openPlanDays = new Set(state.editingPlan.workoutDays);
+    state.openPlanDays.delete(dow);
+  } else if (state.openPlanDays.has(dow)) {
+    state.openPlanDays.delete(dow);
+  } else {
+    state.openPlanDays.add(dow);
+  }
+  renderPlanEditor();
+};
 
 window.planTemplateAddEx = function (dow) {
   state.editingPlan.dayTemplates[dow] =
@@ -5887,60 +5977,42 @@ window.usePlanTemplate = function (tplId) {
     finalDayLabels = newDayLabels;
   }
 
-  // Pre-fill the plan form with this template's defaults and open it
-  resetPlanForm();
+  // Open plan editor pre-filled with this template
+  state.editingPlan = {
+    id: uid(),
+    name: tpl.name,
+    workoutDays: [...finalWorkoutDays].sort(),
+    dayTemplates: JSON.parse(JSON.stringify(finalDayTemplates)),
+    dayLabels: JSON.parse(JSON.stringify(finalDayLabels)),
+    rir: false,
+    mesocycleLength: 4,
+  };
+  state.openPlanDays = null;
+  state._pendingTemplateDayTemplates = null;
+  state._pendingTemplateDayLabels = null;
   document.getElementById("plan-name").value = tpl.name;
+  document.getElementById("plan-name").dataset.editId = state.editingPlan.id;
   document.getElementById("plan-weeks").value = tpl.defaultWeeks;
   document.getElementById("plan-start").value = todayISO();
-  finalWorkoutDays.forEach((dow) => state.planDays.add(dow));
-  document.querySelectorAll(".day-btn").forEach((btn) => {
-    btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
-  });
-  // Store template day templates (remapped) for after save
-  state._pendingTemplateDayTemplates = JSON.parse(
-    JSON.stringify(finalDayTemplates),
-  );
-  state._pendingTemplateDayLabels = JSON.parse(JSON.stringify(finalDayLabels));
-  updatePlanDatePreview();
-  setPlanFormOpen(true);
-  // Scroll to form
-  document
-    .getElementById("plan-form-wrap")
-    .scrollIntoView({ behavior: "smooth" });
-};
-
-// ── Plan ──────────────────────────────────────────────────
-function resetPlanForm() {
-  document.getElementById("plan-name").value = "";
-  delete document.getElementById("plan-name").dataset.editId;
-  document.getElementById("plan-start").value = "";
-  document.getElementById("plan-weeks").value = "8";
   document.getElementById("plan-end").value = "";
   document.getElementById("plan-date-preview").hidden = true;
   document.getElementById("plan-rir-toggle").checked = false;
   document.getElementById("plan-rir-options").style.display = "none";
   document.getElementById("plan-mesocycle-length").value = "4";
-  state.planDays = new Set();
-  document
-    .querySelectorAll(".day-btn")
-    .forEach((btn) => btn.classList.remove("active"));
-  document.getElementById("btn-save-plan").textContent = "Save Plan";
+  state.planDays = new Set(finalWorkoutDays);
+  document.querySelectorAll(".day-btn").forEach((btn) => {
+    btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
+  });
+  updatePlanDatePreview();
+  document.getElementById("plan-editor-title").textContent = tpl.name;
   document.getElementById("plan-form-edit-banner").hidden = true;
-  state._pendingTemplateDayTemplates = null;
-  state._pendingTemplateDayLabels = null;
-}
+  document.getElementById("btn-save-plan").textContent = "Save Plan";
+  clearPlanErrors();
+  navigate("plan-editor");
+};
 
-function setPlanFormOpen(open) {
-  document.getElementById("plan-form-wrap").hidden = !open;
-  const btn = document.getElementById("btn-new-plan");
-  if (btn) btn.textContent = open ? "✕ Cancel" : "+ New Plan";
-}
-
+// ── Plan ──────────────────────────────────────────────────
 function renderPlan() {
-  // Close and reset the form
-  resetPlanForm();
-  setPlanFormOpen(false);
-
   // Render saved plans
   const plans = loadPlans();
   const list = document.getElementById("plan-list");
@@ -5973,11 +6045,10 @@ function renderPlan() {
         <div class="plan-card-actions">
           <div class="plan-card-primary-actions">
             ${activeBtn}
-            <button class="btn btn-primary btn-sm" onclick="openPlanEditor('${p.id}')">Edit Days</button>
+            <button class="btn btn-primary btn-sm" onclick="openPlanEditor('${p.id}')">Edit Plan</button>
             <button class="btn btn-secondary btn-sm plan-card-more-btn" onclick="togglePlanMenu('${p.id}')" title="More options">···</button>
           </div>
           <div class="plan-card-secondary-actions" id="plan-menu-${p.id}" hidden>
-            <button class="btn btn-secondary btn-sm" onclick="loadPlanIntoForm('${p.id}')">Edit Details</button>
             <button class="btn btn-secondary btn-sm" onclick="copyPlan('${p.id}')">Duplicate Plan</button>
             <button class="btn btn-danger btn-sm" onclick="confirmDeletePlan('${p.id}')">Delete</button>
           </div>
@@ -6069,30 +6140,25 @@ function savePlan() {
     parseInt(document.getElementById("plan-mesocycle-length").value, 10) || 4;
   const end = computePlanEnd(start, weeks);
 
-  const editId = nameEl.dataset.editId;
-  const existing = editId ? loadPlans().find((p) => p.id === editId) : null;
-  // Apply pre-made template day templates on first save (not on edit)
-  const pendingTemplates = state._pendingTemplateDayTemplates;
-  const pendingDayLabels = state._pendingTemplateDayLabels;
-  state._pendingTemplateDayTemplates = null;
-  state._pendingTemplateDayLabels = null;
+  const planId =
+    state.editingPlan?.id || nameEl.dataset.editId || uid();
   const plan = {
-    id: editId || uid(),
+    id: planId,
     name,
     start,
     end,
     weeks,
     workoutDays: [...state.planDays].sort(),
-    dayTemplates: existing
-      ? existing.dayTemplates || {}
-      : pendingTemplates || {},
-    dayLabels: existing ? existing.dayLabels || {} : pendingDayLabels || {},
+    dayTemplates: state.editingPlan?.dayTemplates || {},
+    dayLabels: state.editingPlan?.dayLabels || {},
     rir: isRir,
     mesocycleLength: msLen,
   };
   delete nameEl.dataset.editId;
+  state.editingPlan = null;
   clearPlanErrors();
   upsertPlan(plan);
+  navigate("plan");
   renderPlan();
 }
 
@@ -6102,37 +6168,7 @@ window.togglePlanMenu = function (id) {
 };
 
 window.loadPlanIntoForm = function (id) {
-  const plan = loadPlans().find((p) => p.id === id);
-  if (!plan) return;
-  document.getElementById("plan-name").value = plan.name;
-  document.getElementById("plan-name").dataset.editId = plan.id;
-  document.getElementById("plan-start").value = plan.start;
-  // Derive weeks from stored value or from start/end dates for older plans
-  let weeks = plan.weeks || 0;
-  if (!weeks && plan.start && plan.end) {
-    const ms =
-      new Date(plan.end + "T00:00:00") - new Date(plan.start + "T00:00:00");
-    weeks = Math.max(1, Math.round(ms / (7 * 86400000)));
-  }
-  document.getElementById("plan-weeks").value = weeks || 8;
-  document.getElementById("plan-end").value = plan.end;
-  document.getElementById("plan-rir-toggle").checked = !!plan.rir;
-  document.getElementById("plan-rir-options").style.display = plan.rir
-    ? ""
-    : "none";
-  document.getElementById("plan-mesocycle-length").value =
-    plan.mesocycleLength || 4;
-  state.planDays = new Set(plan.workoutDays);
-  document.querySelectorAll(".day-btn").forEach((btn) => {
-    btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
-  });
-  updatePlanDatePreview();
-  document.getElementById("btn-save-plan").textContent = "Update Plan";
-  document.getElementById("plan-form-edit-label").textContent =
-    `Editing: ${plan.name}`;
-  document.getElementById("plan-form-edit-banner").hidden = false;
-  setPlanFormOpen(true);
-  window.scrollTo(0, 0);
+  openPlanEditor(id);
 };
 
 window.setActivePlan = function (id) {
@@ -6815,20 +6851,13 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("btn-plan-back")
     .addEventListener("click", () => navigate("home"));
-  document.getElementById("btn-new-plan").addEventListener("click", () => {
-    const wrap = document.getElementById("plan-form-wrap");
-    const opening = wrap.hidden;
-    if (opening) resetPlanForm();
-    setPlanFormOpen(opening);
-    if (opening) window.scrollTo(0, 0);
-  });
+  document
+    .getElementById("btn-new-plan")
+    .addEventListener("click", () => openPlanEditorNew());
 
   // Plan editor
   document
     .getElementById("btn-plan-editor-back")
-    .addEventListener("click", () => navigate("plan"));
-  document
-    .getElementById("btn-plan-editor-done")
     .addEventListener("click", () => navigate("plan"));
 
   // Plan day muscle count + picker
@@ -6852,6 +6881,13 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         state.planDays.add(dow);
         btn.classList.add("active");
+        if (state.openPlanDays !== null) state.openPlanDays.add(dow);
+      }
+      if (state.editingPlan) {
+        state.editingPlan.workoutDays = [...state.planDays].sort();
+        if (!state.editingPlan.dayTemplates)
+          state.editingPlan.dayTemplates = {};
+        renderPlanEditor();
       }
     });
   });

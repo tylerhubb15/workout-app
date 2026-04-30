@@ -1063,110 +1063,6 @@
             + New Plan
           </button>
         </div>
-        <div id="plan-form-wrap" hidden>
-          <div class="plan-form-edit-banner" id="plan-form-edit-banner" hidden>
-            <span id="plan-form-edit-label">Editing plan</span>
-          </div>
-          <div class="plan-explainer">
-            <div class="plan-explainer-step">
-              <span class="plan-explainer-num">1</span>
-              <span
-                >Name your plan, set a date range, and pick which days of the
-                week you train.</span
-              >
-            </div>
-            <div class="plan-explainer-step">
-              <span class="plan-explainer-num">2</span>
-              <span
-                >Tap <strong>Edit Days</strong> on a saved plan to assign
-                exercises to each workout day.</span
-              >
-            </div>
-            <div class="plan-explainer-step">
-              <span class="plan-explainer-num">3</span>
-              <span
-                >Your plan shows up in the Calendar. Tap any planned day and
-                your exercises are pre-loaded.</span
-              >
-            </div>
-          </div>
-          <div class="plan-form">
-            <div>
-              <label class="field-label" for="plan-name">Plan Name</label>
-              <input
-                type="text"
-                id="plan-name"
-                placeholder="e.g. Summer Bulk"
-                autocomplete="off"
-              />
-            </div>
-            <div class="plan-dates">
-              <div style="flex: 1">
-                <label class="field-label" for="plan-start">Start Date</label>
-                <input type="date" id="plan-start" />
-              </div>
-              <div style="flex: 1">
-                <label class="field-label" for="plan-weeks"
-                  >Training Weeks</label
-                >
-                <input
-                  type="number"
-                  id="plan-weeks"
-                  min="1"
-                  max="52"
-                  value="8"
-                  inputmode="numeric"
-                  style="width: 100%"
-                  placeholder="e.g. 8"
-                />
-              </div>
-            </div>
-            <div id="plan-date-preview" class="plan-date-preview" hidden></div>
-            <!-- hidden end date kept for storage compatibility -->
-            <input type="date" id="plan-end" hidden />
-            <div>
-              <div class="field-label">Workout Days</div>
-              <div class="day-picker" id="day-picker">
-                <button class="day-btn" data-dow="0">Su</button>
-                <button class="day-btn" data-dow="1">Mo</button>
-                <button class="day-btn" data-dow="2">Tu</button>
-                <button class="day-btn" data-dow="3">We</button>
-                <button class="day-btn" data-dow="4">Th</button>
-                <button class="day-btn" data-dow="5">Fr</button>
-                <button class="day-btn" data-dow="6">Sa</button>
-              </div>
-              <div class="day-picker-hint">
-                Blue = workout &nbsp;·&nbsp; Gray = rest
-              </div>
-            </div>
-            <div class="rir-form-block">
-              <div class="field-label">RIR Periodization</div>
-              <label class="rir-toggle-wrap">
-                <input type="checkbox" id="plan-rir-toggle" />
-                <span>Enable auto-progression (Reps in Reserve)</span>
-              </label>
-              <div
-                id="plan-rir-options"
-                style="display: none; margin-top: 12px"
-              >
-                <label class="field-label" for="plan-mesocycle-length"
-                  >Mesocycle Length</label
-                >
-                <select id="plan-mesocycle-length" class="input">
-                  <option value="3">3 weeks (RIR 2 → 1 → 0)</option>
-                  <option value="4" selected>
-                    4 weeks (RIR 3 → 2 → 1 → 0)
-                  </option>
-                  <option value="5">5 weeks (RIR 4 → 3 → 2 → 1 → 0)</option>
-                  <option value="6">6 weeks (RIR 5 → … → 0)</option>
-                </select>
-              </div>
-            </div>
-            <button class="btn btn-primary btn-full" id="btn-save-plan">
-              Save Plan
-            </button>
-          </div>
-        </div>
         <div class="plan-list" id="plan-list"></div>
         <div class="plan-templates-section">
           <div class="plan-templates-label">Ready-Made Plans</div>
@@ -1174,16 +1070,93 @@
         </div>
       </section>
 
-      <!-- ── Plan Day Editor View ─────────────────────── -->
+      <!-- ── Plan Editor View ─────────────────────────── -->
       <section class="view" id="view-plan-editor">
         <div class="page-header">
           <button class="btn-back" id="btn-plan-editor-back">‹</button>
-          <h1 id="plan-editor-title">Edit Days</h1>
+          <h1 id="plan-editor-title">New Plan</h1>
         </div>
-        <div id="plan-editor-body" style="padding: 0 20px 16px"></div>
+        <div class="plan-form-edit-banner" id="plan-form-edit-banner" hidden>
+          <span id="plan-form-edit-label">Editing plan</span>
+        </div>
+        <div class="plan-editor-meta">
+          <div>
+            <label class="field-label" for="plan-name">Plan Name</label>
+            <input
+              type="text"
+              id="plan-name"
+              placeholder="e.g. Summer Bulk"
+              autocomplete="off"
+            />
+          </div>
+          <div class="plan-dates">
+            <div style="flex: 1">
+              <label class="field-label" for="plan-start">Start Date</label>
+              <input type="date" id="plan-start" />
+            </div>
+            <div style="flex: 1">
+              <label class="field-label" for="plan-weeks"
+                >Training Weeks</label
+              >
+              <input
+                type="number"
+                id="plan-weeks"
+                min="1"
+                max="52"
+                value="8"
+                inputmode="numeric"
+                style="width: 100%"
+                placeholder="e.g. 8"
+              />
+            </div>
+          </div>
+          <div id="plan-date-preview" class="plan-date-preview" hidden></div>
+          <!-- hidden end date kept for storage compatibility -->
+          <input type="date" id="plan-end" hidden />
+          <div>
+            <div class="field-label">Workout Days</div>
+            <div class="day-picker" id="day-picker">
+              <button class="day-btn" data-dow="0">Su</button>
+              <button class="day-btn" data-dow="1">Mo</button>
+              <button class="day-btn" data-dow="2">Tu</button>
+              <button class="day-btn" data-dow="3">We</button>
+              <button class="day-btn" data-dow="4">Th</button>
+              <button class="day-btn" data-dow="5">Fr</button>
+              <button class="day-btn" data-dow="6">Sa</button>
+            </div>
+            <div class="day-picker-hint">
+              Blue = workout &nbsp;·&nbsp; Gray = rest
+            </div>
+          </div>
+          <div class="rir-form-block">
+            <div class="field-label">RIR Periodization</div>
+            <label class="rir-toggle-wrap">
+              <input type="checkbox" id="plan-rir-toggle" />
+              <span>Enable auto-progression (Reps in Reserve)</span>
+            </label>
+            <div
+              id="plan-rir-options"
+              style="display: none; margin-top: 12px"
+            >
+              <label class="field-label" for="plan-mesocycle-length"
+                >Mesocycle Length</label
+              >
+              <select id="plan-mesocycle-length" class="input">
+                <option value="3">3 weeks (RIR 2 → 1 → 0)</option>
+                <option value="4" selected>
+                  4 weeks (RIR 3 → 2 → 1 → 0)
+                </option>
+                <option value="5">5 weeks (RIR 4 → 3 → 2 → 1 → 0)</option>
+                <option value="6">6 weeks (RIR 5 → … → 0)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="plan-editor-days-label">Exercises Per Day</div>
+        <div id="plan-editor-body"></div>
         <div style="padding: 0 20px 32px">
-          <button class="btn btn-primary btn-full" id="btn-plan-editor-done">
-            ✓ Done — Plan Saved
+          <button class="btn btn-primary btn-full" id="btn-save-plan">
+            Save Plan
           </button>
         </div>
       </section>

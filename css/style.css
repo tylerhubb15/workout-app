@@ -3034,6 +3034,36 @@ body.light .er-badge {
 }
 
 /* ── Plan Day Editor ───────────────────────────────────── */
+.plan-editor-meta {
+  padding: 8px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.plan-editor-days-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 20px 20px 10px;
+  border-top: 1px solid var(--border2);
+  margin-top: 4px;
+}
+
+.plan-editor-empty {
+  font-size: 13px;
+  color: var(--text3);
+  text-align: center;
+  padding: 24px 20px;
+}
+
+.plan-day-card-summary-empty {
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .plan-day-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -3049,6 +3079,21 @@ body.light .er-badge {
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   background: var(--surface2);
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+}
+
+.plan-day-card-chevron {
+  font-size: 12px;
+  color: var(--text3);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.plan-day-card-chevron.open {
+  transform: rotate(180deg);
 }
 
 .plan-day-card-title {
