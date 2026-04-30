@@ -1,5 +1,5 @@
 export const APP_RELEASE = {
-  version: "2026.04.29.4",
+  version: "2026.04.29.5",
   title: "What\u2019s New in Tensile",
   summary:
     "Smarter weekly volume tracking, a rest-day picker for plan templates, and exercise previews before you commit to a plan.",

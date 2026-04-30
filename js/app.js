@@ -47,6 +47,10 @@ const THEME_PALETTES = [
   { id: "stealth", label: "Stealth" },
   { id: "forest", label: "Forest" },
   { id: "violet", label: "Violet" },
+  { id: "rose", label: "Rose" },
+  { id: "ice", label: "Ice" },
+  { id: "solar", label: "Solar" },
+  { id: "midnight", label: "Midnight" },
 ];
 
 const ACTIVE_WORKOUT_DRAFT_KEY = "wt_draft_active_workout";
@@ -1719,11 +1723,8 @@ function renderSettings() {
     .classList.toggle("chip-active", isLight);
 
   const palette = getAccentPalette();
-  document
-    .querySelectorAll("#settings-theme-palette-grid .theme-palette-chip")
-    .forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.palette === palette);
-    });
+  const sel = document.getElementById("settings-theme-palette-select");
+  if (sel) sel.value = palette;
 }
 
 // Auth tab switcher (called from inline onclick)
@@ -7121,13 +7122,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   document
-    .querySelectorAll("#settings-theme-palette-grid .theme-palette-chip")
-    .forEach((btn) => {
-      btn.addEventListener("click", () => {
-        applyAccentPalette(btn.dataset.palette);
-        syncProfilePrefs({ themePalette: getAccentPalette() });
-        renderSettings();
-      });
+    .getElementById("settings-theme-palette-select")
+    .addEventListener("change", (e) => {
+      applyAccentPalette(e.target.value);
+      syncProfilePrefs({ themePalette: getAccentPalette() });
+      renderSettings();
     });
 
   document.getElementById("btn-logout").addEventListener("click", () => {
