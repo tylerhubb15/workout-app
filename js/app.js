@@ -1110,9 +1110,23 @@ window.toggleWeightUnit = function (ctx) {
 };
 
 // ── RIR Helpers ───────────────────────────────────────────
+function calcAutoMsLen(_weeks) {
+  // RIR always progresses 3 → 2 → 1 → 0 over a fixed 4-week block
+  return 4;
+}
+
+function updateRirAutoInfo() {
+  const el = document.getElementById("plan-rir-auto-info");
+  if (!el) return;
+  const weeks = parseInt(document.getElementById("plan-weeks")?.value, 10) || 8;
+  const cycles = Math.ceil(weeks / 5); // 4 training + 1 deload
+  const cycleNote = cycles > 1 ? ` · ${cycles} blocks over your plan` : "";
+  el.textContent = `RIR 3 → 2 → 1 → 0 per 4-week block, then deload${cycleNote}`;
+}
+
 function getRirContext(plan, iso) {
   if (!plan.rir) return null;
-  const msLen = plan.mesocycleLength || 4;
+  const msLen = 4; // always 4-week blocks, RIR 3 → 2 → 1 → 0
   const cycleLen = msLen + 1; // mesocycle weeks + 1 deload week
   const start = new Date(plan.start + "T00:00:00");
   const date = new Date(iso + "T00:00:00");
@@ -2483,6 +2497,7 @@ function buildWorkoutForDate(iso, existingWorkout) {
         const allWorkouts = loadWorkouts();
         workout.exercises = workout.exercises.map((ex) => ({
           ...ex,
+          repMode: ex.repMode === "er" ? "er" : "rir",
           sets: ex.sets.map((s) => {
             const lastSet = findLastLoggedSet(
               allWorkouts,
@@ -4073,8 +4088,6 @@ window.openPlanEditor = function (id) {
   document.getElementById("plan-rir-options").style.display = plan.rir
     ? ""
     : "none";
-  document.getElementById("plan-mesocycle-length").value =
-    plan.mesocycleLength || 4;
   state.planDays = new Set(plan.workoutDays);
   document.querySelectorAll(".day-btn").forEach((btn) => {
     btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
@@ -4112,7 +4125,6 @@ function openPlanEditorNew() {
   document.getElementById("plan-date-preview").hidden = true;
   document.getElementById("plan-rir-toggle").checked = false;
   document.getElementById("plan-rir-options").style.display = "none";
-  document.getElementById("plan-mesocycle-length").value = "4";
   state.planDays = new Set();
   document
     .querySelectorAll(".day-btn")
@@ -6044,7 +6056,6 @@ window.usePlanTemplate = function (tplId) {
   document.getElementById("plan-date-preview").hidden = true;
   document.getElementById("plan-rir-toggle").checked = false;
   document.getElementById("plan-rir-options").style.display = "none";
-  document.getElementById("plan-mesocycle-length").value = "4";
   state.planDays = new Set(finalWorkoutDays);
   document.querySelectorAll(".day-btn").forEach((btn) => {
     btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
@@ -6142,13 +6153,13 @@ function updatePlanDatePreview() {
     return;
   }
   const isRir = document.getElementById("plan-rir-toggle").checked;
-  const msLen =
-    parseInt(document.getElementById("plan-mesocycle-length").value, 10) || 4;
+  const msLen = calcAutoMsLen(weeksVal);
   const end = computePlanEnd(start, weeksVal);
   endEl.value = end;
   const deloadNote = isRir ? ` · deload every ${msLen} wks` : "";
   preview.textContent = `${weeksVal} weeks${deloadNote} → ends ${formatDate(end)}`;
   preview.hidden = false;
+  updateRirAutoInfo();
 }
 
 function savePlan() {
@@ -6182,8 +6193,7 @@ function savePlan() {
   }
 
   const isRir = document.getElementById("plan-rir-toggle").checked;
-  const msLen =
-    parseInt(document.getElementById("plan-mesocycle-length").value, 10) || 4;
+  const msLen = calcAutoMsLen(weeks);
   const end = computePlanEnd(start, weeks);
 
   const planId =
@@ -6942,11 +6952,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("plan-rir-options").style.display = e.target.checked
       ? ""
       : "none";
+    updateRirAutoInfo();
     updatePlanDatePreview();
   });
-  document
-    .getElementById("plan-mesocycle-length")
-    .addEventListener("change", updatePlanDatePreview);
   document
     .getElementById("plan-start")
     .addEventListener("change", updatePlanDatePreview);
