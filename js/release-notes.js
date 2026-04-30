@@ -1,5 +1,5 @@
 export const APP_RELEASE = {
-  version: "2026.04.29.5",
+  version: "2026.04.29.9",
   title: "What\u2019s New in Tensile",
   summary:
     "Smarter weekly volume tracking, a rest-day picker for plan templates, and exercise previews before you commit to a plan.",
@@ -14,7 +14,7 @@ export const APP_RELEASE = {
       title: "Plan Templates",
       items: [
         "Choose your preferred start day when selecting a plan template — the schedule rotates automatically so your rest day lands where you want it.",
-        "Tap \"View Exercises\" on any template card to preview the full exercise list for each training day before committing.",
+        'Tap "View Exercises" on any template card to preview the full exercise list for each training day before committing.',
       ],
     },
     {

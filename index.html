@@ -1095,9 +1095,7 @@
               <input type="date" id="plan-start" />
             </div>
             <div style="flex: 1">
-              <label class="field-label" for="plan-weeks"
-                >Training Weeks</label
-              >
+              <label class="field-label" for="plan-weeks">Training Weeks</label>
               <input
                 type="number"
                 id="plan-weeks"
@@ -1134,18 +1132,13 @@
               <input type="checkbox" id="plan-rir-toggle" />
               <span>Enable auto-progression (Reps in Reserve)</span>
             </label>
-            <div
-              id="plan-rir-options"
-              style="display: none; margin-top: 12px"
-            >
+            <div id="plan-rir-options" style="display: none; margin-top: 12px">
               <label class="field-label" for="plan-mesocycle-length"
                 >Mesocycle Length</label
               >
               <select id="plan-mesocycle-length" class="input">
                 <option value="3">3 weeks (RIR 2 → 1 → 0)</option>
-                <option value="4" selected>
-                  4 weeks (RIR 3 → 2 → 1 → 0)
-                </option>
+                <option value="4" selected>4 weeks (RIR 3 → 2 → 1 → 0)</option>
                 <option value="5">5 weeks (RIR 4 → 3 → 2 → 1 → 0)</option>
                 <option value="6">6 weeks (RIR 5 → … → 0)</option>
               </select>
@@ -1181,6 +1174,16 @@
           >
             ×
           </button>
+        </div>
+        <div class="ex-lib-search-wrap">
+          <input
+            type="search"
+            id="ex-lib-search"
+            class="ex-lib-search-input"
+            placeholder="Search exercises…"
+            oninput="onExLibSearch(this.value)"
+            autocomplete="off"
+          />
         </div>
         <div class="ex-lib-muscle-bar" id="ex-lib-muscle-bar">
           <div class="ex-lib-muscle-bar-head">
@@ -1424,6 +1427,10 @@
               <option value="ice">Ice</option>
               <option value="solar">Solar</option>
               <option value="midnight">Midnight</option>
+              <option value="operator">Operator</option>
+              <option value="obsidian">Obsidian</option>
+              <option value="venom">Venom</option>
+              <option value="titanium">Titanium</option>
             </select>
           </div>
 

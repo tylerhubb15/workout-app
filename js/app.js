@@ -51,6 +51,10 @@ const THEME_PALETTES = [
   { id: "ice", label: "Ice" },
   { id: "solar", label: "Solar" },
   { id: "midnight", label: "Midnight" },
+  { id: "operator", label: "Operator" },
+  { id: "obsidian", label: "Obsidian" },
+  { id: "venom", label: "Venom" },
+  { id: "titanium", label: "Titanium" },
 ];
 
 const ACTIVE_WORKOUT_DRAFT_KEY = "wt_draft_active_workout";
@@ -763,10 +767,12 @@ const state = {
   exHistoryName: null, // exercise name for exercise-history view
   exHistoryBackTo: "home",
   exLibMuscle: null, // selected muscle filter in exercise library (null = All)
+  exLibSearch: "", // search query in exercise library
   _sessionPRs: {}, // max weight logged per exercise in the current active workout session
   _pendingTemplateDayTemplates: null, // day templates from a pre-made plan, applied on first save
   _pendingTemplateDayLabels: null, // day labels from a pre-made plan, applied on first save
   openPlanDays: null, // Set of DOW indices with open accordion panels; null = all open
+  volumeWeekOffset: 0, // 0 = current week, -1 = last week, etc.
   _homeAction: null,
 };
 
@@ -1013,17 +1019,23 @@ function renderHomeNextAction() {
     const missedIso = findMostRecentMissedWorkoutDate();
     if (missedIso) {
       action = {
-        kicker: "Recovery",
-        title: `Missed workout on ${formatDate(missedIso)}`,
+        kicker: "Missed Workout",
+        title: formatDateLong(missedIso),
         detail:
-          "Move it to today, reschedule it, or open the day and finish it later.",
+          "Log it as today's workout, or skip it to clear this reminder.",
         primary: {
-          label: "Recover",
-          onClick: () => showMissedDayRecoveryModal(missedIso, "home"),
+          label: "Log Today",
+          onClick: () => {
+            state._missedRecovery = { iso: missedIso, from: "home" };
+            recoverMissedDay("today");
+          },
         },
         secondary: {
-          label: "Calendar",
-          onClick: () => navigate("calendar"),
+          label: "Skip Day",
+          onClick: () => {
+            state._missedRecovery = { iso: missedIso, from: "home" };
+            recoverMissedDay("skip");
+          },
         },
       };
     } else {
@@ -1046,10 +1058,7 @@ function renderHomeNextAction() {
               nextWorkout.label === "Today" ? "Open Workout" : "Preview Day",
             onClick: () => openDaySelection(nextWorkout.iso, "home", true),
           },
-          secondary: {
-            label: "Plans",
-            onClick: () => navigate("plan"),
-          },
+          secondary: null,
         };
       } else {
         action = {
@@ -1062,12 +1071,7 @@ function renderHomeNextAction() {
             label: getActivePlan() ? "Exercises" : "Open Plans",
             onClick: () => navigate(getActivePlan() ? "exercises" : "plan"),
           },
-          secondary: getActivePlan()
-            ? {
-                label: "Plans",
-                onClick: () => navigate("plan"),
-              }
-            : null,
+          secondary: null,
         };
       }
     }
@@ -1082,12 +1086,14 @@ function renderHomeNextAction() {
   syncHomeAction(action);
   el.innerHTML = `
     <div class="next-action-card">
-      <div class="next-action-kicker">${escHtml(action.kicker)}</div>
-      <div class="next-action-title">${escHtml(action.title)}</div>
-      <div class="next-action-detail">${escHtml(action.detail)}</div>
+      <div class="next-action-content">
+        <div class="next-action-kicker">${escHtml(action.kicker)}</div>
+        <div class="next-action-title">${escHtml(action.title)}</div>
+        <div class="next-action-detail">${escHtml(action.detail)}</div>
+      </div>
       <div class="next-action-actions">
         <button class="btn btn-primary" onclick="runHomeNextAction('primary')">${escHtml(action.primary.label)}</button>
-        ${action.secondary ? `<button class="btn btn-secondary" onclick="runHomeNextAction('secondary')">${escHtml(action.secondary.label)}</button>` : ""}
+        ${action.secondary ? `<button class="btn btn-secondary${action.secondary.isIcon ? " next-action-icon-btn" : ""}" onclick="runHomeNextAction('secondary')" title="${escHtml(action.secondary.label)}">${action.secondary.rawLabel || escHtml(action.secondary.label)}</button>` : ""}
       </div>
     </div>`;
 }
@@ -1675,9 +1681,15 @@ function navigate(view) {
   if (view === "plan-editor") renderPlanEditor();
   if (view === "plan-day-muscles") renderPlanDayMuscles();
   if (view === "plan-muscle-picker") renderMuscleGroupPicker();
-  if (view === "volume") renderVolumeTracker();
+  if (view === "volume") {
+    state.volumeWeekOffset = 0;
+    renderVolumeTracker();
+  }
   if (view === "exercise-muscle") renderExMusclePickerView();
-  if (view === "exercises") renderExerciseLibrary();
+  if (view === "exercises") {
+    state.exLibSearch = "";
+    renderExerciseLibrary();
+  }
   if (view === "settings") renderSettings();
   refreshContextHints();
 
@@ -1819,12 +1831,12 @@ window.startNextWorkout = function (targetIso, label) {
 
 // ── Volume Tracker ────────────────────────────────────────
 
-function getWeekVolumeByMuscle() {
+function getWeekVolumeByMuscle(weekOffset = 0) {
   const now = new Date();
   const dow = now.getDay();
   const mondayOffset = dow === 0 ? -6 : 1 - dow;
   const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayOffset);
+  monday.setDate(now.getDate() + mondayOffset + weekOffset * 7);
   monday.setHours(0, 0, 0, 0);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
@@ -1849,18 +1861,28 @@ function getWeekVolumeByMuscle() {
   return { sets, monday, sunday };
 }
 
+window.volWeekNav = function (delta) {
+  const next = state.volumeWeekOffset + delta;
+  if (next > 0) return; // can't navigate into the future
+  state.volumeWeekOffset = next;
+  renderVolumeTracker();
+};
+
 function renderVolumeTracker() {
   const MUSCLES = Object.keys(MUSCLE_MAP).filter((m) => m !== "Full Body");
   const REC_MIN = 10;
   const REC_MAX = 20;
   const BAR_MAX = 24;
 
-  const { sets, monday, sunday } = getWeekVolumeByMuscle();
+  const offset = state.volumeWeekOffset;
+  const { sets, monday, sunday } = getWeekVolumeByMuscle(offset);
+  const isCurrentWeek = offset === 0;
 
+  const fmtOpts = { month: "short", day: "numeric" };
   const weekStr =
-    monday.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+    monday.toLocaleDateString("en-US", fmtOpts) +
     " – " +
-    sunday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    sunday.toLocaleDateString("en-US", fmtOpts);
 
   const rows = MUSCLES.map((muscle) => {
     const count = sets[muscle] || 0;
@@ -1890,7 +1912,11 @@ function renderVolumeTracker() {
   }).join("");
 
   document.getElementById("volume-content").innerHTML = `
-    <div class="vol-week-range">${weekStr}</div>
+    <div class="vol-week-nav">
+      <button class="vol-week-nav-btn" onclick="volWeekNav(-1)">‹</button>
+      <span class="vol-week-range">${weekStr}</span>
+      <button class="vol-week-nav-btn" onclick="volWeekNav(1)" ${isCurrentWeek ? "disabled" : ""}>›</button>
+    </div>
     <div class="vol-legend">
       <span class="vol-legend-dot vol-bar-low"></span><span class="vol-legend-label">Under 10</span>
       <span class="vol-legend-dot vol-bar-ok"></span><span class="vol-legend-label">10–20 ✓</span>
@@ -3109,6 +3135,7 @@ const EQUIP_ORDER = [
 function renderExerciseLibrary() {
   const muscles = Object.keys(MUSCLE_MAP);
   const selected = state.exLibMuscle;
+  const query = (state.exLibSearch || "").trim().toLowerCase();
 
   // Muscle filter pills
   const pillsHtml = ["All", ...muscles]
@@ -3121,12 +3148,21 @@ function renderExerciseLibrary() {
     .join("");
   document.getElementById("ex-lib-muscle-pills").innerHTML = pillsHtml;
 
+  // Sync search input without disrupting focus
+  const searchEl = document.getElementById("ex-lib-search");
+  if (searchEl && searchEl !== document.activeElement) {
+    searchEl.value = state.exLibSearch || "";
+  }
+
   // Build list
   const visibleMuscles = selected ? [selected] : muscles;
   let html = "";
 
   for (const muscle of visibleMuscles) {
-    const names = MUSCLE_MAP[muscle];
+    let names = MUSCLE_MAP[muscle];
+    if (query) names = names.filter((n) => n.toLowerCase().includes(query));
+    if (!names.length) continue;
+
     const cssKey = muscle.toLowerCase().replace(/\s+/g, "-");
 
     // Group names by equipment in canonical order
@@ -3160,6 +3196,10 @@ function renderExerciseLibrary() {
     </div>`;
   }
 
+  if (!html) {
+    html = `<div class="ex-lib-empty">No exercises match "${escHtml(state.exLibSearch)}"</div>`;
+  }
+
   document.getElementById("ex-lib-list").innerHTML = html;
   requestAnimationFrame(updateExerciseLibraryPillNav);
 }
@@ -3189,6 +3229,11 @@ function scrollExerciseLibraryPills(direction) {
 
 window.setExLibMuscle = function (muscle) {
   state.exLibMuscle = muscle;
+  renderExerciseLibrary();
+};
+
+window.onExLibSearch = function (val) {
+  state.exLibSearch = val;
   renderExerciseLibrary();
 };
 
