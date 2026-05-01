@@ -2314,6 +2314,60 @@ window.toggleCard = function (el) {
   el.classList.toggle("expanded");
 };
 
+// ── Workout Sharing ───────────────────────────────────────
+function compactWorkoutForShare(workout) {
+  return {
+    name: workout.name || "Workout",
+    exercises: workout.exercises.map((ex) => ({
+      name: ex.name,
+      muscleGroup: ex.muscleGroup,
+      ...(ex.repMode ? { repMode: ex.repMode } : {}),
+      sets: ex.sets.map((s) => ({
+        reps: s.reps,
+        ...(s.rir != null ? { rir: s.rir } : {}),
+      })),
+    })),
+  };
+}
+
+window.shareWorkout = async function (source) {
+  const workout =
+    source === "day" ? state.dayWorkout : state.activeWorkout;
+  if (!workout || workout.exercises.length === 0) return;
+
+  const compact = compactWorkoutForShare(workout);
+  let encoded;
+  try {
+    encoded = btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
+  } catch (_) {
+    showAlert("Share Failed", "Could not encode workout.");
+    return;
+  }
+  const url = `${location.origin}${location.pathname}?share=${encoded}`;
+  const title = compact.name;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text: `Join my workout: ${title}`, url });
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        // Fallback to clipboard if share fails for non-cancel reason
+        _copyShareUrl(url);
+      }
+    }
+  } else {
+    _copyShareUrl(url);
+  }
+};
+
+function _copyShareUrl(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    showToastMessage({ icon: "🔗", label: "Sharing", title: "Link copied!", tone: "neutral" });
+  }).catch(() => {
+    showAlert("Share", "Copy this link to share your workout:\n\n" + url);
+  });
+}
+
 // ── Active Workout (Start Workout flow) ───────────────────
 function startWorkout() {
   if (hasWorkoutContent(state.activeWorkout)) {
@@ -2339,6 +2393,9 @@ function renderWorkout() {
   document.getElementById("workout-name").value = w.name;
   document.getElementById("workout-date").value = w.date;
   document.getElementById("workout-notes").value = w.notes || "";
+
+  const shareBtn = document.getElementById("btn-workout-share");
+  if (shareBtn) shareBtn.hidden = w.exercises.length === 0;
 
   const container = document.getElementById("active-exercises");
   if (w.exercises.length === 0) {
@@ -2700,6 +2757,9 @@ function renderDay() {
     if (finishBtn) finishBtn.hidden = false;
     if (notesWrap) notesWrap.hidden = false;
   }
+
+  const dayShareBtn = document.getElementById("btn-day-share");
+  if (dayShareBtn) dayShareBtn.hidden = w.exercises.length === 0;
 
   const container = document.getElementById("day-exercises");
   if (w.exercises.length === 0) {
@@ -6716,6 +6776,48 @@ document.addEventListener("DOMContentLoaded", () => {
   applyAccentPalette(getAccentPalette());
   updateThemeBtn();
   refreshContextHints();
+
+  // ── Shared Workout Import ──────────────────────────────
+  (function handleShareParam() {
+    const params = new URLSearchParams(location.search);
+    const shareParam = params.get("share");
+    if (!shareParam) return;
+    // Clean URL immediately so refresh doesn't re-trigger import
+    history.replaceState(null, "", location.pathname);
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(shareParam))));
+      if (!data || !data.name || !Array.isArray(data.exercises)) return;
+      const exCount = data.exercises.length;
+      showModal({
+        title: `Import "${data.name}"?`,
+        msg: `Load ${exCount} exercise${exCount !== 1 ? "s" : ""} from a shared workout and start it as your workout today? Weights will start at zero.`,
+        confirmText: "Import & Start",
+        cancelText: "Dismiss",
+        onConfirm: () => {
+          const workout = {
+            id: uid(),
+            name: data.name,
+            date: todayISO(),
+            exercises: data.exercises.map((ex) => ({
+              ...ex,
+              sets: (ex.sets || []).map((s) => ({
+                ...s,
+                weight: 0,
+                done: false,
+              })),
+            })),
+          };
+          state.activeWorkout = workout;
+          state._sessionPRs = {};
+          state.exerciseContext = "workout";
+          persistActiveWorkoutDraft();
+          navigate("workout");
+        },
+      });
+    } catch (_) {
+      // Invalid share param — ignore silently
+    }
+  })();
 
   // Splash screen — manual only; re-openable via the home-screen info icon
   const splash = document.getElementById("splash");

@@ -634,6 +634,27 @@ body.app-booting .bottom-nav {
   background: var(--surface3);
 }
 
+.btn-header-action {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  margin-left: auto;
+}
+.btn-header-action:active {
+  background: var(--surface3);
+}
+
 /* ── Buttons ───────────────────────────────────────────── */
 .btn {
   display: inline-flex;
