@@ -46,6 +46,33 @@ function sanitizeFirestoreData(value) {
   return value;
 }
 
+// Firestore doesn't support nested arrays. cycleDayTemplates is stored as an
+// object map { "0": [...], "1": [...] } and converted back to an array on load.
+function serializeCycleDayTemplates(plan) {
+  if (!Array.isArray(plan.cycleDayTemplates)) return plan;
+  return {
+    ...plan,
+    cycleDayTemplates: Object.fromEntries(
+      plan.cycleDayTemplates.map((day, i) => [String(i), day]),
+    ),
+  };
+}
+
+function deserializePlanFromFirestore(plan) {
+  if (!plan.cycleDayTemplates || Array.isArray(plan.cycleDayTemplates))
+    return plan;
+  const obj = plan.cycleDayTemplates;
+  const indices = Object.keys(obj).map(Number);
+  const maxIdx = indices.length > 0 ? Math.max(...indices) : -1;
+  return {
+    ...plan,
+    cycleDayTemplates:
+      maxIdx >= 0
+        ? Array.from({ length: maxIdx + 1 }, (_, i) => obj[String(i)] || [])
+        : [],
+  };
+}
+
 // ── Save status tracker ────────────────────────────────────
 // Tracks in-flight Firestore writes so the UI can surface Saving / Saved /
 // Offline / Error state. `state` is one of: "idle" | "saving" | "saved"
@@ -158,7 +185,7 @@ export async function hydrateFromFirestore() {
   _workouts = workSnap.docs
     .map((d) => d.data())
     .sort((a, b) => b.date.localeCompare(a.date));
-  _plans = planSnap.docs.map((d) => d.data());
+  _plans = planSnap.docs.map((d) => deserializePlanFromFirestore(d.data()));
   _bodyWeights = bwSnap.docs
     .map((d) => d.data())
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -238,11 +265,12 @@ export function loadPlans() {
 }
 
 export function upsertPlan(plan) {
-  const payload = sanitizeFirestoreData(plan);
+  const cached = sanitizeFirestoreData(plan); // array form for in-memory cache
+  const payload = sanitizeFirestoreData(serializeCycleDayTemplates(plan)); // object form for Firestore
   if (_plans) {
     const i = _plans.findIndex((p) => p.id === plan.id);
-    if (i !== -1) _plans[i] = payload;
-    else _plans.unshift(payload);
+    if (i !== -1) _plans[i] = cached;
+    else _plans.unshift(cached);
   }
   return trackWrite(
     setDoc(doc(window._db, `users/${uid()}/plans/${plan.id}`), payload),
