@@ -18,6 +18,7 @@ function uid() {
 let _workouts = null;
 let _plans = null;
 let _bodyWeights = null;
+let _meals = null;
 
 // Opaque generation counter bumped on every workout mutation. Consumers
 // (e.g., buildPRMap memoization in app.js) can read it via
@@ -86,7 +87,11 @@ function trackWrite(promise, label = "write") {
       _saveStatus.lastError = null;
     })
     .catch((err) => {
-      _saveStatus.lastError = { at: Date.now(), label, message: err?.message || String(err) };
+      _saveStatus.lastError = {
+        at: Date.now(),
+        label,
+        message: err?.message || String(err),
+      };
       // If the browser knows we're offline, show offline instead of error —
       // Firestore's IndexedDB persistence will replay the write when back online.
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
@@ -141,18 +146,23 @@ export async function hydrateFromFirestore() {
   const u = uid();
   const db = window._db;
 
-  const [workSnap, planSnap, bwSnap, profileSnap] = await Promise.all([
-    getDocs(collection(db, `users/${u}/workouts`)),
-    getDocs(collection(db, `users/${u}/plans`)),
-    getDocs(collection(db, `users/${u}/bodyweights`)),
-    getDoc(doc(db, `users/${u}`)),
-  ]);
+  const [workSnap, planSnap, bwSnap, mealsSnap, profileSnap] =
+    await Promise.all([
+      getDocs(collection(db, `users/${u}/workouts`)),
+      getDocs(collection(db, `users/${u}/plans`)),
+      getDocs(collection(db, `users/${u}/bodyweights`)),
+      getDocs(collection(db, `users/${u}/meals`)),
+      getDoc(doc(db, `users/${u}`)),
+    ]);
 
   _workouts = workSnap.docs
     .map((d) => d.data())
     .sort((a, b) => b.date.localeCompare(a.date));
   _plans = planSnap.docs.map((d) => d.data());
   _bodyWeights = bwSnap.docs
+    .map((d) => d.data())
+    .sort((a, b) => b.date.localeCompare(a.date));
+  _meals = mealsSnap.docs
     .map((d) => d.data())
     .sort((a, b) => b.date.localeCompare(a.date));
   bumpWorkoutsGeneration();
@@ -168,6 +178,8 @@ export async function hydrateFromFirestore() {
     if (data.displayName)
       localStorage.setItem("wt_display_name", data.displayName);
     if (data.unitPref) localStorage.setItem("wt_unit_pref", data.unitPref);
+    if (data.proteinGoal !== undefined)
+      localStorage.setItem("wt_protein_goal", String(data.proteinGoal || 0));
     if (data.theme) localStorage.setItem("wt_theme", data.theme);
     if (data.themePalette)
       localStorage.setItem("wt_theme_palette", data.themePalette);
@@ -179,6 +191,7 @@ export function clearCaches() {
   _workouts = null;
   _plans = null;
   _bodyWeights = null;
+  _meals = null;
   bumpWorkoutsGeneration();
 }
 
@@ -302,6 +315,66 @@ export function deleteBodyWeight(date) {
   );
 }
 
+// ── Meals (Nutrition Tracking) ────────────────────────────
+export function loadMeals() {
+  return _meals || [];
+}
+
+export function logMeal(meal) {
+  const payload = sanitizeFirestoreData(meal);
+  if (_meals) {
+    const i = _meals.findIndex((m) => m.id === meal.id);
+    if (i !== -1) _meals[i] = payload;
+    else _meals.unshift(payload);
+  }
+  return trackWrite(
+    setDoc(doc(window._db, `users/${uid()}/meals/${meal.id}`), payload),
+    "logMeal",
+  );
+}
+
+export function deleteMeal(id) {
+  if (_meals) _meals = _meals.filter((m) => m.id !== id);
+  return trackWrite(
+    deleteDoc(doc(window._db, `users/${uid()}/meals/${id}`)),
+    "deleteMeal",
+  );
+}
+
+// ── Protein Goal ──────────────────────────────────────────
+export function loadProteinGoal() {
+  const val = localStorage.getItem("wt_protein_goal");
+  return val ? parseInt(val, 10) : 0;
+}
+
+export function saveProteinGoal(grams) {
+  localStorage.setItem("wt_protein_goal", String(grams || 0));
+  return trackWrite(
+    setDoc(
+      doc(window._db, `users/${uid()}`),
+      { proteinGoal: grams || 0 },
+      { merge: true },
+    ),
+    "saveProteinGoal",
+  );
+}
+// ── Calorie Goal ─────────────────────────────────────────────────────────
+export function loadCalorieGoal() {
+  const val = localStorage.getItem("wt_calorie_goal");
+  return val ? parseInt(val, 10) : 0;
+}
+
+export function saveCalorieGoal(calories) {
+  localStorage.setItem("wt_calorie_goal", String(calories || 0));
+  return trackWrite(
+    setDoc(
+      doc(window._db, `users/${uid()}`),
+      { calorieGoal: calories || 0 },
+      { merge: true },
+    ),
+    "saveCalorieGoal",
+  );
+}
 // ── Unit Preference ───────────────────────────────────────
 // Read from localStorage (sync); writes also sync to Firestore profile.
 export function loadUnitPref() {
