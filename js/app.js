@@ -107,6 +107,10 @@ const EXERCISES = {
     "Barbell Reverse Curl",
     "Barbell Drag Curl",
     "Skull Crusher",
+    // Forearms
+    "Barbell Wrist Curl",
+    "Barbell Reverse Wrist Curl",
+    "Behind-the-Back Wrist Curl",
     // Legs
     "Barbell Back Squat",
     "Barbell Front Squat",
@@ -176,6 +180,9 @@ const EXERCISES = {
     "Overhead Tricep Extension",
     "Tricep Kickback",
     "Dumbbell JM Press",
+    // Forearms
+    "Dumbbell Wrist Curl",
+    "Dumbbell Reverse Wrist Curl",
     // Legs
     "Bulgarian Split Squat",
     "Goblet Squat",
@@ -237,6 +244,9 @@ const EXERCISES = {
     "Cable Overhead Tricep Extension",
     "Single-Arm Pushdown",
     "Cable Tricep Kickback",
+    // Forearms
+    "Cable Wrist Curl",
+    "Cable Reverse Wrist Curl",
     // Legs / Glutes
     "Cable Pull-Through",
     "Cable Kickback",
@@ -333,6 +343,10 @@ const EXERCISES = {
     "Muscle-Up",
     "Typewriter Pull-Up",
     "L-Sit Pull-Up",
+    // Forearms
+    "Dead Hang",
+    "Wrist Roller",
+    "Plate Pinch",
     // Legs
     "Jump Squat",
     "Box Jump",
@@ -568,6 +582,18 @@ const MUSCLE_MAP = {
     "Tricep Dip",
     "Parallel Dip",
     "Landmine Press",
+  ],
+  Forearms: [
+    "Barbell Wrist Curl",
+    "Barbell Reverse Wrist Curl",
+    "Behind-the-Back Wrist Curl",
+    "Dumbbell Wrist Curl",
+    "Dumbbell Reverse Wrist Curl",
+    "Cable Wrist Curl",
+    "Cable Reverse Wrist Curl",
+    "Wrist Roller",
+    "Dead Hang",
+    "Plate Pinch",
   ],
   Quads: [
     "Barbell Back Squat",
