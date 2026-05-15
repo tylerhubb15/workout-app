@@ -1,26 +1,16 @@
 export const APP_RELEASE = {
-  version: "2026.04.30.1",
+  version: "2026.05.14.1",
   title: "What\u2019s New in Tensile",
   summary:
-    "Smarter weekly volume tracking, a rest-day picker for plan templates, and exercise previews before you commit to a plan.",
+    "Track both protein and calories in the Nutrition tab, with combined goal progress and success rate stats.",
   sections: [
     {
-      title: "Volume Tracker",
+      title: "Nutrition Tracker",
       items: [
-        "ER (Explosive Reps) sets now count as 1.5\u00d7 toward weekly volume, reflecting their higher stimulus-per-set.",
-      ],
-    },
-    {
-      title: "Plan Templates",
-      items: [
-        "Choose your preferred start day when selecting a plan template — the schedule rotates automatically so your rest day lands where you want it.",
-        'Tap "View Exercises" on any template card to preview the full exercise list for each training day before committing.',
-      ],
-    },
-    {
-      title: "Active Workout",
-      items: [
-        "A new tip reminds you that tapping an exercise name opens its full history, PRs, and progress graph.",
+        "Set daily goals for both protein and calories — the app tracks your progress for both metrics simultaneously.",
+        "Log meals with protein and calorie values side-by-side for complete nutrition tracking.",
+        "Daily totals compare against both goals, and success stats show when you hit both targets.",
+        "Home widget displays today's protein and calorie intake at a glance.",
       ],
     },
   ],
