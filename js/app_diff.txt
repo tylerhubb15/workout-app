@@ -1,0 +1,1084 @@
+﻿diff --git a/js/app.js b/js/app.js
+index 6a84157..d7e8f58 100644
+--- a/js/app.js
++++ b/js/app.js
+@@ -11,6 +11,13 @@ import {
+   loadBodyWeights,
+   logBodyWeight,
+   deleteBodyWeight,
++  loadMeals,
++  logMeal,
++  deleteMeal,
++  loadProteinGoal,
++  saveProteinGoal,
++  loadCalorieGoal,
++  saveCalorieGoal,
+   loadUnitPref,
+   saveUnitPref,
+   hydrateFromFirestore,
+@@ -399,7 +406,6 @@ const MUSCLE_MAP = {
+     "Barbell Bench Press",
+     "Barbell Incline Bench Press",
+     "Barbell Decline Bench Press",
+-    "Close-Grip Bench Press",
+     "JM Press",
+     "Floor Press",
+     "Paused Bench Press",
+@@ -428,15 +434,12 @@ const MUSCLE_MAP = {
+     "Machine Pullover",
+     "Push-Up",
+     "Wide Push-Up",
+-    "Close Push-Up",
+     "Decline Push-Up",
+     "Incline Push-Up",
+-    "Diamond Push-Up",
+     "Archer Push-Up",
+     "Plyometric Push-Up",
+     "One-Arm Push-Up",
+     "Chest Dip",
+-    "Parallel Dip",
+     "Kettlebell Floor Press",
+   ],
+   Back: [
+@@ -873,8 +876,34 @@ function getSkippedDatesSet() {
+   );
+ }
+ 
++// Helper to calculate which cycle day a date falls on for cycle-based plans
++function getCycleDay(plan, dateIso) {
++  if (!plan || plan.planType !== "cycle") return null;
++  
++  const cycleLength = (plan.cycleWorkoutDays || 3) + (plan.cycleRestDays || 1);
++  const startDate = new Date(plan.start + "T00:00:00");
++  const checkDate = new Date(dateIso + "T00:00:00");
++  const daysSinceStart = Math.floor((checkDate - startDate) / (24 * 60 * 60 * 1000));
++  
++  if (daysSinceStart < 0) return null;
++  
++  const cycleDay = daysSinceStart % cycleLength;
++  const isWorkoutDay = cycleDay < (plan.cycleWorkoutDays || 3);
++  const workoutDayIndex = isWorkoutDay ? cycleDay : null;
++  
++  return { cycleDay, isWorkoutDay, workoutDayIndex };
++}
++
+ function getNextScheduledWorkout(plan = getActivePlan()) {
+-  if (!plan || !Array.isArray(plan.workoutDays)) return null;
++  if (!plan) return null;
++  
++  // Handle cycle-based plans
++  if (plan.planType === "cycle") {
++    return getNextScheduledWorkoutCycle(plan);
++  }
++  
++  // Original weekly plan logic
++  if (!Array.isArray(plan.workoutDays)) return null;
+ 
+   const completedDates = getCompletedDatesSet();
+   const skippedDates = getSkippedDatesSet();
+@@ -923,6 +952,56 @@ function getNextScheduledWorkout(plan = getActivePlan()) {
+   return null;
+ }
+ 
++function getNextScheduledWorkoutCycle(plan) {
++  if (!plan || plan.planType !== "cycle") return null;
++  
++  const completedDates = getCompletedDatesSet();
++  const skippedDates = getSkippedDatesSet();
++  const savedPlannedDates = getSavedPlannedDatesSet();
++  const todayIso = todayISO();
++  
++  // Check if today is a workout day
++  const todayCycle = getCycleDay(plan, todayIso);
++  if (todayCycle && todayCycle.isWorkoutDay && todayIso >= plan.start && todayIso <= plan.end) {
++    if (!completedDates.has(todayIso) && !skippedDates.has(todayIso)) {
++      return {
++        iso: todayIso,
++        dow: todayCycle.workoutDayIndex, // Use cycle day index as "dow"
++        cycleDay: todayCycle.cycleDay,
++        label: "Today",
++        saved: savedPlannedDates.has(todayIso),
++      };
++    }
++  }
++  
++  // Look ahead for next workout day
++  for (let i = 1; i <= 21; i++) {
++    const d = new Date();
++    d.setDate(d.getDate() + i);
++    const iso = localISO(d);
++    
++    if (iso > plan.end) break;
++    if (iso < plan.start) continue;
++    
++    const cycleInfo = getCycleDay(plan, iso);
++    if (!cycleInfo || !cycleInfo.isWorkoutDay) continue;
++    if (completedDates.has(iso) || skippedDates.has(iso)) continue;
++    
++    return {
++      iso,
++      dow: cycleInfo.workoutDayIndex,
++      cycleDay: cycleInfo.cycleDay,
++      label:
++        i === 1
++          ? "Tomorrow"
++          : d.toLocaleDateString("en-US", { weekday: "long" }),
++      saved: savedPlannedDates.has(iso),
++    };
++  }
++  
++  return null;
++}
++
+ function findMostRecentMissedWorkoutDate() {
+   const today = todayISO();
+   const skipped = getSkippedDatesSet();
+@@ -1690,6 +1769,7 @@ function navigate(view) {
+   if (view === "history") renderHistory();
+   if (view === "exercise") renderExerciseForm();
+   if (view === "bodyweight") renderBodyWeight();
++  if (view === "nutrition") renderNutrition();
+   if (view === "exercise-history") renderExerciseHistory();
+   if (view === "plan") renderPlan();
+   if (view === "plan-editor") renderPlanEditor();
+@@ -1718,6 +1798,11 @@ function renderSettings() {
+     ? user.email
+     : "";
+ 
++  // Email: show current email (always in read-only mode unless user clicks change)
++  document.getElementById("email-show").style.display = "flex";
++  document.getElementById("email-edit").style.display = "none";
++  document.getElementById("email-change-error").style.display = "none";
++
+   // Display name: show saved name or prompt to set one
+   const savedName = localStorage.getItem("wt_display_name") || "";
+   const showRow = document.getElementById("display-name-show");
+@@ -1783,6 +1868,7 @@ function renderHome() {
+     });
+   renderStats();
+   renderBwHomeWidget();
++  renderNutritionHomeWidget();
+   renderTodayPlan();
+   renderHomeNextAction();
+ }
+@@ -1793,19 +1879,31 @@ function renderTodayPlan() {
+ 
+   const plan = getActivePlan();
+   const nextWorkout = getNextScheduledWorkout(plan);
+-  if (!plan || !Array.isArray(plan.workoutDays) || !nextWorkout) {
++  if (!plan || !nextWorkout) {
+     el.innerHTML = "";
+     return;
+   }
+ 
+-  const exList =
+-    plan.dayTemplates &&
+-    plan.dayTemplates[nextWorkout.dow] &&
+-    plan.dayTemplates[nextWorkout.dow].length > 0
+-      ? plan.dayTemplates[nextWorkout.dow]
+-          .map((e) => escHtml(e.name))
+-          .join(" ┬╖ ")
+-      : "Workout day";
++  let exList = "Workout day";
++  
++  if (plan.planType === "cycle") {
++    // Cycle-based plan
++    const dayIdx = nextWorkout.dow; // dow is the cycle day index for cycle plans
++    if (plan.cycleDayTemplates && plan.cycleDayTemplates[dayIdx] && plan.cycleDayTemplates[dayIdx].length > 0) {
++      exList = plan.cycleDayTemplates[dayIdx]
++        .map((e) => escHtml(e.name))
++        .join(" ┬╖ ");
++    }
++  } else {
++    // Weekly plan
++    if (plan.dayTemplates &&
++      plan.dayTemplates[nextWorkout.dow] &&
++      plan.dayTemplates[nextWorkout.dow].length > 0) {
++      exList = plan.dayTemplates[nextWorkout.dow]
++        .map((e) => escHtml(e.name))
++        .join(" ┬╖ ");
++    }
++  }
+ 
+   const rirCtx = getRirContext(plan, nextWorkout.iso);
+   const rirBadge = rirCtx
+@@ -2131,6 +2229,167 @@ window.deleteBwEntry = function (date) {
+   renderBwHomeWidget();
+ };
+ 
++// ΓöÇΓöÇ Nutrition Tracking ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++function renderNutritionHomeWidget() {
++  const proteinGoal = loadProteinGoal();
++  const calorieGoal = loadCalorieGoal();
++  const meals = loadMeals();
++  const todayMeals = meals.filter((m) => m.date === todayISO());
++  const todayProtein = todayMeals.reduce((sum, m) => sum + (m.protein || 0), 0);
++  const todayCalories = todayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
++  
++  const valueEl = document.getElementById("nutrition-home-value");
++  const goalEl = document.getElementById("nutrition-home-goal");
++  
++  if (!valueEl || !goalEl) return;
++  
++  // Show both protein and calories
++  const proteinText = `${todayProtein}g`;
++  const calorieText = `${todayCalories} cal`;
++  valueEl.textContent = `${proteinText} ┬╖ ${calorieText}`;
++  
++  // Show goals
++  const goalParts = [];
++  if (proteinGoal > 0) goalParts.push(`${proteinGoal}g`);
++  if (calorieGoal > 0) goalParts.push(`${calorieGoal} cal`);
++  goalEl.textContent = goalParts.length > 0 ? `Goal: ${goalParts.join(' ┬╖ ')}` : "No goals set";
++  
++  // Color-code based on goal achievement
++  const proteinMet = proteinGoal === 0 || todayProtein >= proteinGoal;
++  const calorieMet = calorieGoal === 0 || todayCalories >= calorieGoal;
++  
++  if ((proteinGoal > 0 || calorieGoal > 0) && proteinMet && calorieMet) {
++    valueEl.style.color = "var(--accent)";
++  } else {
++    valueEl.style.color = "";
++  }
++}
++
++function renderNutrition() {
++  const proteinGoal = loadProteinGoal();
++  const calorieGoal = loadCalorieGoal();
++  const meals = loadMeals();
++  
++  document.getElementById("protein-goal-input").value = proteinGoal || "";
++  document.getElementById("calorie-goal-input").value = calorieGoal || "";
++  document.getElementById("meal-date").value = todayISO();
++  document.getElementById("meal-name-input").value = "";
++  document.getElementById("meal-protein-input").value = "";
++  document.getElementById("meal-calorie-input").value = "";
++  
++  // Group meals by date
++  const mealsByDate = {};
++  meals.forEach((m) => {
++    if (!mealsByDate[m.date]) mealsByDate[m.date] = [];
++    mealsByDate[m.date].push(m);
++  });
++  
++  const dates = Object.keys(mealsByDate).sort((a, b) => b.localeCompare(a));
++  
++  // Calculate stats
++  const hasProteinGoal = proteinGoal > 0;
++  const hasCalorieGoal = calorieGoal > 0;
++  
++  const daysWithGoals = dates.filter((date) => {
++    const dayTotal = mealsByDate[date].reduce((sum, m) => sum + (m.protein || 0), 0);
++    const dayCalories = mealsByDate[date].reduce((sum, m) => sum + (m.calories || 0), 0);
++    const proteinMet = !hasProteinGoal || dayTotal >= proteinGoal;
++    const calorieMet = !hasCalorieGoal || dayCalories >= calorieGoal;
++    return proteinMet && calorieMet;
++  }).length;
++  
++  const last7Days = dates.slice(0, 7);
++  const last7HitGoal = last7Days.filter((date) => {
++    const dayTotal = mealsByDate[date].reduce((sum, m) => sum + (m.protein || 0), 0);
++    const dayCalories = mealsByDate[date].reduce((sum, m) => sum + (m.calories || 0), 0);
++    const proteinMet = !hasProteinGoal || dayTotal >= proteinGoal;
++    const calorieMet = !hasCalorieGoal || dayCalories >= calorieGoal;
++    return proteinMet && calorieMet;
++  }).length;
++  
++  const statsEl = document.getElementById("nutrition-stats-section");
++  if ((hasProteinGoal || hasCalorieGoal) && dates.length > 0) {
++    const successRate = Math.round((daysWithGoals / dates.length) * 100);
++    statsEl.innerHTML = `
++      <div class="bw-log-card" style="margin-top: 16px;">
++        <div class="field-label" style="margin-bottom: 12px">Goal Progress</div>
++        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
++          <div>
++            <div style="font-size: 24px; font-weight: 600; color: var(--accent);">${daysWithGoals}</div>
++            <div style="font-size: 12px; color: var(--text3);">Days hit goals</div>
++          </div>
++          <div>
++            <div style="font-size: 24px; font-weight: 600; color: var(--accent);">${last7HitGoal}/7</div>
++            <div style="font-size: 12px; color: var(--text3);">Last 7 days</div>
++          </div>
++          <div>
++            <div style="font-size: 24px; font-weight: 600; color: var(--accent);">${successRate}%</div>
++            <div style="font-size: 12px; color: var(--text3);">Success rate</div>
++          </div>
++        </div>
++      </div>`;
++  } else {
++    statsEl.innerHTML = "";
++  }
++  
++  const listEl = document.getElementById("nutrition-meals-list");
++  if (meals.length === 0) {
++    listEl.innerHTML = '<div class="bw-empty" style="margin-top: 20px;">No meals logged yet.</div>';
++    return;
++  }
++  
++  listEl.innerHTML = `
++    <div class="section-title" style="padding: 16px 0 8px">Meal History</div>
++    ${dates.map((date) => {
++      const dayMeals = mealsByDate[date];
++      const dayProtein = dayMeals.reduce((sum, m) => sum + (m.protein || 0), 0);
++      const dayCalories = dayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
++      
++      const proteinMet = !hasProteinGoal || dayProtein >= proteinGoal;
++      const calorieMet = !hasCalorieGoal || dayCalories >= calorieGoal;
++      const allGoalsMet = proteinMet && calorieMet && (hasProteinGoal || hasCalorieGoal);
++      
++      const color = allGoalsMet ? 'var(--accent)' : 'var(--text3)';
++      const checkmark = allGoalsMet ? ' Γ£ô' : '';
++      
++      const goalParts = [];
++      if (hasProteinGoal) goalParts.push(`${dayProtein}/${proteinGoal}g`);
++      if (hasCalorieGoal) goalParts.push(`${dayCalories}/${calorieGoal} cal`);
++      const goalBadge = goalParts.length > 0
++        ? `<span style="font-size: 12px; color: ${color};">${goalParts.join(' ┬╖ ')}${checkmark}</span>`
++        : '';
++      
++      return `
++        <div style="margin-bottom: 12px;">
++          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; padding: 0 4px;">
++            <span style="font-weight: 500; font-size: 13px;">${formatDate(date)}</span>
++            ${goalBadge}
++          </div>
++          ${dayMeals.map((m) => {
++            const mealParts = [];
++            if (m.protein > 0) mealParts.push(`${m.protein}g protein`);
++            if (m.calories > 0) mealParts.push(`${m.calories} cal`);
++            const mealDetails = mealParts.join(' ┬╖ ');
++            
++            return `
++            <div class="bw-list-row">
++              <div>
++                <div style="font-weight: 500;">${escHtml(m.name || 'Meal')}</div>
++                <div style="font-size: 12px; color: var(--text3);">${mealDetails}</div>
++              </div>
++              <button class="btn btn-ghost btn-sm" onclick="deleteMealEntry('${m.id}')">Remove</button>
++            </div>
++          `}).join('')}
++        </div>`;
++    }).join('')}`;
++}
++
++window.deleteMealEntry = function (id) {
++  deleteMeal(id);
++  renderNutrition();
++  renderNutritionHomeWidget();
++};
++
+ // ΓöÇΓöÇ Exercise History ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ window.showExerciseHistory = function (name, event) {
+   event.stopPropagation();
+@@ -2535,30 +2794,45 @@ function buildWorkoutForDate(iso, existingWorkout) {
+     : { id: uid(), date: iso, name: "", exercises: [] };
+ 
+   if (workout.exercises.length === 0) {
+-    const dow = new Date(iso + "T00:00:00").getDay();
+     const plan = getActivePlan();
+-    if (
+-      plan &&
+-      iso >= plan.start &&
+-      iso <= plan.end &&
+-      plan.workoutDays.includes(dow) &&
+-      plan.dayTemplates &&
+-      plan.dayTemplates[dow] &&
+-      plan.dayTemplates[dow].length > 0
+-    ) {
+-      workout.exercises = cloneJSON(plan.dayTemplates[dow]);
+-      if (!workout.name) workout.name = plan.name;
+-
+-      const rirCtx = getRirContext(plan, iso);
+-      if (rirCtx) {
+-        const allWorkouts = loadWorkouts();
+-        workout.exercises = workout.exercises.map((ex) => ({
+-          ...ex,
+-          repMode: ex.repMode === "er" ? "er" : "rir",
+-          sets: ex.sets.map((s) => {
+-            const lastSet = findLastLoggedSet(
+-              allWorkouts,
+-              plan.name,
++    
++    if (plan && iso >= plan.start && iso <= plan.end) {
++      let templateExercises = null;
++      
++      if (plan.planType === "cycle") {
++        // Cycle-based plan
++        const cycleInfo = getCycleDay(plan, iso);
++        if (cycleInfo && cycleInfo.isWorkoutDay) {
++          const dayIdx = cycleInfo.workoutDayIndex;
++          if (plan.cycleDayTemplates && plan.cycleDayTemplates[dayIdx] && plan.cycleDayTemplates[dayIdx].length > 0) {
++            templateExercises = plan.cycleDayTemplates[dayIdx];
++          }
++        }
++      } else {
++        // Weekly plan
++        const dow = new Date(iso + "T00:00:00").getDay();
++        if (plan.workoutDays && plan.workoutDays.includes(dow) &&
++            plan.dayTemplates &&
++            plan.dayTemplates[dow] &&
++            plan.dayTemplates[dow].length > 0) {
++          templateExercises = plan.dayTemplates[dow];
++        }
++      }
++      
++      if (templateExercises) {
++        workout.exercises = cloneJSON(templateExercises);
++        if (!workout.name) workout.name = plan.name;
++
++        const rirCtx = getRirContext(plan, iso);
++        if (rirCtx) {
++          const allWorkouts = loadWorkouts();
++          workout.exercises = workout.exercises.map((ex) => ({
++            ...ex,
++            repMode: ex.repMode === "er" ? "er" : "rir",
++            sets: ex.sets.map((s) => {
++              const lastSet = findLastLoggedSet(
++                allWorkouts,
++                plan.name,
+               ex.name,
+               dow,
+               iso,
+@@ -2953,6 +3227,15 @@ function workoutFor(ctx) {
+     // Return a proxy-like object whose .exercises points at the template array
+     return { exercises: state.editingPlan.dayTemplates[dow] };
+   }
++  if (ctx === "cycleTemplate") {
++    const dayIdx = state.editingPlanDow;
++    if (!Array.isArray(state.editingPlan.cycleDayTemplates)) {
++      state.editingPlan.cycleDayTemplates = [];
++    }
++    if (!state.editingPlan.cycleDayTemplates[dayIdx])
++      state.editingPlan.cycleDayTemplates[dayIdx] = [];
++    return { exercises: state.editingPlan.cycleDayTemplates[dayIdx] };
++  }
+   return state.activeWorkout;
+ }
+ 
+@@ -2960,7 +3243,7 @@ function rerenderFor(ctx) {
+   if (ctx === "day") {
+     persistDay();
+     renderDay();
+-  } else if (ctx === "planTemplate") {
++  } else if (ctx === "planTemplate" || ctx === "cycleTemplate") {
+     upsertPlan(state.editingPlan);
+     renderPlanEditor();
+   } else {
+@@ -2977,7 +3260,7 @@ window.handleSetChange = function (ctx, ei, si, field, val) {
+     set.actualReps = set.reps;
+   }
+   if (ctx === "day") persistDay();
+-  if (ctx === "planTemplate") upsertPlan(state.editingPlan);
++  if (ctx === "planTemplate" || ctx === "cycleTemplate") upsertPlan(state.editingPlan);
+   if (ctx === "workout") persistActiveWorkoutDraft();
+ };
+ 
+@@ -3489,7 +3772,7 @@ function showExConfigPanel(name) {
+ 
+ function renderExTrainingTypeChips() {
+   const inRirTemplate =
+-    state.exerciseContext === "planTemplate" &&
++    (state.exerciseContext === "planTemplate" || state.exerciseContext === "cycleTemplate") &&
+     state.editingPlan &&
+     state.editingPlan.rir;
+   const mode = inRirTemplate
+@@ -3589,7 +3872,7 @@ window.selectCustomExMuscle = function (muscle) {
+ 
+ function renderSetRows() {
+   const inRirTemplate =
+-    state.exerciseContext === "planTemplate" &&
++    (state.exerciseContext === "planTemplate" || state.exerciseContext === "cycleTemplate") &&
+     state.editingPlan &&
+     state.editingPlan.rir;
+ 
+@@ -3693,7 +3976,7 @@ function saveExercise() {
+   try {
+     // Flush any uncommitted input values
+     const inRirTemplate =
+-      state.exerciseContext === "planTemplate" &&
++      (state.exerciseContext === "planTemplate" || state.exerciseContext === "cycleTemplate") &&
+       state.editingPlan &&
+       state.editingPlan.rir;
+     const mode = inRirTemplate ? "planRir" : state.formRepMode;
+@@ -3754,12 +4037,12 @@ function saveExercise() {
+     else target.exercises.push(exercise);
+ 
+     if (state.exerciseContext === "day") persistDay();
+-    if (state.exerciseContext === "planTemplate") upsertPlan(state.editingPlan);
++    if (state.exerciseContext === "planTemplate" || state.exerciseContext === "cycleTemplate") upsertPlan(state.editingPlan);
+     if (state.exerciseContext === "workout") persistActiveWorkoutDraft();
+ 
+     state.editingExIndex = null;
+     const dest =
+-      state.exerciseContext === "planTemplate"
++      (state.exerciseContext === "planTemplate" || state.exerciseContext === "cycleTemplate")
+         ? "plan-editor"
+         : state.exerciseContext;
+     navigate(dest);
+@@ -4131,6 +4414,7 @@ window.openPlanEditor = function (id) {
+   const plan = loadPlans().find((p) => p.id === id);
+   if (!plan) return;
+   if (!plan.dayTemplates) plan.dayTemplates = {};
++  if (!plan.cycleDayTemplates) plan.cycleDayTemplates = [];
+   state.editingPlan = JSON.parse(JSON.stringify(plan));
+   state.openPlanDays = null;
+   document.getElementById("plan-name").value = plan.name;
+@@ -4148,10 +4432,22 @@ window.openPlanEditor = function (id) {
+   document.getElementById("plan-rir-options").style.display = plan.rir
+     ? ""
+     : "none";
+-  state.planDays = new Set(plan.workoutDays);
+-  document.querySelectorAll(".day-btn").forEach((btn) => {
+-    btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
+-  });
++  
++  // Set up plan type UI
++  const planType = plan.planType || "weekly";
++  setPlanType(planType);
++  
++  if (planType === "weekly") {
++    state.planDays = new Set(plan.workoutDays || []);
++    document.querySelectorAll(".day-btn").forEach((btn) => {
++      btn.classList.toggle("active", state.planDays.has(Number(btn.dataset.dow)));
++    });
++  } else if (planType === "cycle") {
++    document.getElementById("cycle-workout-days").value = plan.cycleWorkoutDays || 3;
++    document.getElementById("cycle-rest-days").value = plan.cycleRestDays || 1;
++    updateCyclePatternPreview();
++  }
++  
+   updatePlanDatePreview();
+   document.getElementById("plan-editor-title").textContent =
+     plan.name || "Edit Plan";
+@@ -4161,6 +4457,7 @@ window.openPlanEditor = function (id) {
+   ).textContent = `Editing: ${plan.name}`;
+   document.getElementById("btn-save-plan").textContent = "Update Plan";
+   clearPlanErrors();
++  renderPlanEditor();
+   navigate("plan-editor");
+ };
+ 
+@@ -4168,7 +4465,11 @@ function openPlanEditorNew() {
+   state.editingPlan = {
+     id: uid(),
+     name: "",
++    planType: "weekly", // 'weekly' or 'cycle'
+     workoutDays: [],
++    cycleWorkoutDays: 3, // for cycle-based plans
++    cycleRestDays: 1, // for cycle-based plans
++    cycleDayTemplates: [], // array of exercise templates for cycle-based plans
+     dayTemplates: {},
+     dayLabels: {},
+     rir: false,
+@@ -4189,6 +4490,10 @@ function openPlanEditorNew() {
+   document
+     .querySelectorAll(".day-btn")
+     .forEach((btn) => btn.classList.remove("active"));
++  
++  // Set plan type to weekly by default
++  setPlanType("weekly");
++  
+   document.getElementById("plan-editor-title").textContent = "New Plan";
+   document.getElementById("plan-form-edit-banner").hidden = true;
+   document.getElementById("btn-save-plan").textContent = "Save Plan";
+@@ -4201,6 +4506,12 @@ function renderPlanEditor() {
+   if (!plan) return;
+   const body = document.getElementById("plan-editor-body");
+ 
++  // Handle cycle-based plans
++  if (plan.planType === "cycle") {
++    return renderCyclePlanEditor();
++  }
++
++  // Weekly plan rendering
+   if (!plan.workoutDays || plan.workoutDays.length === 0) {
+     body.innerHTML = `<div class="plan-editor-empty">Select workout days above to add exercises.</div>`;
+     return;
+@@ -4364,6 +4675,247 @@ window.planTemplateClearDay = function (dow) {
+   renderPlanEditor();
+ };
+ 
++// ΓöÇΓöÇ Plan Type Switching (Weekly vs Cycle) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++window.setPlanType = function (type) {
++  if (!state.editingPlan) return;
++  state.editingPlan.planType = type;
++  
++  // Update UI chips
++  document.getElementById("plan-type-weekly").classList.toggle("chip-active", type === "weekly");
++  document.getElementById("plan-type-cycle").classList.toggle("chip-active", type === "cycle");
++  
++  // Show/hide appropriate pickers
++  document.getElementById("plan-weekly-picker").style.display = type === "weekly" ? "" : "none";
++  document.getElementById("plan-cycle-picker").style.display = type === "cycle" ? "" : "none";
++  
++  if (type === "cycle") {
++    updateCyclePatternPreview();
++    setupCycleWorkoutDays();
++  }
++  
++  renderPlanEditor();
++};
++
++function setupCycleWorkoutDays() {
++  const plan = state.editingPlan;
++  if (!plan || plan.planType !== "cycle") return;
++  
++  const workoutDays = parseInt(document.getElementById("cycle-workout-days").value, 10) || 3;
++  
++  // Initialize cycle day templates if needed
++  if (!Array.isArray(plan.cycleDayTemplates)) {
++    plan.cycleDayTemplates = [];
++  }
++  
++  // Ensure we have enough day templates for the workout days
++  while (plan.cycleDayTemplates.length < workoutDays) {
++    plan.cycleDayTemplates.push([]);
++  }
++  
++  // Trim if we have too many
++  if (plan.cycleDayTemplates.length > workoutDays) {
++    plan.cycleDayTemplates = plan.cycleDayTemplates.slice(0, workoutDays);
++  }
++}
++
++window.updateCyclePattern = function () {
++  if (!state.editingPlan || state.editingPlan.planType !== "cycle") return;
++  
++  const workoutDays = parseInt(document.getElementById("cycle-workout-days").value, 10) || 3;
++  const restDays = parseInt(document.getElementById("cycle-rest-days").value, 10) || 1;
++  
++  state.editingPlan.cycleWorkoutDays = workoutDays;
++  state.editingPlan.cycleRestDays = restDays;
++  
++  setupCycleWorkoutDays();
++  updateCyclePatternPreview();
++  renderPlanEditor();
++};
++
++function updateCyclePatternPreview() {
++  const workoutDays = parseInt(document.getElementById("cycle-workout-days").value, 10) || 3;
++  const restDays = parseInt(document.getElementById("cycle-rest-days").value, 10) || 1;
++  const cycleLength = workoutDays + restDays;
++  
++  const preview = document.getElementById("cycle-pattern-preview");
++  if (!preview) return;
++  
++  let pattern = [];
++  for (let i = 0; i < workoutDays; i++) {
++    pattern.push(`Day ${i + 1}`);
++  }
++  for (let i = 0; i < restDays; i++) {
++    pattern.push("Rest");
++  }
++  
++  preview.innerHTML = `<strong>Pattern (${cycleLength} days):</strong> ${pattern.join(" ΓåÆ ")} ΓåÆ repeats`;
++}
++
++function renderCyclePlanEditor() {
++  const plan = state.editingPlan;
++  if (!plan || plan.planType !== "cycle") return;
++  
++  const body = document.getElementById("plan-editor-body");
++  const workoutDays = plan.cycleWorkoutDays || 3;
++  
++  if (workoutDays === 0) {
++    body.innerHTML = `<div class="plan-editor-empty">Configure cycle pattern above to add exercises.</div>`;
++    return;
++  }
++  
++  body.innerHTML = Array.from({ length: workoutDays }, (_, i) => {
++    const dayNum = i + 1;
++    const exercises = (plan.cycleDayTemplates && plan.cycleDayTemplates[i]) || [];
++    const prevDayIdx = i > 0 ? i - 1 : null;
++    
++    // Summary line
++    const muscles =
++      exercises.length > 0
++        ? [
++            ...new Set(
++              exercises
++                .map((e) => e.muscleGroup || getMuscleGroup(e.name))
++                .filter(Boolean),
++            ),
++          ]
++        : [];
++    const summary =
++      exercises.length > 0
++        ? `<div class="plan-day-card-summary">${exercises.length} exercise${exercises.length !== 1 ? "s" : ""}${muscles.length ? " ┬╖ " + muscles.join(", ") : ""}</div>`
++        : `<div class="plan-day-card-summary plan-day-card-summary-empty">Tap to add exercises</div>`;
++    
++    // Is this day's accordion open?
++    const isOpen =
++      state.openPlanDays === null || state.openPlanDays.has(i);
++    
++    // Exercise rows
++    const exRows =
++      exercises.length === 0
++        ? `<div class="plan-day-empty">No exercises yet ΓÇö add one below.</div>`
++        : exercises
++            .map((ex, ei) => {
++              const modeBadge =
++                ex.repMode === "er"
++                  ? `<span class="er-badge">ER</span>`
++                  : plan.rir
++                    ? `<span class="rir-badge">RIR</span>`
++                    : "";
++              return `
++        <div class="plan-day-ex-row">
++          <div class="plan-day-ex-info">
++            <div class="plan-day-ex-name">${escHtml(ex.name)}${modeBadge}</div>
++            <div class="plan-day-ex-meta">${ex.sets.length} set${ex.sets.length !== 1 ? "s" : ""}</div>
++          </div>
++          <div class="plan-day-ex-actions">
++            <button class="btn btn-secondary btn-sm" onclick="cycleTemplateEditEx(${i},${ei})">Edit</button>
++            <button class="btn btn-icon btn-secondary" onclick="cycleTemplateRemoveEx(${i},${ei})" title="Remove">
++              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
++            </button>
++          </div>
++        </div>`;
++            })
++            .join("");
++    
++    return `
++    <div class="plan-day-card">
++      <button class="plan-day-card-header" onclick="toggleCycleDayAccordion(${i})" aria-expanded="${isOpen}">
++        <div>
++          <div class="plan-day-card-title">Day ${dayNum}</div>
++          ${summary}
++        </div>
++        <span class="plan-day-card-chevron${isOpen ? " open" : ""}">&#9660;</span>
++      </button>
++      <div class="plan-day-card-body"${isOpen ? "" : " hidden"}>
++        <div class="plan-day-shortcuts">
++          <button class="btn btn-secondary btn-sm" onclick="cycleTemplateCopyPreviousDay(${i})" ${prevDayIdx === null ? "disabled" : ""}>Copy Prev</button>
++          <button class="btn btn-secondary btn-sm" onclick="openCycleDayCopyMenu(${i})">Copy FromΓÇª</button>
++          <button class="btn btn-secondary btn-sm" onclick="cycleTemplateClearDay(${i})">Clear</button>
++        </div>
++        ${exRows}
++        <button class="btn btn-ghost btn-sm plan-day-add-btn" onclick="cycleTemplateAddEx(${i})">+ Add Exercise</button>
++      </div>
++    </div>`;
++  }).join("");
++}
++
++// ΓöÇΓöÇ Cycle Plan Template Handlers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++window.toggleCycleDayAccordion = function (dayIdx) {
++  if (state.openPlanDays === null) {
++    const workoutDays = state.editingPlan.cycleWorkoutDays || 3;
++    state.openPlanDays = new Set(Array.from({ length: workoutDays }, (_, i) => i));
++    state.openPlanDays.delete(dayIdx);
++  } else if (state.openPlanDays.has(dayIdx)) {
++    state.openPlanDays.delete(dayIdx);
++  } else {
++    state.openPlanDays.add(dayIdx);
++  }
++  renderPlanEditor();
++};
++
++window.cycleTemplateAddEx = function (dayIdx) {
++  state.editingPlanDow = dayIdx;
++  state.exerciseContext = "cycleTemplate";
++  state.editingExIndex = null;
++  state.exMuscleFilter = null;
++  navigate("exercise");
++};
++
++window.cycleTemplateEditEx = function (dayIdx, ei) {
++  state.editingPlanDow = dayIdx;
++  state.exerciseContext = "cycleTemplate";
++  state.editingExIndex = ei;
++  state.exMusclePickerFrom = null;
++  navigate("exercise");
++};
++
++window.cycleTemplateRemoveEx = function (dayIdx, ei) {
++  state.editingPlan.cycleDayTemplates[dayIdx].splice(ei, 1);
++  upsertPlan(state.editingPlan);
++  renderPlanEditor();
++};
++
++window.cycleTemplateCopyPreviousDay = function (dayIdx) {
++  if (dayIdx <= 0) return;
++  const prevIdx = dayIdx - 1;
++  state.editingPlan.cycleDayTemplates[dayIdx] = cloneJSON(
++    state.editingPlan.cycleDayTemplates[prevIdx] || [],
++  );
++  upsertPlan(state.editingPlan);
++  renderPlanEditor();
++};
++
++window.openCycleDayCopyMenu = function (dayIdx) {
++  const workoutDays = state.editingPlan.cycleWorkoutDays || 3;
++  const options = Array.from({ length: workoutDays }, (_, i) => i)
++    .filter((i) => i !== dayIdx)
++    .map(
++      (i) =>
++        `<div class="swap-option" onclick="copyCycleDayFrom(${dayIdx},${i})">Day ${i + 1}</div>`,
++    )
++    .join("");
++  showModal({
++    title: "Copy Day Template",
++    msg: `<div class="swap-prompt">Copy exercises into Day ${dayIdx + 1} from:</div><div class="swap-list">${options}</div>`,
++    confirmText: "Cancel",
++    confirmClass: "btn-secondary",
++  });
++};
++
++window.copyCycleDayFrom = function (targetIdx, sourceIdx) {
++  document.getElementById("modal-overlay").hidden = true;
++  state.editingPlan.cycleDayTemplates[targetIdx] = cloneJSON(
++    state.editingPlan.cycleDayTemplates[sourceIdx] || [],
++  );
++  upsertPlan(state.editingPlan);
++  renderPlanEditor();
++};
++
++window.cycleTemplateClearDay = function (dayIdx) {
++  state.editingPlan.cycleDayTemplates[dayIdx] = [];
++  upsertPlan(state.editingPlan);
++  renderPlanEditor();
++};
++
+ // ΓöÇΓöÇ Plan Day Muscle Count Flow ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ window.openPlanDayMuscles = function (dow) {
+   state.editingPlanDow = dow;
+@@ -6230,6 +6782,7 @@ function savePlan() {
+   const name = nameEl.value.trim();
+   const start = startEl.value;
+   const weeks = parseInt(weeksEl.value, 10);
++  const planType = state.editingPlan?.planType || "weekly";
+ 
+   if (!name) {
+     nameEl.classList.add("input-error");
+@@ -6247,9 +6800,19 @@ function savePlan() {
+     setPlanError("Enter the number of training weeks (at least 1).");
+     return;
+   }
+-  if (state.planDays.size === 0) {
+-    setPlanError("Select at least one workout day.");
+-    return;
++  
++  // Validation differs for weekly vs cycle plans
++  if (planType === "weekly") {
++    if (state.planDays.size === 0) {
++      setPlanError("Select at least one workout day.");
++      return;
++    }
++  } else if (planType === "cycle") {
++    const workoutDays = state.editingPlan?.cycleWorkoutDays || 3;
++    if (workoutDays < 1) {
++      setPlanError("Cycle must have at least 1 workout day.");
++      return;
++    }
+   }
+ 
+   const isRir = document.getElementById("plan-rir-toggle").checked;
+@@ -6264,12 +6827,24 @@ function savePlan() {
+     start,
+     end,
+     weeks,
+-    workoutDays: [...state.planDays].sort(),
+-    dayTemplates: state.editingPlan?.dayTemplates || {},
+-    dayLabels: state.editingPlan?.dayLabels || {},
++    planType,
+     rir: isRir,
+     mesocycleLength: msLen,
+   };
++  
++  // Add type-specific fields
++  if (planType === "weekly") {
++    plan.workoutDays = [...state.planDays].sort();
++    plan.dayTemplates = state.editingPlan?.dayTemplates || {};
++    plan.dayLabels = state.editingPlan?.dayLabels || {};
++  } else if (planType === "cycle") {
++    plan.cycleWorkoutDays = state.editingPlan.cycleWorkoutDays;
++    plan.cycleRestDays = state.editingPlan.cycleRestDays;
++    plan.cycleDayTemplates = state.editingPlan.cycleDayTemplates || [];
++    // For backward compatibility with scheduling
++    plan.workoutDays = [];
++  }
++  
+   delete nameEl.dataset.editId;
+   state.editingPlan = null;
+   clearPlanErrors();
+@@ -6870,6 +7445,9 @@ document.addEventListener("DOMContentLoaded", () => {
+   document
+     .getElementById("bw-home-strip")
+     .addEventListener("click", () => navigate("bodyweight"));
++  document
++    .getElementById("nutrition-home-strip")
++    .addEventListener("click", () => navigate("nutrition"));
+ 
+   // Active workout
+   document.getElementById("btn-workout-back").addEventListener("click", () => {
+@@ -7049,6 +7627,23 @@ document.addEventListener("DOMContentLoaded", () => {
+       }
+     });
+   });
++  
++  // ΓöÇΓöÇ Cycle plan configuration ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++  const cycleWorkoutInput = document.getElementById("cycle-workout-days");
++  const cycleRestInput = document.getElementById("cycle-rest-days");
++  
++  if (cycleWorkoutInput) {
++    cycleWorkoutInput.addEventListener("change", () => {
++      updateCyclePattern();
++    });
++  }
++  
++  if (cycleRestInput) {
++    cycleRestInput.addEventListener("change", () => {
++      updateCyclePattern();
++    });
++  }
++  
+   document.getElementById("btn-save-plan").addEventListener("click", savePlan);
+   document.getElementById("plan-rir-toggle").addEventListener("change", (e) => {
+     document.getElementById("plan-rir-options").style.display = e.target.checked
+@@ -7088,6 +7683,62 @@ document.addEventListener("DOMContentLoaded", () => {
+     renderBwHomeWidget();
+   });
+ 
++  // Nutrition view
++  document
++    .getElementById("btn-nutrition-back")
++    .addEventListener("click", () => navigate("home"));
++  document.getElementById("btn-goals-save").addEventListener("click", () => {
++    const proteinVal = parseInt(document.getElementById("protein-goal-input").value, 10);
++    const calorieVal = parseInt(document.getElementById("calorie-goal-input").value, 10);
++    
++    if (isNaN(proteinVal) || proteinVal < 0 || proteinVal > 999) {
++      showAlert("Invalid protein goal", "Enter a protein goal between 0 and 999 grams.");
++      return;
++    }
++    if (isNaN(calorieVal) || calorieVal < 0 || calorieVal > 9999) {
++      showAlert("Invalid calorie goal", "Enter a calorie goal between 0 and 9999.");
++      return;
++    }
++    
++    saveProteinGoal(proteinVal);
++    saveCalorieGoal(calorieVal);
++    renderNutrition();
++    renderNutritionHomeWidget();
++    showToast("Goals saved");
++  });
++  document.getElementById("btn-meal-save").addEventListener("click", () => {
++    const name = document.getElementById("meal-name-input").value.trim();
++    const protein = parseInt(document.getElementById("meal-protein-input").value, 10);
++    const calories = parseInt(document.getElementById("meal-calorie-input").value, 10);
++    const date = document.getElementById("meal-date").value || todayISO();
++    
++    if (!name) {
++      showAlert("Missing name", "Enter a name for the meal.");
++      return;
++    }
++    if (isNaN(protein) || protein < 0 || protein > 999) {
++      showAlert("Invalid protein", "Enter protein between 0 and 999 grams.");
++      return;
++    }
++    if (isNaN(calories) || calories < 0 || calories > 9999) {
++      showAlert("Invalid calories", "Enter calories between 0 and 9999.");
++      return;
++    }
++    
++    const meal = {
++      id: uid(),
++      name,
++      protein,
++      calories,
++      date,
++    };
++    
++    logMeal(meal);
++    renderNutrition();
++    renderNutritionHomeWidget();
++    showToast(`Added ${name} (${protein}g, ${calories} cal)`);
++  });
++
+   // Exercise history view
+   document
+     .getElementById("btn-ex-history-back")
+@@ -7159,6 +7810,83 @@ document.addEventListener("DOMContentLoaded", () => {
+     });
+   });
+ 
++  // ΓöÇΓöÇ Email change handlers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
++  document.getElementById("btn-email-change").addEventListener("click", () => {
++    const user = window._auth && window._auth.currentUser;
++    document.getElementById("email-show").style.display = "none";
++    document.getElementById("email-edit").style.display = "block";
++    document.getElementById("settings-new-email").value = user ? user.email : "";
++    document.getElementById("settings-email-password").value = "";
++    document.getElementById("email-change-error").style.display = "none";
++  });
++
++  document.getElementById("btn-email-cancel").addEventListener("click", () => {
++    document.getElementById("email-show").style.display = "flex";
++    document.getElementById("email-edit").style.display = "none";
++    document.getElementById("email-change-error").style.display = "none";
++  });
++
++  // Allow Enter key to submit email change
++  ["settings-new-email", "settings-email-password"].forEach((id) => {
++    document.getElementById(id).addEventListener("keydown", (e) => {
++      if (e.key === "Enter") document.getElementById("btn-settings-save-email").click();
++    });
++  });
++
++  document.getElementById("btn-settings-save-email").addEventListener("click", async () => {
++    const user = window._auth && window._auth.currentUser;
++    if (!user) return;
++
++    const newEmail = document.getElementById("settings-new-email").value.trim();
++    const password = document.getElementById("settings-email-password").value;
++    const errorEl = document.getElementById("email-change-error");
++
++    if (!newEmail) {
++      errorEl.textContent = "Please enter a new email address.";
++      errorEl.style.display = "block";
++      return;
++    }
++
++    if (!password) {
++      errorEl.textContent = "Please enter your current password to confirm.";
++      errorEl.style.display = "block";
++      return;
++    }
++
++    try {
++      // Re-authenticate user before changing email (Firebase requirement)
++      const credential = window._EmailAuthProvider.credential(
++        user.email,
++        password
++      );
++      await window._reauthenticateWithCredential(user, credential);
++
++      // Update email
++      await window._updateEmail(user, newEmail);
++
++      // Success
++      errorEl.style.cssText =
++        "display: block; background:rgba(52,211,153,0.1);border-color:rgba(52,211,153,0.25);color:var(--green)";
++      errorEl.textContent = `Email updated to ${newEmail}. Please verify your new email.`;
++
++      // Update UI and reset form after short delay
++      setTimeout(() => {
++        renderSettings();
++      }, 2000);
++    } catch (e) {
++      errorEl.style.cssText = "display: block";
++      let msg = e.message.replace("Firebase: ", "").replace(/ \(auth\/.*\)/, "");
++      if (msg.includes("wrong-password") || msg.includes("invalid-credential")) {
++        msg = "Incorrect password. Please try again.";
++      } else if (msg.includes("email-already-in-use")) {
++        msg = "This email is already in use by another account.";
++      } else if (msg.includes("invalid-email")) {
++        msg = "Invalid email address format.";
++      }
++      errorEl.textContent = msg;
++    }
++  });
++
+   // ΓöÇΓöÇ Auth state observer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+   window._onAuthStateChanged(window._auth, async (user) => {
+     if (user) {

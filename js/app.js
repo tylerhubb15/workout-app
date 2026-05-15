@@ -2338,50 +2338,49 @@ function renderNutrition() {
     return;
   }
   
-  listEl.innerHTML = `
-    <div class="section-title" style="padding: 16px 0 8px">Meal History</div>
-    ${dates.map((date) => {
-      const dayMeals = mealsByDate[date];
-      const dayProtein = dayMeals.reduce((sum, m) => sum + (m.protein || 0), 0);
-      const dayCalories = dayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
-      
-      const proteinMet = !hasProteinGoal || dayProtein >= proteinGoal;
-      const calorieMet = !hasCalorieGoal || dayCalories >= calorieGoal;
-      const allGoalsMet = proteinMet && calorieMet && (hasProteinGoal || hasCalorieGoal);
-      
-      const color = allGoalsMet ? 'var(--accent)' : 'var(--text3)';
-      const checkmark = allGoalsMet ? ' ✓' : '';
-      
-      const goalParts = [];
-      if (hasProteinGoal) goalParts.push(`${dayProtein}/${proteinGoal}g`);
-      if (hasCalorieGoal) goalParts.push(`${dayCalories}/${calorieGoal} cal`);
-      const goalBadge = goalParts.length > 0
-        ? `<span style="font-size: 12px; color: ${color};">${goalParts.join(' · ')}${checkmark}</span>`
-        : '';
-      
-      return `
-        <div style="margin-bottom: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; padding: 0 4px;">
-            <span style="font-weight: 500; font-size: 13px;">${formatDate(date)}</span>
-            ${goalBadge}
-          </div>
-          ${dayMeals.map((m) => {
-            const mealParts = [];
-            if (m.protein > 0) mealParts.push(`${m.protein}g protein`);
-            if (m.calories > 0) mealParts.push(`${m.calories} cal`);
-            const mealDetails = mealParts.join(' · ');
-            
-            return `
-            <div class="bw-list-row">
-              <div>
-                <div style="font-weight: 500;">${escHtml(m.name || 'Meal')}</div>
-                <div style="font-size: 12px; color: var(--text3);">${mealDetails}</div>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="deleteMealEntry('${m.id}')">Remove</button>
-            </div>
-          `}).join('')}
-        </div>`;
-    }).join('')}`;
+  const dateBlocks = dates.map((date) => {
+    const dayMeals = mealsByDate[date];
+    const dayProtein = dayMeals.reduce((sum, m) => sum + (m.protein || 0), 0);
+    const dayCalories = dayMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+
+    const proteinMet = !hasProteinGoal || dayProtein >= proteinGoal;
+    const calorieMet = !hasCalorieGoal || dayCalories >= calorieGoal;
+    const allGoalsMet = proteinMet && calorieMet && (hasProteinGoal || hasCalorieGoal);
+
+    const color = allGoalsMet ? 'var(--accent)' : 'var(--text3)';
+    const checkmark = allGoalsMet ? ' ✓' : '';
+
+    const goalParts = [];
+    if (hasProteinGoal) goalParts.push(dayProtein + '/' + proteinGoal + 'g');
+    if (hasCalorieGoal) goalParts.push(dayCalories + '/' + calorieGoal + ' cal');
+    const goalBadge = goalParts.length > 0
+      ? '<span style="font-size: 12px; color: ' + color + ';">' + goalParts.join(' · ') + checkmark + '</span>'
+      : '';
+
+    const mealRows = dayMeals.map((m) => {
+      const mealParts = [];
+      if (m.protein > 0) mealParts.push(m.protein + 'g protein');
+      if (m.calories > 0) mealParts.push(m.calories + ' cal');
+      const mealDetails = mealParts.join(' · ');
+      return '<div class="bw-list-row">'
+        + '<div>'
+        + '<div style="font-weight: 500;">' + escHtml(m.name || 'Meal') + '</div>'
+        + '<div style="font-size: 12px; color: var(--text3);">' + mealDetails + '</div>'
+        + '</div>'
+        + '<button class="btn btn-ghost btn-sm" onclick="deleteMealEntry(\'' + m.id + '\')">Remove</button>'
+        + '</div>';
+    }).join('');
+
+    return '<div style="margin-bottom: 12px;">'
+      + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; padding: 0 4px;">'
+      + '<span style="font-weight: 500; font-size: 13px;">' + formatDate(date) + '</span>'
+      + goalBadge
+      + '</div>'
+      + mealRows
+      + '</div>';
+  }).join('');
+
+  listEl.innerHTML = '<div class="section-title" style="padding: 16px 0 8px">Meal History</div>' + dateBlocks;
 }
 
 window.deleteMealEntry = function (id) {
@@ -2848,6 +2847,7 @@ function buildWorkoutForDate(iso, existingWorkout) {
         workout._rirCtx = rirCtx;
       }
     }
+  }
   }
 
   return workout;
