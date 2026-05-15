@@ -7532,7 +7532,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("btn-ex-muscle-back")
     .addEventListener("click", () => {
       const dest =
-        state.exerciseContext === "planTemplate"
+        state.exerciseContext === "planTemplate" || state.exerciseContext === "cycleTemplate"
           ? "plan-editor"
           : state.exerciseContext;
       navigate(dest);
@@ -7543,7 +7543,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const editing = state.editingExIndex !== null;
     const configVisible = !document.getElementById("ex-config-panel").hidden;
     const contextDest =
-      state.exerciseContext === "planTemplate"
+      state.exerciseContext === "planTemplate" || state.exerciseContext === "cycleTemplate"
         ? "plan-editor"
         : state.exerciseContext;
 
